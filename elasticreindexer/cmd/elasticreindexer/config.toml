@@ -1,0 +1,13 @@
+[config]
+    [config.input]
+        url = "http://127.0.0.1:9200"
+        username = ""
+        password = ""
+
+    [config.output]
+        url = "http://127.0.0.1:9200"
+        username = ""
+        password = ""
+
+    [config.indices]
+        indices = ["tps", "rating", "transactions", "blocks", "validators", "miniblocks", "rounds", "accounts", "accountshistory"]
