@@ -18,6 +18,8 @@ import (
 
 var log = logger.GetOrCreate("elastic")
 
+const stepDelayBetweenRequests = 1 * time.Second
+
 type esClient struct {
 	client *elasticsearch.Client
 
@@ -86,16 +88,15 @@ func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buff
 		targetIndex,
 		esc.client.Indices.Create.WithBody(body),
 	)
-
 	if err != nil {
 		return err
 	}
 
+	defer closeBody(res)
+
 	if res.IsError() {
 		return fmt.Errorf("%s", res.String())
 	}
-
-	defer closeBody(res)
 
 	return nil
 }
@@ -177,7 +178,7 @@ func (esc *esClient) iterateScroll(
 	defer func() {
 		err := esc.clearScroll(scrollID)
 		if err != nil {
-			log.Warn("cannot clear scroll ", err)
+			log.Warn("cannot clear scroll", "error", err)
 		}
 	}()
 
@@ -196,7 +197,7 @@ func (esc *esClient) iterateScroll(
 			return err
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(stepDelayBetweenRequests)
 	}
 }
 
@@ -220,11 +221,11 @@ func (esc *esClient) clearScroll(scrollID string) error {
 	if err != nil {
 		return err
 	}
+	defer closeBody(resp)
+
 	if resp.IsError() && resp.StatusCode != http.StatusNotFound {
 		return fmt.Errorf("error response: %s", resp)
 	}
-
-	defer closeBody(resp)
 
 	return nil
 }

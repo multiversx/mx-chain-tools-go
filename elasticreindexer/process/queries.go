@@ -39,8 +39,8 @@ type generalElasticResponse struct {
 }
 
 func extractSourceFromEsResponse(response generalElasticResponse) map[string]json.RawMessage {
-	recordsMap := make(map[string]json.RawMessage)
 	hits := response.Hits.Hits
+	recordsMap := make(map[string]json.RawMessage, len(hits))
 	for i := 0; i < len(hits); i++ {
 		recordsMap[hits[i].ID] = hits[i].Source
 	}
