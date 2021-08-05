@@ -75,7 +75,9 @@ func (r *reindexer) processIndex(index string) error {
 	}
 
 	if destinationCount < originalSourceCount {
-		return fmt.Errorf("destination elastic has %d records, while the original source count was %d", destinationCount, originalSourceCount)
+		log.Warn("destination count is not equal to original source count",
+			"destination count", destinationCount,
+			"source count", originalSourceCount)
 	}
 
 	return nil
