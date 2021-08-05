@@ -7,7 +7,7 @@ This tool is able to reindex all mappings and data from an instance of Elasticse
 - update the Elasticsearch instance configuration for both source and destination inside `config.toml`;
 - update the indices list inside `config.toml`;
 - run `go build`;
-- run `./elasticreindexer` that will begin the process. Continuous prints should be observerd.
+- run `./elasticreindexer` that will begin the process. Continuous prints should be observed.
 
 ## Audience
 
