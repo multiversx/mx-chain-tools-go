@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"time"
 
@@ -31,9 +32,16 @@ type esClient struct {
 // NewElasticClient will create a new instance of an esClient
 func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 	elasticClient, err := elasticsearch.NewClient(elasticsearch.Config{
-		Addresses: []string{cfg.URL},
-		Username:  cfg.Username,
-		Password:  cfg.Password,
+		Addresses:     []string{cfg.URL},
+		Username:      cfg.Username,
+		Password:      cfg.Password,
+		RetryOnStatus: []int{429, 502, 503, 504},
+		RetryBackoff: func(i int) time.Duration {
+			// A simple exponential delay
+			d := time.Duration(math.Exp2(float64(i))) * time.Second
+			log.Info("elastic: retry backoff", "attempt", i, "sleep duration", d)
+			return d
+		},
 	})
 	if err != nil {
 		return nil, err
