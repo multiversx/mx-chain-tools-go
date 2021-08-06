@@ -19,8 +19,6 @@ import (
 
 var log = logger.GetOrCreate("elastic")
 
-const stepDelayBetweenRequests = 1 * time.Second
-
 type esClient struct {
 	client *elasticsearch.Client
 
@@ -204,8 +202,6 @@ func (esc *esClient) iterateScroll(
 		if err != nil {
 			return err
 		}
-
-		time.Sleep(stepDelayBetweenRequests)
 	}
 }
 
