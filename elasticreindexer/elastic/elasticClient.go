@@ -17,7 +17,10 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-var log = logger.GetOrCreate("elastic")
+var (
+	log                  = logger.GetOrCreate("elastic")
+	httpStatusesForRetry = []int{429, 502, 503, 504}
+)
 
 type esClient struct {
 	client *elasticsearch.Client
@@ -33,7 +36,7 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 		Addresses:     []string{cfg.URL},
 		Username:      cfg.Username,
 		Password:      cfg.Password,
-		RetryOnStatus: []int{429, 502, 503, 504},
+		RetryOnStatus: httpStatusesForRetry,
 		RetryBackoff: func(i int) time.Duration {
 			// A simple exponential delay
 			d := time.Duration(math.Exp2(float64(i))) * time.Second
