@@ -22,6 +22,8 @@ var (
 	httpStatusesForRetry = []int{429, 502, 503, 504}
 )
 
+const stepDelayBetweenRequests = 500 * time.Millisecond
+
 type esClient struct {
 	client *elasticsearch.Client
 
@@ -43,6 +45,7 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 			log.Info("elastic: retry backoff", "attempt", i, "sleep duration", d)
 			return d
 		},
+		MaxRetries: 5,
 	})
 	if err != nil {
 		return nil, err
@@ -205,6 +208,8 @@ func (esc *esClient) iterateScroll(
 		if err != nil {
 			return err
 		}
+
+		time.Sleep(stepDelayBetweenRequests)
 	}
 }
 
