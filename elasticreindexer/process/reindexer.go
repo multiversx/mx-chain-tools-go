@@ -16,6 +16,8 @@ var (
 	log                  = logger.GetOrCreate("process")
 )
 
+const indexSuffix = "-000001"
+
 type reindexer struct {
 	sourceElastic      ElasticClientHandler
 	destinationElastic ElasticClientHandler
@@ -84,17 +86,19 @@ func (r *reindexer) processIndex(index string) error {
 }
 
 func (r *reindexer) copyMapping(index string) error {
+	indexWithSuffix := index + indexSuffix
+
 	sourceMapping, err := r.sourceElastic.GetMapping(index)
 	if err != nil {
 		return fmt.Errorf("copyMapping from source: %w", err)
 	}
 
-	err = r.destinationElastic.CreateIndexWithMapping(index, sourceMapping)
+	err = r.destinationElastic.CreateIndexWithMapping(indexWithSuffix, sourceMapping)
 	if err != nil {
 		return fmt.Errorf("copyMapping to destination: %w", err)
 	}
 
-	return nil
+	return r.destinationElastic.PutAlias(indexWithSuffix, index)
 }
 
 func (r *reindexer) reindexData(index string) error {

@@ -237,6 +237,22 @@ func (esc *esClient) clearScroll(scrollID string) error {
 	return nil
 }
 
+// PutAlias will set the provided alias to the provided index
+func (esc *esClient) PutAlias(index string, alias string) error {
+	res, err := esc.client.Indices.PutAlias([]string{index}, alias)
+	if err != nil {
+		return err
+	}
+
+	defer closeBody(res)
+
+	if res.IsError() {
+		return fmt.Errorf("%s", res.String())
+	}
+
+	return nil
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
 func (esc *esClient) IsInterfaceNil() bool {
 	return esc == nil
