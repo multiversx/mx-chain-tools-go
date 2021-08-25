@@ -22,6 +22,8 @@ var (
 	httpStatusesForRetry = []int{429, 502, 503, 504}
 )
 
+const stepDelayBetweenRequests = 500 * time.Millisecond
+
 type esClient struct {
 	client *elasticsearch.Client
 
@@ -43,6 +45,7 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 			log.Info("elastic: retry backoff", "attempt", i, "sleep duration", d)
 			return d
 		},
+		MaxRetries: 5,
 	})
 	if err != nil {
 		return nil, err
@@ -205,6 +208,8 @@ func (esc *esClient) iterateScroll(
 		if err != nil {
 			return err
 		}
+
+		time.Sleep(stepDelayBetweenRequests)
 	}
 }
 
@@ -232,6 +237,22 @@ func (esc *esClient) clearScroll(scrollID string) error {
 
 	if resp.IsError() && resp.StatusCode != http.StatusNotFound {
 		return fmt.Errorf("error response: %s", resp)
+	}
+
+	return nil
+}
+
+// PutAlias will set the provided alias to the provided index
+func (esc *esClient) PutAlias(index string, alias string) error {
+	res, err := esc.client.Indices.PutAlias([]string{index}, alias)
+	if err != nil {
+		return err
+	}
+
+	defer closeBody(res)
+
+	if res.IsError() {
+		return fmt.Errorf("%s", res.String())
 	}
 
 	return nil

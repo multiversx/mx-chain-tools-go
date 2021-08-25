@@ -13,5 +13,6 @@ type ElasticClientHandler interface {
 	) error
 	GetCount(index string) (uint64, error)
 	DoBulkRequest(buff *bytes.Buffer, index string) error
+	PutAlias(index string, alias string) error
 	IsInterfaceNil() bool
 }
