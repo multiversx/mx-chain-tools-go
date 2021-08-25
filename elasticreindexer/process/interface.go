@@ -12,7 +12,9 @@ type ElasticClientHandler interface {
 		handlerFunc func(responseBytes []byte) error,
 	) error
 	GetCount(index string) (uint64, error)
+	DoesAliasExist(alias string) bool
 	DoBulkRequest(buff *bytes.Buffer, index string) error
+	DoesTemplateExist(index string) bool
 	PutAlias(index string, alias string) error
 	IsInterfaceNil() bool
 }

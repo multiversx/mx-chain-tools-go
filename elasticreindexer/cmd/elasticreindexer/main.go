@@ -2,18 +2,69 @@ package main
 
 import (
 	"io/ioutil"
+	"os"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/process"
 	"github.com/pelletier/go-toml"
+	"github.com/urfave/cli"
 )
 
 const tomlFile = "./config.toml"
 
-var log = logger.GetOrCreate("main")
+var (
+	log = logger.GetOrCreate("main")
+
+	// overwrite defines a bool flag for overwriting destination's data and skipping mappings and aliases checks
+	overwriteFlag = cli.BoolFlag{
+		Name:  "overwrite",
+		Usage: "Overwrite ",
+	}
+)
+
+const helpTemplate = `NAME:
+   {{.Name}} - {{.Usage}}
+USAGE:
+   {{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}
+   {{if len .Authors}}
+AUTHOR:
+   {{range .Authors}}{{ . }}{{end}}
+   {{end}}{{if .Commands}}
+GLOBAL OPTIONS:
+   {{range .VisibleFlags}}{{.}}
+   {{end}}
+VERSION:
+   {{.Version}}
+   {{end}}
+`
 
 func main() {
+	app := cli.NewApp()
+	cli.AppHelpTemplate = helpTemplate
+	app.Name = "Elasticsearch reindexing CLI App"
+	app.Version = "v1.0.0"
+	app.Usage = "This is the entry point for Elasticsearch reindexing tool"
+	app.Flags = []cli.Flag{
+		overwriteFlag,
+	}
+	app.Authors = []cli.Author{
+		{
+			Name:  "The Elrond Team",
+			Email: "contact@elrond.com",
+		},
+	}
+
+	app.Action = startReindexing
+
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Error(err.Error())
+		os.Exit(1)
+	}
+}
+
+func startReindexing(ctx *cli.Context) {
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Error("cannot load configuration", "error", err)
@@ -26,7 +77,7 @@ func main() {
 		return
 	}
 
-	err = reindexer.Process()
+	err = reindexer.Process(ctx.Bool(overwriteFlag.Name))
 	if err != nil {
 		log.Error(err.Error())
 		return

@@ -8,4 +8,5 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.11.0
 	github.com/pelletier/go-toml v1.9.3
 	github.com/tidwall/gjson v1.8.1
+	github.com/urfave/cli v1.22.5
 )

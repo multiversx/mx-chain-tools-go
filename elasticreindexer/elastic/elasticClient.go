@@ -5,9 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/url"
 	"time"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -111,6 +113,91 @@ func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buff
 	}
 
 	return nil
+}
+
+// DoesTemplateExist returns true if a template is set to an index
+func (esc *esClient) DoesTemplateExist(index string) bool {
+	res, err := esc.client.Indices.ExistsTemplate([]string{index})
+	if err != nil {
+		return false
+	}
+
+	return exists(res, err)
+}
+
+// DoesAliasExist returns true if an index alias already exists
+func (esc *esClient) DoesAliasExist(alias string) bool {
+	aliasRoute := fmt.Sprintf(
+		"/_alias/%s",
+		alias,
+	)
+
+	req, err := newRequest(http.MethodHead, aliasRoute, nil)
+	if err != nil {
+		log.Warn("elasticClient.AliasExists",
+			"could not create request objectsMap", err.Error())
+		return false
+	}
+
+	res, err := esc.client.Transport.Perform(req)
+	if err != nil {
+		log.Warn("elasticClient.AliasExists",
+			"error performing request", err.Error())
+		return false
+	}
+
+	response := &esapi.Response{
+		StatusCode: res.StatusCode,
+		Body:       res.Body,
+		Header:     res.Header,
+	}
+
+	return exists(response, nil)
+}
+
+func newRequest(method, path string, body *bytes.Buffer) (*http.Request, error) {
+	r := http.Request{
+		Method:     method,
+		URL:        &url.URL{Path: path},
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+	}
+
+	if body != nil {
+		r.Body = ioutil.NopCloser(body)
+		r.ContentLength = int64(body.Len())
+	}
+
+	return &r, nil
+}
+
+func exists(res *esapi.Response, err error) bool {
+	defer func() {
+		if res != nil && res.Body != nil {
+			_, _ = io.Copy(ioutil.Discard, res.Body)
+			err = res.Body.Close()
+			if err != nil {
+				log.Warn("elasticClient.exists", "could not close body: ", err.Error())
+			}
+		}
+	}()
+
+	if err != nil {
+		log.Warn("elasticClient.IndexExists", "could not check index on the elastic nodes:", err.Error())
+		return false
+	}
+
+	switch res.StatusCode {
+	case http.StatusOK:
+		return true
+	case http.StatusNotFound:
+		return false
+	default:
+		log.Warn("elasticClient.exists", "invalid status code returned by the elastic nodes:", res.StatusCode)
+		return false
+	}
 }
 
 // DoScrollRequestAllDocuments will perform a documents request using scroll api
