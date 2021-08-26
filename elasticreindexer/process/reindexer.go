@@ -61,7 +61,7 @@ func (r *reindexer) processIndex(index string, overwrite bool) error {
 		return fmt.Errorf("%w while getting the source count for index %s", err, index)
 	}
 
-	err = r.copyMapping(index, overwrite)
+	err = r.copyMappingIfNecessary(index, overwrite)
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}
@@ -86,7 +86,7 @@ func (r *reindexer) processIndex(index string, overwrite bool) error {
 	return nil
 }
 
-func (r *reindexer) copyMapping(index string, overwrite bool) error {
+func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool) error {
 	indexWithSuffix := index + indexSuffix
 
 	aliasExists := r.destinationElastic.DoesAliasExist(index)
@@ -101,19 +101,21 @@ func (r *reindexer) copyMapping(index string, overwrite bool) error {
 			" retrying, or start the tool using --overwrite flag", index)
 	}
 
-	if !templateExists && !overwrite {
+	shouldCopyMapping := !templateExists && !overwrite
+	if shouldCopyMapping {
 		sourceMapping, err := r.sourceElastic.GetMapping(index)
 		if err != nil {
-			return fmt.Errorf("copyMapping from source: %w", err)
+			return fmt.Errorf("error while getting mapping from source: %w", err)
 		}
 
 		err = r.destinationElastic.CreateIndexWithMapping(indexWithSuffix, sourceMapping)
 		if err != nil {
-			return fmt.Errorf("copyMapping to destination: %w", err)
+			return fmt.Errorf("error while copying mapping to destination: %w", err)
 		}
 	}
 
-	if !aliasExists && !overwrite {
+	shouldCreateIndex := !aliasExists && !overwrite
+	if shouldCreateIndex {
 		return r.destinationElastic.PutAlias(indexWithSuffix, index)
 	}
 

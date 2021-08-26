@@ -19,7 +19,7 @@ var (
 	// overwrite defines a bool flag for overwriting destination's data and skipping mappings and aliases checks
 	overwriteFlag = cli.BoolFlag{
 		Name:  "overwrite",
-		Usage: "Overwrite ",
+		Usage: "If set, the reindexing tool will skip the creation of the index and mapping and will overwrite any existing data.",
 	}
 )
 

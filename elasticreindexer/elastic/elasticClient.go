@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -132,12 +131,7 @@ func (esc *esClient) DoesAliasExist(alias string) bool {
 		alias,
 	)
 
-	req, err := newRequest(http.MethodHead, aliasRoute, nil)
-	if err != nil {
-		log.Warn("elasticClient.AliasExists",
-			"could not create request objectsMap", err.Error())
-		return false
-	}
+	req := newRequest(http.MethodHead, aliasRoute, nil)
 
 	res, err := esc.client.Transport.Perform(req)
 	if err != nil {
@@ -155,7 +149,7 @@ func (esc *esClient) DoesAliasExist(alias string) bool {
 	return exists(response, nil)
 }
 
-func newRequest(method, path string, body *bytes.Buffer) (*http.Request, error) {
+func newRequest(method, path string, body *bytes.Buffer) *http.Request {
 	r := http.Request{
 		Method:     method,
 		URL:        &url.URL{Path: path},
@@ -170,16 +164,15 @@ func newRequest(method, path string, body *bytes.Buffer) (*http.Request, error) 
 		r.ContentLength = int64(body.Len())
 	}
 
-	return &r, nil
+	return &r
 }
 
 func exists(res *esapi.Response, err error) bool {
 	defer func() {
 		if res != nil && res.Body != nil {
-			_, _ = io.Copy(ioutil.Discard, res.Body)
 			err = res.Body.Close()
 			if err != nil {
-				log.Warn("elasticClient.exists", "could not close body: ", err.Error())
+				log.Warn("esClient.exists", "could not close body: ", err.Error())
 			}
 		}
 	}()
