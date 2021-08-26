@@ -95,14 +95,13 @@ func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool) error {
 			" retrying, or start the tool using --overwrite flag", index)
 	}
 
-	templateExists := r.destinationElastic.DoesTemplateExist(indexWithSuffix)
-	if templateExists && !overwrite {
-		return fmt.Errorf("template for index %s already exists. Please clean the destination indexer before"+
+	indexExists := r.destinationElastic.DoesIndexExist(indexWithSuffix)
+	if indexExists && !overwrite {
+		return fmt.Errorf("index %s already exists. Please clean the destination indexer before"+
 			" retrying, or start the tool using --overwrite flag", index)
 	}
 
-	shouldCopyMapping := !templateExists && !overwrite
-	if shouldCopyMapping {
+	if !indexExists {
 		sourceMapping, err := r.sourceElastic.GetMapping(index)
 		if err != nil {
 			return fmt.Errorf("error while getting mapping from source: %w", err)
@@ -110,13 +109,15 @@ func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool) error {
 
 		err = r.destinationElastic.CreateIndexWithMapping(indexWithSuffix, sourceMapping)
 		if err != nil {
-			return fmt.Errorf("error while copying mapping to destination: %w", err)
+			return fmt.Errorf("error while creating index with mapping to destination: %w", err)
 		}
 	}
 
-	shouldCreateIndex := !aliasExists && !overwrite
-	if shouldCreateIndex {
-		return r.destinationElastic.PutAlias(indexWithSuffix, index)
+	if !aliasExists {
+		err := r.destinationElastic.PutAlias(indexWithSuffix, index)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

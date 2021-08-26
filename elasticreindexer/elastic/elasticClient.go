@@ -114,9 +114,9 @@ func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buff
 	return nil
 }
 
-// DoesTemplateExist returns true if a template is set to an index
-func (esc *esClient) DoesTemplateExist(index string) bool {
-	res, err := esc.client.Indices.ExistsTemplate([]string{index})
+// DoesIndexExist returns true if an index exists
+func (esc *esClient) DoesIndexExist(index string) bool {
+	res, err := esc.client.Indices.Exists([]string{index})
 	if err != nil {
 		return false
 	}
@@ -172,13 +172,13 @@ func exists(res *esapi.Response, err error) bool {
 		if res != nil && res.Body != nil {
 			err = res.Body.Close()
 			if err != nil {
-				log.Warn("esClient.exists", "could not close body: ", err.Error())
+				log.Warn("esClient.exists: could not close body", "error", err.Error())
 			}
 		}
 	}()
 
 	if err != nil {
-		log.Warn("elasticClient.IndexExists", "could not check index on the elastic nodes:", err.Error())
+		log.Warn("esClient.exists: could not check index on the elastic nodes", "error", err.Error())
 		return false
 	}
 
@@ -188,7 +188,7 @@ func exists(res *esapi.Response, err error) bool {
 	case http.StatusNotFound:
 		return false
 	default:
-		log.Warn("elasticClient.exists", "invalid status code returned by the elastic nodes:", res.StatusCode)
+		log.Warn("esClient.exists: invalid status code returned by the elastic nodes", "error", res.StatusCode)
 		return false
 	}
 }
