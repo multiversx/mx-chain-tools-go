@@ -113,14 +113,11 @@ func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool) error {
 		}
 	}
 
-	if !aliasExists {
-		err := r.destinationElastic.PutAlias(indexWithSuffix, index)
-		if err != nil {
-			return err
-		}
+	if aliasExists {
+		return nil
 	}
 
-	return nil
+	return r.destinationElastic.PutAlias(indexWithSuffix, index)
 }
 
 func (r *reindexer) reindexData(index string) error {
