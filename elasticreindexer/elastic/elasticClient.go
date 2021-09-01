@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/url"
 	"time"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -111,6 +112,85 @@ func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buff
 	}
 
 	return nil
+}
+
+// DoesIndexExist returns true if an index exists
+func (esc *esClient) DoesIndexExist(index string) bool {
+	res, err := esc.client.Indices.Exists([]string{index})
+	if err != nil {
+		return false
+	}
+
+	return exists(res, err)
+}
+
+// DoesAliasExist returns true if an index alias already exists
+func (esc *esClient) DoesAliasExist(alias string) bool {
+	aliasRoute := fmt.Sprintf(
+		"/_alias/%s",
+		alias,
+	)
+
+	req := newRequest(http.MethodHead, aliasRoute, nil)
+
+	res, err := esc.client.Transport.Perform(req)
+	if err != nil {
+		log.Warn("elasticClient.AliasExists",
+			"error performing request", err.Error())
+		return false
+	}
+
+	response := &esapi.Response{
+		StatusCode: res.StatusCode,
+		Body:       res.Body,
+		Header:     res.Header,
+	}
+
+	return exists(response, nil)
+}
+
+func newRequest(method, path string, body *bytes.Buffer) *http.Request {
+	r := http.Request{
+		Method:     method,
+		URL:        &url.URL{Path: path},
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(http.Header),
+	}
+
+	if body != nil {
+		r.Body = ioutil.NopCloser(body)
+		r.ContentLength = int64(body.Len())
+	}
+
+	return &r
+}
+
+func exists(res *esapi.Response, err error) bool {
+	defer func() {
+		if res != nil && res.Body != nil {
+			err = res.Body.Close()
+			if err != nil {
+				log.Warn("esClient.exists: could not close body", "error", err.Error())
+			}
+		}
+	}()
+
+	if err != nil {
+		log.Warn("esClient.exists: could not check index on the elastic nodes", "error", err.Error())
+		return false
+	}
+
+	switch res.StatusCode {
+	case http.StatusOK:
+		return true
+	case http.StatusNotFound:
+		return false
+	default:
+		log.Warn("esClient.exists: invalid status code returned by the elastic nodes", "error", res.StatusCode)
+		return false
+	}
 }
 
 // DoScrollRequestAllDocuments will perform a documents request using scroll api

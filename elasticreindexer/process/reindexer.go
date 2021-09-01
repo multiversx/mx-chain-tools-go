@@ -44,9 +44,9 @@ func newReindexer(sourceElastic ElasticClientHandler, destinationElastic Elastic
 }
 
 // Process will handle the reindexing from source Elastic client to destination Elastic client
-func (r *reindexer) Process() error {
+func (r *reindexer) Process(overwrite bool) error {
 	for _, index := range r.indices {
-		err := r.processIndex(index)
+		err := r.processIndex(index, overwrite)
 		if err != nil {
 			return err
 		}
@@ -55,16 +55,18 @@ func (r *reindexer) Process() error {
 	return nil
 }
 
-func (r *reindexer) processIndex(index string) error {
+func (r *reindexer) processIndex(index string, overwrite bool) error {
 	originalSourceCount, err := r.sourceElastic.GetCount(index)
 	if err != nil {
 		return fmt.Errorf("%w while getting the source count for index %s", err, index)
 	}
 
-	err = r.copyMapping(index)
+	err = r.copyMappingIfNecessary(index, overwrite)
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}
+
+	log.Info("starting reindexing", "index", index)
 
 	err = r.reindexData(index)
 	if err != nil {
@@ -76,26 +78,43 @@ func (r *reindexer) processIndex(index string) error {
 		return fmt.Errorf("%w while getting the destination count for index %s", err, index)
 	}
 
-	if destinationCount < originalSourceCount {
-		log.Warn("destination count is not equal to original source count",
-			"destination count", destinationCount,
-			"source count", originalSourceCount)
-	}
+	log.Info("finished indexing for index",
+		"index", index,
+		"original source count", originalSourceCount,
+		"destination count (estimation)", destinationCount)
 
 	return nil
 }
 
-func (r *reindexer) copyMapping(index string) error {
+func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool) error {
 	indexWithSuffix := index + indexSuffix
 
-	sourceMapping, err := r.sourceElastic.GetMapping(index)
-	if err != nil {
-		return fmt.Errorf("copyMapping from source: %w", err)
+	aliasExists := r.destinationElastic.DoesAliasExist(index)
+	if aliasExists && !overwrite {
+		return fmt.Errorf("index with alias %s already exists. Please clean the destination indexer before"+
+			" retrying, or start the tool using --overwrite flag", index)
 	}
 
-	err = r.destinationElastic.CreateIndexWithMapping(indexWithSuffix, sourceMapping)
-	if err != nil {
-		return fmt.Errorf("copyMapping to destination: %w", err)
+	indexExists := r.destinationElastic.DoesIndexExist(indexWithSuffix)
+	if indexExists && !overwrite {
+		return fmt.Errorf("index %s already exists. Please clean the destination indexer before"+
+			" retrying, or start the tool using --overwrite flag", index)
+	}
+
+	if !indexExists {
+		sourceMapping, err := r.sourceElastic.GetMapping(index)
+		if err != nil {
+			return fmt.Errorf("error while getting mapping from source: %w", err)
+		}
+
+		err = r.destinationElastic.CreateIndexWithMapping(indexWithSuffix, sourceMapping)
+		if err != nil {
+			return fmt.Errorf("error while creating index with mapping to destination: %w", err)
+		}
+	}
+
+	if aliasExists {
+		return nil
 	}
 
 	return r.destinationElastic.PutAlias(indexWithSuffix, index)
@@ -136,7 +155,7 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	}
 
 	resultsMap := extractSourceFromEsResponse(esResponse)
-	log.Info("indexing", "index", index, "bulk size", len(resultsMap), "count", count)
+	log.Info("\tindexing", "index", index, "bulk size", len(resultsMap), "count", count)
 	buffSlice := newBufferSlice()
 	for id, source := range resultsMap {
 		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, id, "\n"))
