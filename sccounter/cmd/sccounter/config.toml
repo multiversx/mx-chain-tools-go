@@ -1,0 +1,5 @@
+[config]
+    [config.elastic]
+        url = "https://devnet-index.elrond.com"
+        username = ""
+        password = ""
