@@ -93,7 +93,7 @@ Current balance: <b> %s </b>`,
 		beautifyAmount(currentBalance.String()))
 
 	message = url.QueryEscape(message)
-	urlreq := fmt.Sprintf(`https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s&parse_mode=HTML`, n.telegramBotKey, n.telegramGroupID, message)
+	urlreq := fmt.Sprintf(`https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s&parse_mode=HTML&disable_web_page_preview=true`, n.telegramBotKey, n.telegramGroupID, message)
 
 	_, _ = http.Get(urlreq)
 }
