@@ -86,8 +86,8 @@ func (n *notifier) checkBalanceAndNotifyIfNeeded() {
 }
 
 func (n *notifier) notifyOnTG(currentBalance *big.Int) {
-	message := fmt.Sprintf(`<a href="%s">Hot wallet </a> balance is below threshold (<i>%s</i>).
-Current balance: <b> %s </b>`,
+	message := fmt.Sprintf(`⚠<a href="%s">Hot wallet </a> balance is below threshold (<i>%s</i>).
+🚨 Current balance: <b> %s </b>`,
 		fmt.Sprintf("https://explorer.elrond.com/accounts/%s", n.address),
 		beautifyAmount(n.balanceThreshold.String()),
 		beautifyAmount(currentBalance.String()))
