@@ -86,13 +86,13 @@ func (n *notifier) checkBalanceAndNotifyIfNeeded() {
 }
 
 func (n *notifier) notifyOnTG(currentBalance *big.Int) {
-	message := fmt.Sprintf(`Hot wallet balance is below threshold (%s)
-Current balance: %s`,
+	message := fmt.Sprintf(`Hot wallet balance is below threshold (<i>%s</i>)
+Current balance: <b> %s </b>`,
 		beautifyAmount(n.balanceThreshold.String()),
 		beautifyAmount(currentBalance.String()))
 
 	message = url.QueryEscape(message)
-	urlreq := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s", n.telegramBotKey, n.telegramGroupID, message)
+	urlreq := fmt.Sprintf(`https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s&parse_mode=HTML`, n.telegramBotKey, n.telegramGroupID, message)
 
 	_, _ = http.Get(urlreq)
 }
