@@ -2,7 +2,7 @@
     [config.general]
         gatewayURL = "https://gateway.elrond.com"
         address = "erd16x7le8dpkjsafgwjx0e5kw94evsqw039rwp42m2j9eesd88x8zzs75tzry"
-        balanceThreshold = "10000000000000000000000" # 10k EGLD
+        balanceThreshold = "100000000000000000000000" # 100k EGLD
         checkIntervalInMin = 3
         notificationStep = 6 # num times to skip notifying if the balance check issue persists
     [config.telegram]
