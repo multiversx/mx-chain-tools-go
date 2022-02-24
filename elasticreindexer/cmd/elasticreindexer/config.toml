@@ -10,4 +10,4 @@
         password = ""
 
     [config.indices]
-        indices = ["tps", "rating", "transactions", "blocks", "validators", "miniblocks", "rounds", "accounts", "accountshistory"]
+        indices = ["rating", "transactions", "blocks", "validators", "miniblocks", "rounds", "accounts", "accountshistory"]

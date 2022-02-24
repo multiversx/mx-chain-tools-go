@@ -21,6 +21,11 @@ var (
 		Name:  "overwrite",
 		Usage: "If set, the reindexing tool will skip the creation of the index and mapping and will overwrite any existing data.",
 	}
+	// skipMappingsFlag defines a bool flag for skipping the copying of the source's mapping into the destination
+	skipMappingsFlag = cli.BoolFlag{
+		Name:  "skip-mappings",
+		Usage: "If set, the reindexing tool will skip the copying of the mappings",
+	}
 )
 
 const helpTemplate = `NAME:
@@ -47,6 +52,7 @@ func main() {
 	app.Usage = "This is the entry point for Elasticsearch reindexing tool"
 	app.Flags = []cli.Flag{
 		overwriteFlag,
+		skipMappingsFlag,
 	}
 	app.Authors = []cli.Author{
 		{
@@ -77,7 +83,8 @@ func startReindexing(ctx *cli.Context) {
 		return
 	}
 
-	err = reindexer.Process(ctx.Bool(overwriteFlag.Name))
+	skipMappings := ctx.Bool(skipMappingsFlag.Name)
+	err = reindexer.Process(ctx.Bool(overwriteFlag.Name), skipMappings)
 	if err != nil {
 		log.Error(err.Error())
 		return

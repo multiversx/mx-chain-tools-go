@@ -44,9 +44,9 @@ func newReindexer(sourceElastic ElasticClientHandler, destinationElastic Elastic
 }
 
 // Process will handle the reindexing from source Elastic client to destination Elastic client
-func (r *reindexer) Process(overwrite bool) error {
+func (r *reindexer) Process(overwrite bool, skipMappings bool) error {
 	for _, index := range r.indices {
-		err := r.processIndex(index, overwrite)
+		err := r.processIndex(index, overwrite, skipMappings)
 		if err != nil {
 			return err
 		}
@@ -55,13 +55,13 @@ func (r *reindexer) Process(overwrite bool) error {
 	return nil
 }
 
-func (r *reindexer) processIndex(index string, overwrite bool) error {
+func (r *reindexer) processIndex(index string, overwrite bool, skipMappings bool) error {
 	originalSourceCount, err := r.sourceElastic.GetCount(index)
 	if err != nil {
 		return fmt.Errorf("%w while getting the source count for index %s", err, index)
 	}
 
-	err = r.copyMappingIfNecessary(index, overwrite)
+	err = r.copyMappingIfNecessary(index, overwrite, skipMappings)
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}
@@ -86,7 +86,11 @@ func (r *reindexer) processIndex(index string, overwrite bool) error {
 	return nil
 }
 
-func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool) error {
+func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMappings bool) error {
+	if skipMappings {
+		return nil
+	}
+
 	indexWithSuffix := index + indexSuffix
 
 	aliasExists := r.destinationElastic.DoesAliasExist(index)
