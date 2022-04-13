@@ -10,21 +10,17 @@ import (
 	"path/filepath"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
-	"github.com/ElrondNetwork/elrond-go-core/hashing/blake2b"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
-	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/epochStart/notifier"
 	"github.com/ElrondNetwork/elrond-go/state"
 	"github.com/ElrondNetwork/elrond-go/storage/factory"
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
-	"github.com/ElrondNetwork/elrond-go/storage/storageUnit"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
-	"github.com/ElrondNetwork/elrond-tools-go/trieChecker"
+	"github.com/ElrondNetwork/elrond-tools-go/trieChecker/components"
 	"github.com/ElrondNetwork/elrond-tools-go/trieChecker/config"
 	"github.com/urfave/cli"
 )
@@ -38,11 +34,9 @@ const (
 	maxDirs              = 100
 )
 
-var log = logger.GetOrCreate("main")
-
 func main() {
 	app := cli.NewApp()
-	app.Name = "Relay CLI app"
+	app.Name = "Trie checker CLI app"
 	app.Usage = "This is the entry point for the tool that checks the trie DB"
 	app.Flags = getFlags()
 	app.Authors = []cli.Author{
@@ -142,14 +136,17 @@ func getMaxDBValue(parentDir string) (int, error) {
 
 	directories := make([]string, 0)
 	for _, c := range contents {
-		if c.IsDir() {
-			_, ok := big.NewInt(0).SetString(c.Name(), 10)
-			if !ok {
-				continue
-			}
-
-			directories = append(directories, c.Name())
+		if !c.IsDir() {
+			continue
 		}
+
+		_, ok := big.NewInt(0).SetString(c.Name(), 10)
+		if !ok {
+			log.Debug("DB directory found that will not be taken into account", "name", c.Name())
+			continue
+		}
+
+		directories = append(directories, c.Name())
 	}
 
 	numDirs := 0
@@ -183,13 +180,12 @@ func contains(haystack []string, needle string) bool {
 }
 
 func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue int) error {
-	marshaller := &marshal.GogoProtoMarshalizer{}
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
 		return err
 	}
 
-	tr, err := getTrie(marshaller, flags, maxDBValue)
+	tr, err := getTrie(flags, maxDBValue)
 	if err != nil {
 		return err
 	}
@@ -218,6 +214,9 @@ func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue 
 			numCodeNodes++
 			continue
 		}
+		if len(userAccount.RootHash) == 0 {
+			continue
+		}
 
 		address := addressConverter.Encode(kv.Key())
 		dataTriesRootHashes[address] = userAccount.RootHash
@@ -229,6 +228,10 @@ func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue 
 		"num data tries", len(dataTriesRootHashes))
 
 	// TODO add error signaling in the trie implementation
+
+	if len(dataTriesRootHashes) == 0 {
+		return nil
+	}
 
 	for address, dataRootHash := range dataTriesRootHashes {
 		log.Debug("iterating data trie", "address", address, "data trie root hash", dataRootHash)
@@ -252,30 +255,18 @@ func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue 
 	return nil
 }
 
-func getTrie(marshaller marshal.Marshalizer, flags config.ContextFlagsConfig, maxDBValue int) (common.Trie, error) {
-	hasher := blake2b.NewBlake2b()
-
-	cacheConfig := storageUnit.CacheConfig{
-		Type:        "SizeLRU",
-		Capacity:    500000,
-		SizeInBytes: 314572800, // 300MB
-	}
-	dbConfig := elrondConfig.DBConfig{
-		FilePath:          path.Join(flags.WorkingDir, flags.DbDir),
-		Type:              "LvlDBSerial",
-		BatchDelaySeconds: 2,
-		MaxBatchSize:      45000,
-		MaxOpenFiles:      10,
-	}
+func getTrie(flags config.ContextFlagsConfig, maxDBValue int) (common.Trie, error) {
+	localDbConfig := dbConfig // copy
+	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
 	dbPath := path.Join(flags.WorkingDir, flags.DbDir)
 	args := &pruning.StorerArgs{
 		Identifier:                "",
 		ShardCoordinator:          testscommon.NewMultiShardsCoordinatorMock(1),
 		CacheConf:                 cacheConfig,
-		PathManager:               trieChecker.NewSimplePathManager(dbPath),
+		PathManager:               components.NewSimplePathManager(dbPath),
 		DbPath:                    "",
-		PersisterFactory:          factory.NewPersisterFactory(dbConfig),
+		PersisterFactory:          factory.NewPersisterFactory(localDbConfig),
 		Notifier:                  notifier.NewManualEpochStartNotifier(),
 		OldDataCleanerProvider:    &testscommon.OldDataCleanerProviderStub{},
 		MaxBatchSize:              45000,

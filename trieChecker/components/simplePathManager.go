@@ -1,4 +1,4 @@
-package trieChecker
+package components
 
 import (
 	"fmt"
