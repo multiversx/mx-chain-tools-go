@@ -21,5 +21,10 @@ type ElasticInstanceConfig struct {
 
 // IndicesConfig holds the configuration for the indices
 type IndicesConfig struct {
-	Indices []string `toml:"indices"`
+	Indices       []string `toml:"indices-no-timestamp"`
+	WithTimestamp struct {
+		BlockchainStartTime  int64    `toml:"blockchain-start-time"`
+		NumParallelWrites    int      `toml:"num-parallel-writes"`
+		IndicesWithTimestamp []string `toml:"indices-with-timestamp"`
+	} `toml:"with-timestamp"`
 }
