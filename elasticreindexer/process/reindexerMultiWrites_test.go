@@ -1,8 +1,9 @@
 package process
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestComputeIntervals(t *testing.T) {

@@ -2,9 +2,10 @@ package process
 
 import (
 	"errors"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
 	"sync"
 	"time"
+
+	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
 )
 
 type interval struct {
