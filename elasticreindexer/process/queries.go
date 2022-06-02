@@ -49,10 +49,9 @@ func getWithTimestamp(start, stop int64) *bytes.Buffer {
 		},
 	}
 
-	var buff bytes.Buffer
-	_ = json.NewEncoder(&buff).Encode(obj)
+	encoded, _ := encodeQuery(obj)
 
-	return &buff
+	return &encoded
 }
 
 type generalElasticResponse struct {

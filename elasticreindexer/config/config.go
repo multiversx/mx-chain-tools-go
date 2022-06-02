@@ -23,6 +23,7 @@ type ElasticInstanceConfig struct {
 type IndicesConfig struct {
 	Indices       []string `toml:"indices-no-timestamp"`
 	WithTimestamp struct {
+		Enabled              bool     `toml:"enabled"`
 		BlockchainStartTime  int64    `toml:"blockchain-start-time"`
 		NumParallelWrites    int      `toml:"num-parallel-writes"`
 		IndicesWithTimestamp []string `toml:"indices-with-timestamp"`

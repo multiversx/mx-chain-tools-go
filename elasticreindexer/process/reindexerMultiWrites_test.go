@@ -7,7 +7,23 @@ import (
 )
 
 func TestComputeIntervals(t *testing.T) {
-	res, err := computeIntervals(0, 2)
+	start := int64(1653974028)
+	end := int64(1653981227)
+
+	res, err := computeIntervals(start, end, 3)
 	require.Nil(t, err)
-	require.NotNil(t, res)
+	require.Equal(t, []*interval{
+		{
+			start: 1653974028,
+			stop:  1653976427,
+		},
+		{
+			start: 1653976427,
+			stop:  1653978826,
+		},
+		{
+			start: 1653978826,
+			stop:  1653981227,
+		},
+	}, res)
 }

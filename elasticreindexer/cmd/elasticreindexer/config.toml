@@ -12,6 +12,7 @@
     [config.indices]
         indices-no-timestamp = ["accounts","rating", "validators", "epochinfo", "tags", "delegators"]
         [config.indices.with-timestamp]
+            enabled = true
             num-parallel-writes = 20
             blockchain-start-time = 1596117600 # mainnet start time ( for testnet will be a different start time)
             indices-with-timestamp = ["blocks", "receipts", "transactions","miniblocks", "rounds",  "accountshistory", "scresults", "accountsesdt", "accountsesdthistory", "scdeploys", "tokens", "logs", "operations"]

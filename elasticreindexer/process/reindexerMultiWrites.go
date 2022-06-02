@@ -18,6 +18,7 @@ type reindexerMultiWrite struct {
 	indicesWithTimestamp []string
 	numParallelWrite     int
 	blockChainStartTime  int64
+	enabled              bool
 
 	reindexerClient *reindexer
 }
@@ -33,6 +34,7 @@ func NewReindexerMultiWrite(cfg *config.GeneralConfig) (*reindexerMultiWrite, er
 		indicesWithTimestamp: cfg.Indexers.IndicesConfig.WithTimestamp.IndicesWithTimestamp,
 		numParallelWrite:     cfg.Indexers.IndicesConfig.WithTimestamp.NumParallelWrites,
 		blockChainStartTime:  cfg.Indexers.IndicesConfig.WithTimestamp.BlockchainStartTime,
+		enabled:              cfg.Indexers.IndicesConfig.WithTimestamp.Enabled,
 	}, nil
 }
 
@@ -48,63 +50,82 @@ func (rmw *reindexerMultiWrite) ProcessNoTimestamp(overwrite bool, skipMappings 
 }
 
 func (rmw *reindexerMultiWrite) ProcessWithTimestamp(overwrite bool, skipMappings bool) error {
-	intervals, err := computeIntervals(rmw.blockChainStartTime, int64(rmw.numParallelWrite))
+	if !rmw.enabled {
+		return nil
+	}
+
+	currentTimestampUnix := time.Now().Unix()
+	intervals, err := computeIntervals(rmw.blockChainStartTime, currentTimestampUnix, int64(rmw.numParallelWrite))
 	if err != nil {
 		return err
 	}
 
 	for _, index := range rmw.indicesWithTimestamp {
-		wg := &sync.WaitGroup{}
-		wg.Add(rmw.numParallelWrite)
-
-		log.Info("starting reindexing", "index", index)
-
-		count := uint64(0)
-
-		for _, interv := range intervals {
-			go func(startTime, stopTime int64) {
-				defer wg.Done()
-				errIndex := rmw.processIndexWithTimestamp(index, overwrite, skipMappings, startTime, stopTime, &count)
-				if errIndex != nil {
-					log.Warn("rmw.processIndexWithTimestamp", "index", index, "error", errIndex.Error())
-				}
-				time.Sleep(time.Second)
-			}(interv.start, interv.stop)
+		err = rmw.reindexBasedOnIntervals(index, intervals, overwrite, skipMappings)
+		if err != nil {
+			return err
 		}
-
-		wg.Wait()
 	}
 
 	return nil
 }
 
-func (rmw *reindexerMultiWrite) processIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error {
-	return rmw.reindexerClient.processIndexWithTimestamp(index, overwrite, skipMappings, start, stop, count)
+func (rmw *reindexerMultiWrite) reindexBasedOnIntervals(
+	index string,
+	intervals []*interval,
+	overwrite bool,
+	skipMappings bool,
+) error {
+	wg := &sync.WaitGroup{}
+	wg.Add(rmw.numParallelWrite)
+
+	log.Info("starting reindexing", "index", index)
+
+	count := uint64(0)
+
+	for _, interv := range intervals {
+		go func(startTime, stopTime int64) {
+			defer wg.Done()
+			errIndex := rmw.reindexerClient.processIndexWithTimestamp(index, overwrite, skipMappings, startTime, stopTime, &count)
+			if errIndex != nil {
+				log.Warn("rmw.processIndexWithTimestamp", "index", index, "error", errIndex.Error())
+			}
+			time.Sleep(time.Second)
+		}(interv.start, interv.stop)
+	}
+
+	wg.Wait()
+
+	return nil
 }
 
-func computeIntervals(blockchainStartTime int64, numIntervals int64) ([]*interval, error) {
-	currentTimestampUnix := time.Now().Unix()
-	startTime := blockchainStartTime
-
-	if startTime > currentTimestampUnix {
+func computeIntervals(startTime, endTime int64, numIntervals int64) ([]*interval, error) {
+	if startTime > endTime {
 		return nil, errors.New("blockchain start time is greater than current timestamp")
 	}
 	if numIntervals < 2 {
 		return []*interval{{
-			start: blockchainStartTime,
-			stop:  currentTimestampUnix,
+			start: startTime,
+			stop:  endTime,
 		}}, nil
 	}
 
-	difference := currentTimestampUnix - startTime
+	difference := endTime - startTime
 
 	step := difference / numIntervals
 
 	intervals := make([]*interval, 0)
 	for idx := int64(0); idx < numIntervals; idx++ {
+		start := startTime + idx*step
+		stop := startTime + (idx+1)*step
+
+		if idx == numIntervals-1 {
+			stop = endTime
+		}
+
 		intervals = append(intervals, &interval{
-			start: startTime + idx*step,
-			stop:  startTime + (idx+1)*step,
+			start: start,
+			stop:  stop,
 		})
 	}
 
