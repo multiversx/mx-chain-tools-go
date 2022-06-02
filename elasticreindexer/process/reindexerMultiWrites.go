@@ -28,6 +28,7 @@ func NewReindexerMultiWrite(cfg *config.GeneralConfig) (*reindexerMultiWrite, er
 	if err != nil {
 		return nil, err
 	}
+
 	return &reindexerMultiWrite{
 		reindexerClient:      ri,
 		indicesNoTimestamp:   cfg.Indexers.IndicesConfig.Indices,
