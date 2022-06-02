@@ -87,10 +87,12 @@ func (rmw *reindexerMultiWrite) reindexBasedOnIntervals(
 	for _, interv := range intervals {
 		go func(startTime, stopTime int64) {
 			defer wg.Done()
+
 			errIndex := rmw.reindexerClient.processIndexWithTimestamp(index, overwrite, skipMappings, startTime, stopTime, &count)
 			if errIndex != nil {
 				log.Warn("rmw.processIndexWithTimestamp", "index", index, "error", errIndex.Error())
 			}
+
 			time.Sleep(time.Second)
 		}(interv.start, interv.stop)
 	}
