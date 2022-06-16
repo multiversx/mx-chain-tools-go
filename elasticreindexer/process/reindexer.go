@@ -52,6 +52,10 @@ func (r *reindexer) Process(overwrite bool, skipMappings bool, indices ...string
 	}
 
 	for _, index := range providedIndices {
+		if index == "" {
+			continue
+		}
+
 		err := r.processIndex(index, overwrite, skipMappings)
 		if err != nil {
 			return err
