@@ -78,23 +78,26 @@ func (rmw *reindexerMultiWrite) reindexBasedOnIntervals(
 	skipMappings bool,
 ) error {
 	wg := &sync.WaitGroup{}
-	wg.Add(rmw.numParallelWrite)
+	wg.Add(len(intervals))
 
 	log.Info("starting reindexing", "index", index)
 
 	count := uint64(0)
 
-	for _, interv := range intervals {
-		go func(startTime, stopTime int64) {
-			defer wg.Done()
+	for idx, interv := range intervals {
+		go func(startTime, stopTime int64, idx int, w *sync.WaitGroup) {
+			defer func() {
+				log.Info("done", "interval nr", idx)
+				w.Done()
+			}()
 
 			errIndex := rmw.reindexerClient.processIndexWithTimestamp(index, overwrite, skipMappings, startTime, stopTime, &count)
 			if errIndex != nil {
 				log.Warn("rmw.processIndexWithTimestamp", "index", index, "error", errIndex.Error())
 			}
+		}(interv.start, interv.stop, idx, wg)
 
-			time.Sleep(time.Second)
-		}(interv.start, interv.stop)
+		time.Sleep(time.Second)
 	}
 
 	wg.Wait()

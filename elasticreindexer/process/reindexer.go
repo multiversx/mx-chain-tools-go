@@ -13,7 +13,6 @@ import (
 
 var (
 	errNilElasticHandler = errors.New("nil elastic handler")
-	errEmptyIndicesList  = errors.New("empty indices list to reindex")
 	log                  = logger.GetOrCreate("process")
 )
 
@@ -32,9 +31,6 @@ func newReindexer(sourceElastic ElasticClientHandler, destinationElastic Elastic
 	}
 	if check.IfNil(destinationElastic) {
 		return nil, fmt.Errorf("%w for destination", errNilElasticHandler)
-	}
-	if len(indices) == 0 {
-		return nil, errEmptyIndicesList
 	}
 
 	return &reindexer{
