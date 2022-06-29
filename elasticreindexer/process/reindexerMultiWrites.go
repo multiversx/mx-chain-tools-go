@@ -27,6 +27,9 @@ func NewReindexerMultiWrite(reindexer ReindexerHandler, cfg config.IndicesConfig
 	if reindexer == nil {
 		return nil, errors.New("nil ReindexerHandler")
 	}
+	if cfg.WithTimestamp.BlockchainStartTime <= 0 {
+		return nil, errors.New("blockchainStartTime cannot be less than zero")
+	}
 
 	return &reindexerMultiWrite{
 		reindexerClient:      reindexer,
