@@ -65,6 +65,24 @@ VERSION:
 		Name:  "log-save",
 		Usage: "Boolean option for enabling log saving. If set, it will automatically save all the logs into a file.",
 	}
+
+	cliFlagCurrency = cli.StringFlag{
+		Name:  "currency",
+		Usage: "What balances to export.",
+		Value: "EGLD",
+	}
+
+	cliFlagCurrencyDecimals = cli.UintFlag{
+		Name:  "currency-decimals",
+		Usage: "Number of decimals for chosen currency.",
+		Value: 18,
+	}
+
+	cliFlagExportFormat = cli.StringFlag{
+		Name:  "format",
+		Usage: "Export format",
+		Value: "plain-text",
+	}
 )
 
 func getAllCliFlags() []cli.Flag {
@@ -76,27 +94,36 @@ func getAllCliFlags() []cli.Flag {
 		cliFlagEpoch,
 		cliFlagLogLevel,
 		cliFlagLogSaveFile,
+		cliFlagCurrency,
+		cliFlagCurrencyDecimals,
+		cliFlagExportFormat,
 	}
 }
 
 type parsedCliFlags struct {
-	workingDir  string
-	dbPath      string
-	shard       uint32
-	numShards   uint32
-	epoch       uint32
-	logLevel    string
-	saveLogFile bool
+	workingDir       string
+	dbPath           string
+	shard            uint32
+	numShards        uint32
+	epoch            uint32
+	logLevel         string
+	saveLogFile      bool
+	currency         string
+	currencyDecimals uint32
+	exportFormat     string
 }
 
 func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
 	return parsedCliFlags{
-		workingDir:  ctx.GlobalString(cliFlagWorkingDirectory.Name),
-		dbPath:      ctx.GlobalString(cliFlagDbPath.Name),
-		shard:       uint32(ctx.GlobalUint64(cliFlagShard.Name)),
-		numShards:   uint32(ctx.GlobalUint(cliFlagNumShards.Name)),
-		epoch:       uint32(ctx.GlobalUint64(cliFlagEpoch.Name)),
-		logLevel:    ctx.GlobalString(cliFlagLogLevel.Name),
-		saveLogFile: ctx.GlobalBool(cliFlagLogSaveFile.Name),
+		workingDir:       ctx.GlobalString(cliFlagWorkingDirectory.Name),
+		dbPath:           ctx.GlobalString(cliFlagDbPath.Name),
+		shard:            uint32(ctx.GlobalUint64(cliFlagShard.Name)),
+		numShards:        uint32(ctx.GlobalUint(cliFlagNumShards.Name)),
+		epoch:            uint32(ctx.GlobalUint64(cliFlagEpoch.Name)),
+		logLevel:         ctx.GlobalString(cliFlagLogLevel.Name),
+		saveLogFile:      ctx.GlobalBool(cliFlagLogSaveFile.Name),
+		currency:         ctx.GlobalString(cliFlagCurrency.Name),
+		currencyDecimals: uint32(ctx.GlobalUint(cliFlagCurrencyDecimals.Name)),
+		exportFormat:     ctx.GlobalString(cliFlagExportFormat.Name),
 	}
 }

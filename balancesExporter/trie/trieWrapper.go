@@ -1,8 +1,8 @@
 package trie
 
 import (
-	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go/common"
+	"github.com/ElrondNetwork/elrond-go/state"
 )
 
 type trieWrapper struct {
@@ -22,19 +22,26 @@ func (tw *trieWrapper) IsRootHashAvailable(rootHash []byte) bool {
 	return true
 }
 
-func (tw *trieWrapper) GetAllLeaves(rootHash []byte) ([]core.KeyValueHolder, error) {
+func (tw *trieWrapper) GetAllUserAccounts(rootHash []byte) ([]*state.UserAccountData, error) {
 	ch, err := tw.trie.GetAllLeavesOnChannel(rootHash)
 	if err != nil {
 		return nil, err
 	}
 
-	pairs := make([]core.KeyValueHolder, 0)
+	users := make([]*state.UserAccountData, 0)
 
 	for keyValue := range ch {
-		pairs = append(pairs, keyValue)
+		user := &state.UserAccountData{}
+		errUnmarshal := marshaller.Unmarshal(user, keyValue.Value())
+		if errUnmarshal != nil {
+			// Probably a code node
+			continue
+		}
+
+		users = append(users, user)
 	}
 
-	return pairs, nil
+	return users, nil
 }
 
 func (tw *trieWrapper) Close() {

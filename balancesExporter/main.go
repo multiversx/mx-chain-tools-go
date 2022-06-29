@@ -6,6 +6,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-go/sharding"
 	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/blocks"
+	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/export"
 	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/trie"
 	"github.com/urfave/cli"
 )
@@ -75,6 +76,17 @@ func startExport(ctx *cli.Context) error {
 	}
 
 	fmt.Println(bestBlock.GetNonce())
+
+	exporter := export.NewExporter(export.ArgsNewExporter{
+		TrieWrapper:      trieWrapper,
+		Currency:         cliFlags.currency,
+		CurrencyDecimals: cliFlags.currencyDecimals,
+	})
+
+	err = exporter.ExportBalancesAfterBlock(bestBlock)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
