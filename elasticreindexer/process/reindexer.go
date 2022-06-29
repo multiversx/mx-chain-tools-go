@@ -180,7 +180,8 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	return buffSlice.Buffers(), nil
 }
 
-func (r *reindexer) processIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error {
+// ProcessIndexWithTimestamp will handle the reindexing from source Elastic client to destination Elastic client based on the provided interval
+func (r *reindexer) ProcessIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error {
 	err := r.copyMappingIfNecessary(index, overwrite, skipMappings)
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)

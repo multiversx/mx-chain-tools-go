@@ -18,3 +18,9 @@ type ElasticClientHandler interface {
 	PutAlias(index string, alias string) error
 	IsInterfaceNil() bool
 }
+
+// ReindexerHandler defines the behaviour of an reindexer handler
+type ReindexerHandler interface {
+	Process(overwrite bool, skipMappings bool, indices ...string) error
+	ProcessIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error
+}

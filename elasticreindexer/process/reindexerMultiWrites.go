@@ -20,29 +20,21 @@ type reindexerMultiWrite struct {
 	blockChainStartTime  int64
 	enabled              bool
 
-	reindexerClient *reindexer
+	reindexerClient ReindexerHandler
 }
 
-func NewReindexerMultiWrite(cfg *config.GeneralConfig) (*reindexerMultiWrite, error) {
-	if cfg.Indexers.Input.URL == "" {
-		return nil, errors.New("empty url for the input cluster")
-	}
-	if cfg.Indexers.Output.URL == "" {
-		return nil, errors.New("empty url for the output cluster")
-	}
-
-	ri, err := CreateReindexer(cfg)
-	if err != nil {
-		return nil, err
+func NewReindexerMultiWrite(reindexer ReindexerHandler, cfg config.IndicesConfig) (*reindexerMultiWrite, error) {
+	if reindexer == nil {
+		return nil, errors.New("nil ReindexerHandler")
 	}
 
 	return &reindexerMultiWrite{
-		reindexerClient:      ri,
-		indicesNoTimestamp:   cfg.Indexers.IndicesConfig.Indices,
-		indicesWithTimestamp: cfg.Indexers.IndicesConfig.WithTimestamp.IndicesWithTimestamp,
-		numParallelWrite:     cfg.Indexers.IndicesConfig.WithTimestamp.NumParallelWrites,
-		blockChainStartTime:  cfg.Indexers.IndicesConfig.WithTimestamp.BlockchainStartTime,
-		enabled:              cfg.Indexers.IndicesConfig.WithTimestamp.Enabled,
+		reindexerClient:      reindexer,
+		indicesNoTimestamp:   cfg.Indices,
+		indicesWithTimestamp: cfg.WithTimestamp.IndicesWithTimestamp,
+		numParallelWrite:     cfg.WithTimestamp.NumParallelWrites,
+		blockChainStartTime:  cfg.WithTimestamp.BlockchainStartTime,
+		enabled:              cfg.WithTimestamp.Enabled,
 	}, nil
 }
 
@@ -98,7 +90,7 @@ func (rmw *reindexerMultiWrite) reindexBasedOnIntervals(
 				w.Done()
 			}()
 
-			errIndex := rmw.reindexerClient.processIndexWithTimestamp(index, overwrite, skipMappings, startTime, stopTime, &count)
+			errIndex := rmw.reindexerClient.ProcessIndexWithTimestamp(index, overwrite, skipMappings, startTime, stopTime, &count)
 			if errIndex != nil {
 				log.Warn("rmw.processIndexWithTimestamp", "index", index, "error", errIndex.Error())
 			}
