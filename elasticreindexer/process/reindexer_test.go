@@ -28,6 +28,8 @@ func TestCopyMapping(t *testing.T) {
 		testCopyMappingOverwriteAliasExistsIndexDoesNotExistShouldCreateIndex)
 	t.Run("overwrite - alias - index => should not copy/create",
 		testCopyMappingOverwriteAliasAndIndexExistShouldNotCreate)
+	t.Run("skip-mappings",
+		testSkipMappings)
 }
 
 func testCopyMappingNoOverwriteShouldCreate(t *testing.T) {
@@ -60,7 +62,7 @@ func testCopyMappingNoOverwriteShouldCreate(t *testing.T) {
 
 	r, _ := newReindexer(sourceClient, destinationClient, []string{"index"})
 
-	err := r.copyMappingIfNecessary(testIndex, false)
+	err := r.copyMappingIfNecessary(testIndex, false, false)
 	require.NoError(t, err)
 	require.True(t, getMappingCalled)
 	require.True(t, putAliasCalled)
@@ -79,7 +81,7 @@ func testCopyMappingNoOverwriteAliasExistsIndexDoesNotExistShouldErr(t *testing.
 
 	r, _ := newReindexer(&mock.ElasticClientStub{}, destinationClient, []string{"index"})
 
-	err := r.copyMappingIfNecessary(testIndex, false)
+	err := r.copyMappingIfNecessary(testIndex, false, false)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "index with alias index already exists.")
 }
@@ -96,7 +98,7 @@ func testCopyMappingNoOverwriteAliasAndIndexExistShouldErr(t *testing.T) {
 
 	r, _ := newReindexer(&mock.ElasticClientStub{}, destinationClient, []string{"index"})
 
-	err := r.copyMappingIfNecessary(testIndex, false)
+	err := r.copyMappingIfNecessary(testIndex, false, false)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "index with alias index already exists.")
 }
@@ -110,7 +112,7 @@ func testCopyMappingNoOverwriteAliasDoesNotExistsIndexExistsShouldErr(t *testing
 
 	r, _ := newReindexer(&mock.ElasticClientStub{}, destinationClient, []string{"test-index"})
 
-	err := r.copyMappingIfNecessary("test-index", false)
+	err := r.copyMappingIfNecessary("test-index", false, false)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "index test-index already exists.")
 }
@@ -145,7 +147,7 @@ func testCopyMappingOverwriteAliasAndIndexExistShouldNotCreate(t *testing.T) {
 
 	r, _ := newReindexer(sourceClient, destinationClient, []string{"index"})
 
-	err := r.copyMappingIfNecessary(testIndex, true)
+	err := r.copyMappingIfNecessary(testIndex, true, false)
 	require.NoError(t, err)
 	require.False(t, getMappingCalled)
 	require.False(t, putAliasCalled)
@@ -174,7 +176,7 @@ func testCopyMappingOverwriteAliasDoesNotExistShouldCreateAlias(t *testing.T) {
 
 	r, _ := newReindexer(&mock.ElasticClientStub{}, destinationClient, []string{"index"})
 
-	err := r.copyMappingIfNecessary(testIndex, true)
+	err := r.copyMappingIfNecessary(testIndex, true, false)
 	require.NoError(t, err)
 	require.True(t, putAlias)
 	require.False(t, createIndexCalled)
@@ -202,7 +204,7 @@ func testCopyMappingOverwriteAliasExistsIndexDoesNotExistShouldCreateIndex(t *te
 
 	r, _ := newReindexer(&mock.ElasticClientStub{}, destinationClient, []string{"index"})
 
-	err := r.copyMappingIfNecessary(testIndex, true)
+	err := r.copyMappingIfNecessary(testIndex, true, false)
 	require.NoError(t, err)
 	require.False(t, putAlias)
 	require.True(t, createIndexCalled)
@@ -230,8 +232,36 @@ func testCopyMappingOverwriteAliasAndIndexExistShouldCreate(t *testing.T) {
 
 	r, _ := newReindexer(&mock.ElasticClientStub{}, destinationClient, []string{"index"})
 
-	err := r.copyMappingIfNecessary(testIndex, true)
+	err := r.copyMappingIfNecessary(testIndex, true, false)
 	require.NoError(t, err)
 	require.True(t, putAlias)
 	require.True(t, createIndexCalled)
+}
+
+func testSkipMappings(t *testing.T) {
+	called := false
+	destinationClient := &mock.ElasticClientStub{
+		DoesAliasExistCalled: func(_ string) bool {
+			called = true
+			return false
+		},
+		DoesIndexExistCalled: func(_ string) bool {
+			called = true
+			return false
+		},
+		CreateIndexWithMappingCalled: func(_ string, _ *bytes.Buffer) error {
+			called = true
+			return nil
+		},
+		PutAliasCalled: func(_ string, _ string) error {
+			called = true
+			return nil
+		},
+	}
+
+	r, _ := newReindexer(&mock.ElasticClientStub{}, destinationClient, []string{"index"})
+
+	err := r.copyMappingIfNecessary(testIndex, false, true)
+	require.NoError(t, err)
+	require.False(t, called)
 }

@@ -83,8 +83,20 @@ func startReindexing(ctx *cli.Context) {
 		return
 	}
 
+	multiWriteReindexer, err := process.NewReindexerMultiWrite(reindexer, cfg.Indexers.IndicesConfig)
+	if err != nil {
+		log.Error("cannot create multi-write reindexer", "error", err)
+		return
+	}
+
 	skipMappings := ctx.Bool(skipMappingsFlag.Name)
-	err = reindexer.Process(ctx.Bool(overwriteFlag.Name), skipMappings)
+	err = multiWriteReindexer.ProcessWithTimestamp(ctx.Bool(overwriteFlag.Name), skipMappings)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	err = multiWriteReindexer.ProcessNoTimestamp(ctx.Bool(overwriteFlag.Name), skipMappings)
 	if err != nil {
 		log.Error(err.Error())
 		return
