@@ -13,7 +13,6 @@ require (
 	github.com/ElrondNetwork/concurrent-map v0.1.3 // indirect
 	github.com/ElrondNetwork/elrond-go-crypto v1.0.1 // indirect
 	github.com/ElrondNetwork/elrond-vm-common v1.2.14 // indirect
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -22,7 +21,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20190318030020-c3a204f8e965 // indirect

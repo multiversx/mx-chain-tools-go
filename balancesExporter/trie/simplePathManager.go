@@ -1,4 +1,4 @@
-package components
+package trie
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ type simplePathManager struct {
 }
 
 // NewSimplePathManager creates a new instance of the simplePathManager
-func NewSimplePathManager(dbPath string) *simplePathManager {
+func newSimplePathManager(dbPath string) *simplePathManager {
 	return &simplePathManager{
 		dbPath: dbPath,
 	}

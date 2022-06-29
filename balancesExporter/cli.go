@@ -2,11 +2,26 @@ package main
 
 import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/config"
 	"github.com/urfave/cli"
 )
 
 var (
+	helpTemplate = `NAME:
+   {{.Name}} - {{.Usage}}
+USAGE:
+   {{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}
+   {{if len .Authors}}
+AUTHOR:
+   {{range .Authors}}{{ . }}{{end}}
+   {{end}}{{if .Commands}}
+GLOBAL OPTIONS:
+   {{range .VisibleFlags}}{{.}}
+   {{end}}
+VERSION:
+   {{.Version}}
+   {{end}}
+`
+
 	cliFlagWorkingDirectory = cli.StringFlag{
 		Name:  "working-directory",
 		Usage: "This flag specifies the `directory` where the application will use the databases and logs.",
@@ -23,6 +38,12 @@ var (
 		Name:     "shard",
 		Usage:    "This flag specifies the `shard` ID.",
 		Required: true,
+	}
+
+	cliFlagNumShards = cli.UintFlag{
+		Name:  "num-shards",
+		Usage: "Specifies the total number of actual network shards (with the exception of the metachain). Must be 3 for mainnet.",
+		Value: 3,
 	}
 
 	cliFlagEpoch = cli.Uint64Flag{
@@ -46,26 +67,36 @@ var (
 	}
 )
 
-func getCliFlags() []cli.Flag {
+func getAllCliFlags() []cli.Flag {
 	return []cli.Flag{
 		cliFlagWorkingDirectory,
 		cliFlagDbPath,
 		cliFlagShard,
+		cliFlagNumShards,
 		cliFlagEpoch,
 		cliFlagLogLevel,
 		cliFlagLogSaveFile,
 	}
 }
 
-func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {
-	flagsConfig := config.ContextFlagsConfig{}
+type parsedCliFlags struct {
+	workingDir  string
+	dbPath      string
+	shard       uint32
+	numShards   uint32
+	epoch       uint32
+	logLevel    string
+	saveLogFile bool
+}
 
-	flagsConfig.WorkingDir = ctx.GlobalString(cliFlagWorkingDirectory.Name)
-	flagsConfig.DbPath = ctx.GlobalString(cliFlagDbPath.Name)
-	flagsConfig.Shard = uint32(ctx.GlobalUint64(cliFlagShard.Name))
-	flagsConfig.Epoch = uint32(ctx.GlobalUint64(cliFlagEpoch.Name))
-	flagsConfig.LogLevel = ctx.GlobalString(cliFlagLogLevel.Name)
-	flagsConfig.SaveLogFile = ctx.GlobalBool(cliFlagLogSaveFile.Name)
-
-	return flagsConfig
+func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
+	return parsedCliFlags{
+		workingDir:  ctx.GlobalString(cliFlagWorkingDirectory.Name),
+		dbPath:      ctx.GlobalString(cliFlagDbPath.Name),
+		shard:       uint32(ctx.GlobalUint64(cliFlagShard.Name)),
+		numShards:   uint32(ctx.GlobalUint(cliFlagNumShards.Name)),
+		epoch:       uint32(ctx.GlobalUint64(cliFlagEpoch.Name)),
+		logLevel:    ctx.GlobalString(cliFlagLogLevel.Name),
+		saveLogFile: ctx.GlobalBool(cliFlagLogSaveFile.Name),
+	}
 }
