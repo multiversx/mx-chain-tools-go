@@ -28,6 +28,8 @@ func TestCopyMapping(t *testing.T) {
 		testCopyMappingOverwriteAliasExistsIndexDoesNotExistShouldCreateIndex)
 	t.Run("overwrite - alias - index => should not copy/create",
 		testCopyMappingOverwriteAliasAndIndexExistShouldNotCreate)
+	t.Run("skip-mappings",
+		testSkipMappings)
 }
 
 func testCopyMappingNoOverwriteShouldCreate(t *testing.T) {
@@ -234,4 +236,32 @@ func testCopyMappingOverwriteAliasAndIndexExistShouldCreate(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, putAlias)
 	require.True(t, createIndexCalled)
+}
+
+func testSkipMappings(t *testing.T) {
+	called := false
+	destinationClient := &mock.ElasticClientStub{
+		DoesAliasExistCalled: func(_ string) bool {
+			called = true
+			return false
+		},
+		DoesIndexExistCalled: func(_ string) bool {
+			called = true
+			return false
+		},
+		CreateIndexWithMappingCalled: func(_ string, _ *bytes.Buffer) error {
+			called = true
+			return nil
+		},
+		PutAliasCalled: func(_ string, _ string) error {
+			called = true
+			return nil
+		},
+	}
+
+	r, _ := newReindexer(&mock.ElasticClientStub{}, destinationClient, []string{"index"})
+
+	err := r.copyMappingIfNecessary(testIndex, false, true)
+	require.NoError(t, err)
+	require.False(t, called)
 }

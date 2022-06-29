@@ -170,7 +170,7 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	for id, source := range resultsMap {
 		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, id, "\n"))
 
-		err := buffSlice.PutData(meta, source)
+		err = buffSlice.PutData(meta, source)
 		if err != nil {
 			return nil, err
 		}
@@ -186,27 +186,29 @@ func (r *reindexer) processIndexWithTimestamp(index string, overwrite bool, skip
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}
 
-	handlerFunc := func(responseBytes []byte) error {
-		atomic.AddUint64(count, 1)
-		dataBuffers, err := prepareDataForIndexing(responseBytes, index, int(atomic.LoadUint64(count)))
-		if err != nil {
-			return fmt.Errorf("%w while preparing data for indexing", err)
-		}
-
-		for i := 0; i < len(dataBuffers); i++ {
-			err = r.destinationElastic.DoBulkRequest(dataBuffers[i], index)
-			if err != nil {
-				return fmt.Errorf("%w while r.destinationElastic.DoBulkRequest", err)
-			}
-		}
-
-		return nil
-	}
-
-	err = r.sourceElastic.DoScrollRequestAllDocuments(index, getWithTimestamp(start, stop).Bytes(), handlerFunc)
+	scrollRequestHandlerFunc := r.createScrollRequestHandlerFunction(count, index)
+	err = r.sourceElastic.DoScrollRequestAllDocuments(index, getWithTimestamp(start, stop).Bytes(), scrollRequestHandlerFunc)
 	if err != nil {
 		return fmt.Errorf("%w while r.sourceElastic.DoScrollRequestAllDocuments", err)
 	}
 
 	return nil
+}
+
+func (r *reindexer) createScrollRequestHandlerFunction(count *uint64, index string) func([]byte) error {
+	return func(responseBytes []byte) error {
+		atomic.AddUint64(count, 1)
+		dataBuffers, errP := prepareDataForIndexing(responseBytes, index, int(atomic.LoadUint64(count)))
+		if errP != nil {
+			return fmt.Errorf("%w while preparing data for indexing", errP)
+		}
+
+		for i := 0; i < len(dataBuffers); i++ {
+			err := r.destinationElastic.DoBulkRequest(dataBuffers[i], index)
+			if err != nil {
+				return fmt.Errorf("%w while r.destinationElastic.DoBulkRequest", err)
+			}
+		}
+		return nil
+	}
 }

@@ -24,6 +24,13 @@ type reindexerMultiWrite struct {
 }
 
 func NewReindexerMultiWrite(cfg *config.GeneralConfig) (*reindexerMultiWrite, error) {
+	if cfg.Indexers.Input.URL == "" {
+		return nil, errors.New("empty url for the input cluster")
+	}
+	if cfg.Indexers.Output.URL == "" {
+		return nil, errors.New("empty url for the output cluster")
+	}
+
 	ri, err := CreateReindexer(cfg)
 	if err != nil {
 		return nil, err
