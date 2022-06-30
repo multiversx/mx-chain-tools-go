@@ -78,7 +78,7 @@ next things:
 
 *** 
 
-*** For all the configs from `a-g` the field `indices-no-timestamp` have to be empty or commented
+_*** For all the configs from `a-g` the field `indices-no-timestamp` have to be empty or commented_
 
 _**** Don't start the observing-squad only after the instance with `indices-not-timetamp` finish to copy index `accounts`
 and the instance from the point `a.` finish to copy `accountsesdt` and `tokens` indices_
