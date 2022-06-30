@@ -19,15 +19,10 @@ const (
 
 var log = logger.GetOrCreate("main")
 
-func initializeLogger(logsFolder string, logLevel string) (io.Closer, error) {
+func initializeLogger(logLevel string) (io.Closer, error) {
 	currentDirectory, err := os.Getwd()
 	if err != nil {
 		return nil, err
-	}
-
-	logsFolderNotSpecified := len(logsFolder) == 0
-	if logsFolderNotSpecified {
-		logsFolder = currentDirectory
 	}
 
 	logLevel = adjustLogLevelVerbosity(logLevel)
@@ -39,7 +34,7 @@ func initializeLogger(logsFolder string, logLevel string) (io.Closer, error) {
 	logger.ToggleLoggerName(true)
 
 	fileLogging, err := logging.NewFileLogging(logging.ArgsFileLogging{
-		WorkingDir:      logsFolder,
+		WorkingDir:      currentDirectory,
 		DefaultLogsPath: defaultLogsPath,
 		LogFilePrefix:   logFilePrefix,
 	})

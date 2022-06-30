@@ -25,7 +25,7 @@ func (f *formatterPlainJson) toText(accounts []*state.UserAccountData, args form
 		})
 	}
 
-	recordsJson, err := json.MarshalIndent(records, "", FourSpaces)
+	recordsJson, err := json.MarshalIndent(records, "", fourSpaces)
 	if err != nil {
 		return "", err
 	}

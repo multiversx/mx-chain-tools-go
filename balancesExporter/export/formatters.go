@@ -10,18 +10,12 @@ const (
 	FormatterNamePlainText   = "plain-text"
 	FormatterNamePlainJson   = "plain-json"
 	FormatterNameRosettaJson = "rosetta-json"
-	FourSpaces               = "    "
+	fourSpaces               = "    "
+	addressLength            = 32
 )
 
 var (
-	AllFormattersNames = strings.Join([]string{FormatterNamePlainText, FormatterNamePlainText, FormatterNameRosettaJson}, ", ")
-)
-
-const (
-	addressLength = 32
-)
-
-var (
+	AllFormattersNames  = strings.Join([]string{FormatterNamePlainText, FormatterNamePlainText, FormatterNameRosettaJson}, ", ")
 	addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 )
 

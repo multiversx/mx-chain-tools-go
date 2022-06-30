@@ -48,7 +48,7 @@ func (f *formatterRosettaJson) toText(accounts []*state.UserAccountData, args fo
 		})
 	}
 
-	recordsJson, err := json.MarshalIndent(records, "", FourSpaces)
+	recordsJson, err := json.MarshalIndent(records, "", fourSpaces)
 	if err != nil {
 		return "", err
 	}

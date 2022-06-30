@@ -47,6 +47,7 @@ func (repository *blocksRepository) FindBestBlock() (data.HeaderHandler, error) 
 	eligibleBlocks := repository.findEligibleBlocks(blocksInEpoch)
 
 	for _, block := range eligibleBlocks {
+		// For ease of reasoning, we exclude blocks that contain scheduled (or processed) miniblocks.
 		if !hasScheduledMiniblocks(block) {
 			return block, nil
 		}
@@ -91,6 +92,7 @@ func (repository *blocksRepository) loadBlocksInEpoch() ([]data.HeaderHandler, e
 		headers = append(headers, header)
 	}
 
+	// Sort blocks by nonce
 	sort.Slice(headers, func(i, j int) bool {
 		return headers[i].GetNonce() < headers[j].GetNonce()
 	})
@@ -99,10 +101,8 @@ func (repository *blocksRepository) loadBlocksInEpoch() ([]data.HeaderHandler, e
 }
 
 func (repository *blocksRepository) loadMarshalizedBlocksInEpoch() ([][]byte, error) {
-	epochPart := fmt.Sprintf("Epoch_%d", repository.epoch)
-	shardPart := fmt.Sprintf("Shard_%d", repository.shard)
 	cacheConfig := getCacheConfig()
-	unitPath := path.Join(repository.dbPath, epochPart, shardPart, "BlockHeaders")
+	unitPath := repository.getStorageUnitPath()
 	dbConfig := getDbConfig(unitPath)
 
 	unit, err := storageUnit.NewStorageUnitFromConf(cacheConfig, dbConfig)
@@ -118,6 +118,13 @@ func (repository *blocksRepository) loadMarshalizedBlocksInEpoch() ([][]byte, er
 	})
 
 	return values, nil
+}
+
+func (repository *blocksRepository) getStorageUnitPath() string {
+	epochPart := fmt.Sprintf("Epoch_%d", repository.epoch)
+	shardPart := fmt.Sprintf("Shard_%d", repository.shard)
+	unitPath := path.Join(repository.dbPath, epochPart, shardPart, "BlockHeaders")
+	return unitPath
 }
 
 func hasScheduledMiniblocks(block data.HeaderHandler) bool {

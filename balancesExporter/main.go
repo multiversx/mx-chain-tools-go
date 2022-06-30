@@ -39,7 +39,7 @@ func main() {
 func startExport(ctx *cli.Context) error {
 	cliFlags := getParsedCliFlags(ctx)
 
-	fileLogging, err := initializeLogger(cliFlags.workingDir, cliFlags.logLevel)
+	fileLogging, err := initializeLogger(cliFlags.logLevel)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func startExport(ctx *cli.Context) error {
 		WithZero:         cliFlags.withZero,
 	})
 
-	err = exporter.ExportBalancesAfterBlock(bestBlock)
+	err = exporter.ExportBalancesAtBlock(bestBlock)
 	if err != nil {
 		return err
 	}

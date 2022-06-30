@@ -1,7 +1,6 @@
 package export
 
 import (
-	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 
@@ -39,7 +38,7 @@ func NewExporter(args ArgsNewExporter) *exporter {
 	}
 }
 
-func (e *exporter) ExportBalancesAfterBlock(block data.HeaderHandler) error {
+func (e *exporter) ExportBalancesAtBlock(block data.HeaderHandler) error {
 	rootHash := block.GetRootHash()
 
 	accounts, err := e.trie.GetUserAccounts(rootHash, e.shouldExportAccount)
@@ -47,10 +46,12 @@ func (e *exporter) ExportBalancesAfterBlock(block data.HeaderHandler) error {
 		return err
 	}
 
-	fmt.Println("Number of accounts to export:", len(accounts))
-	fmt.Println("Block nonce:", block.GetNonce())
-	fmt.Println("Block roothash:", hex.EncodeToString(block.GetRootHash()))
-	fmt.Println("Format type:", e.format)
+	log.Info("Exporting:",
+		"numAccounts", len(accounts),
+		"blockNonce", block.GetNonce(),
+		"blockRootHash", block.GetRootHash(),
+		"formatType", e.format,
+	)
 
 	formatter, err := e.getFormatter(block)
 	if err != nil {
@@ -68,12 +69,11 @@ func (e *exporter) ExportBalancesAfterBlock(block data.HeaderHandler) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(filename, []byte(text), core.FileModeReadWrite)
+	err = e.saveFile(filename, text)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Exported to:", filename)
 	return nil
 }
 
@@ -99,4 +99,14 @@ func (e *exporter) getFormatter(block data.HeaderHandler) (formatter, error) {
 	}
 
 	return nil, fmt.Errorf("unknown format: %s", e.format)
+}
+
+func (e *exporter) saveFile(filename string, text string) error {
+	err := ioutil.WriteFile(filename, []byte(text), core.FileModeReadWrite)
+	if err != nil {
+		return err
+	}
+
+	log.Info("Saved file:", "file", filename)
+	return nil
 }

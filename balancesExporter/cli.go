@@ -25,21 +25,15 @@ VERSION:
    {{end}}
 `
 
-	cliFlagWorkingDirectory = cli.StringFlag{
-		Name:  "working-directory",
-		Usage: "This flag specifies the `directory` where the application will use the databases and logs.",
-		Value: "",
-	}
-
 	cliFlagDbPath = cli.StringFlag{
 		Name:     "db-path",
-		Usage:    "This flag specifies the `path` where the application will find the trie storage.",
+		Usage:    "The path to a node's database.",
 		Required: true,
 	}
 
 	cliFlagShard = cli.Uint64Flag{
 		Name:     "shard",
-		Usage:    "This flag specifies the `shard` ID.",
+		Usage:    "The shard to use for export.",
 		Required: true,
 	}
 
@@ -51,7 +45,7 @@ VERSION:
 
 	cliFlagEpoch = cli.Uint64Flag{
 		Name:     "epoch",
-		Usage:    "This flag specifies the `epoch`.",
+		Usage:    "The epoch to use for export.",
 		Required: true,
 	}
 
@@ -100,7 +94,6 @@ VERSION:
 
 func getAllCliFlags() []cli.Flag {
 	return []cli.Flag{
-		cliFlagWorkingDirectory,
 		cliFlagDbPath,
 		cliFlagShard,
 		cliFlagNumShards,
@@ -116,7 +109,6 @@ func getAllCliFlags() []cli.Flag {
 }
 
 type parsedCliFlags struct {
-	workingDir       string
 	dbPath           string
 	shard            uint32
 	numShards        uint32
@@ -132,7 +124,6 @@ type parsedCliFlags struct {
 
 func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
 	return parsedCliFlags{
-		workingDir:       ctx.GlobalString(cliFlagWorkingDirectory.Name),
 		dbPath:           ctx.GlobalString(cliFlagDbPath.Name),
 		shard:            uint32(ctx.GlobalUint64(cliFlagShard.Name)),
 		numShards:        uint32(ctx.GlobalUint(cliFlagNumShards.Name)),
