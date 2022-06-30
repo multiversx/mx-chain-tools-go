@@ -47,7 +47,7 @@ from the `input` instance will be copied )
 - Run `./elasticreindexer --skip-mappings` ( will start to reindex all the information from the input cluster in the output cluster based on the `config.toml` file)
 
 #### SPEED UP STEP 2
-- The `STEP 2` will take a look of time because are `hundreds of gigabytes` of data and in order to speed up the process we can do the 
+- The `STEP 2` will take a lot of time because are `hundreds of gigabytes` of data and in order to speed up the process we can do the 
 next things:
 
 1. Run an instance of `elasticreindexer` only with the indices from the list `indices-no-timestamp`
