@@ -13,8 +13,10 @@ func newTrieWrapper(t common.Trie) *trieWrapper {
 	return &trieWrapper{trie: t}
 }
 
+// IsRootHashAvailable checks whether a rootHash is available in the trie database (e.g. for trie reconstruction)
 func (tw *trieWrapper) IsRootHashAvailable(rootHash []byte) bool {
-	_, err := tw.trie.GetAllLeavesOnChannel(rootHash)
+	storageManager := tw.trie.GetStorageManager()
+	_, err := storageManager.Get(rootHash)
 	if err != nil {
 		return false
 	}

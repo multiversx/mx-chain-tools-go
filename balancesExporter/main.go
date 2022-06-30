@@ -43,7 +43,9 @@ func startExport(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer func() { _ = fileLogging.Close() }()
+	defer func() {
+		_ = fileLogging.Close()
+	}()
 
 	shardCoordinator, err := sharding.NewMultiShardCoordinator(cliFlags.numShards, cliFlags.shard)
 	if err != nil {

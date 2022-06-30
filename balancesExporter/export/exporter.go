@@ -9,6 +9,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/state"
 )
 
+// ArgsNewExporter holds arguments for creating an exporter
 type ArgsNewExporter struct {
 	TrieWrapper      trieWrapper
 	Format           string
@@ -27,6 +28,7 @@ type exporter struct {
 	withZero         bool
 }
 
+// NewExporter creates a new exporter
 func NewExporter(args ArgsNewExporter) *exporter {
 	return &exporter{
 		trie:             args.TrieWrapper,
@@ -38,6 +40,7 @@ func NewExporter(args ArgsNewExporter) *exporter {
 	}
 }
 
+// ExportBalancesAtBlock exports balances of accounts at a given block
 func (e *exporter) ExportBalancesAtBlock(block data.HeaderHandler) error {
 	rootHash := block.GetRootHash()
 

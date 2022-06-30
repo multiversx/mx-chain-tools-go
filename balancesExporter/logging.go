@@ -25,7 +25,6 @@ func initializeLogger(logLevel string) (io.Closer, error) {
 		return nil, err
 	}
 
-	logLevel = adjustLogLevelVerbosity(logLevel)
 	err = logger.SetLogLevel(logLevel)
 	if err != nil {
 		return nil, err
@@ -48,8 +47,4 @@ func initializeLogger(logLevel string) (io.Closer, error) {
 	}
 
 	return fileLogging, nil
-}
-
-func adjustLogLevelVerbosity(logLevel string) string {
-	return fmt.Sprintf("%s,storage/pruning:INFO,storage/leveldb:INFO,trie:NONE", logLevel)
 }

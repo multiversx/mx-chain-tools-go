@@ -15,6 +15,7 @@ var (
 	marshaller = &marshal.GogoProtoMarshalizer{}
 )
 
+// ArgsNewBlocksRepository holds arguments for creating a blocksRepository
 type ArgsNewBlocksRepository struct {
 	DbPath      string
 	Epoch       uint32
@@ -29,6 +30,7 @@ type blocksRepository struct {
 	trie   trieWrapper
 }
 
+// NewBlocksRepository creates a new blocksRepository
 func NewBlocksRepository(args ArgsNewBlocksRepository) *blocksRepository {
 	return &blocksRepository{
 		dbPath: args.DbPath,
@@ -38,6 +40,7 @@ func NewBlocksRepository(args ArgsNewBlocksRepository) *blocksRepository {
 	}
 }
 
+// FindBestBlock selects a block to be used for export
 func (repository *blocksRepository) FindBestBlock() (data.HeaderHandler, error) {
 	blocksInEpoch, err := repository.loadBlocksInEpoch()
 	if err != nil {

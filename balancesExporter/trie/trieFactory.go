@@ -22,6 +22,7 @@ var (
 	marshaller = &marshal.GogoProtoMarshalizer{}
 )
 
+// ArgsNewTrieFactory holds arguments for creating a trieFactory
 type ArgsNewTrieFactory struct {
 	ShardCoordinator sharding.Coordinator
 	DbPath           string
@@ -34,6 +35,7 @@ type trieFactory struct {
 	epoch            uint32
 }
 
+// NewTrieFactory creates a new trieFactory
 func NewTrieFactory(args ArgsNewTrieFactory) *trieFactory {
 	return &trieFactory{
 		shardCoordinator: args.ShardCoordinator,
@@ -42,6 +44,7 @@ func NewTrieFactory(args ArgsNewTrieFactory) *trieFactory {
 	}
 }
 
+// CreateTrie creates a trie (actually, a wrapper over the actual trie)
 func (factory *trieFactory) CreateTrie() (*trieWrapper, error) {
 	cacheConfig := getCacheConfig()
 	dbConfig := getDbConfig(factory.dbPath)
