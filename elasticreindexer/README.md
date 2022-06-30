@@ -53,19 +53,19 @@ next things:
 1. Run an instance of `elasticreindexer` only with the indices from the list `indices-no-timestamp`
 2. Run multiple instance of `elasticreindexer` with the next configurations for `indices-with-timestamp`:
 
-    `a` `indices-with-timestamp = ["accountsesdt", "tokens"]`
+    `a.` `indices-with-timestamp = ["accountsesdt", "tokens"]`
 
-    `b` `indices-with-timestamp = ["blocks", "receipts", "rounds"`
+    `b.` `indices-with-timestamp = ["blocks", "receipts", "rounds"`
 
-    `c` `indices-with-timestamp = ["transactions", "miniblocks", "scdeploys"]`
+    `c.` `indices-with-timestamp = ["transactions", "miniblocks", "scdeploys"]`
 
-    `d` `indices-with-timestamp = ["accountshistory", "scresults"]`
+    `d.` `indices-with-timestamp = ["accountshistory", "scresults"]`
 
-    `e` `indices-with-timestamp = ["accountsesdthistory"]`
+    `e.` `indices-with-timestamp = ["accountsesdthistory"]`
 
-    `f` `indices-with-timestamp = ["logs"]`
+    `f.` `indices-with-timestamp = ["logs"]`
 
-    `g` `indices-with-timestamp = ["operations"]`
+    `g.` `indices-with-timestamp = ["operations"]`
 
 ## Audience
 
