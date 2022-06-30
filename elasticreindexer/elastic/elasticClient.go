@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
-	"net/url"
 	"time"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -97,10 +96,31 @@ func (esc *esClient) GetMapping(index string) (*bytes.Buffer, error) {
 
 // CreateIndexWithMapping will create an index with the provided
 func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buffer) error {
+	operations := make([]func(*esapi.IndicesCreateRequest), 0)
+	if body != nil {
+		operations = append(operations, esc.client.Indices.Create.WithBody(body))
+	}
+
 	res, err := esc.client.Indices.Create(
 		targetIndex,
-		esc.client.Indices.Create.WithBody(body),
+		operations...,
 	)
+	if err != nil {
+		return err
+	}
+
+	defer closeBody(res)
+
+	if res.IsError() {
+		return fmt.Errorf("%s", res.String())
+	}
+
+	return nil
+}
+
+// PutIndexTemplate creates an elasticsearch index template
+func (esc *esClient) PutIndexTemplate(templateName string, body *bytes.Buffer) error {
+	res, err := esc.client.Indices.PutTemplate(templateName, body)
 	if err != nil {
 		return err
 	}
@@ -124,47 +144,20 @@ func (esc *esClient) DoesIndexExist(index string) bool {
 	return exists(res, err)
 }
 
-// DoesAliasExist returns true if an index alias already exists
-func (esc *esClient) DoesAliasExist(alias string) bool {
-	aliasRoute := fmt.Sprintf(
-		"/_alias/%s",
-		alias,
-	)
+// DoesTemplateExist checks whether a template is already created
+func (esc *esClient) DoesTemplateExist(index string) bool {
+	res, err := esc.client.Indices.ExistsTemplate([]string{index})
 
-	req := newRequest(http.MethodHead, aliasRoute, nil)
-
-	res, err := esc.client.Transport.Perform(req)
-	if err != nil {
-		log.Warn("elasticClient.AliasExists",
-			"error performing request", err.Error())
-		return false
-	}
-
-	response := &esapi.Response{
-		StatusCode: res.StatusCode,
-		Body:       res.Body,
-		Header:     res.Header,
-	}
-
-	return exists(response, nil)
+	return exists(res, err)
 }
 
-func newRequest(method, path string, body *bytes.Buffer) *http.Request {
-	r := http.Request{
-		Method:     method,
-		URL:        &url.URL{Path: path},
-		Proto:      "HTTP/1.1",
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Header:     make(http.Header),
-	}
+// DoesAliasExist returns true if an index alias already exists
+func (esc *esClient) DoesAliasExist(alias string) bool {
+	res, err := esc.client.Indices.ExistsAlias(
+		[]string{alias},
+	)
 
-	if body != nil {
-		r.Body = ioutil.NopCloser(body)
-		r.ContentLength = int64(body.Len())
-	}
-
-	return &r
+	return exists(res, err)
 }
 
 func exists(res *esapi.Response, err error) bool {
