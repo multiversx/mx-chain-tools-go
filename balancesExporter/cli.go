@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/export"
 	"github.com/urfave/cli"
 )
 
@@ -80,8 +83,18 @@ VERSION:
 
 	cliFlagExportFormat = cli.StringFlag{
 		Name:  "format",
-		Usage: "Export format",
-		Value: "plain-text",
+		Usage: fmt.Sprintf("Export format. One of the following: %s", export.AllFormattersNames),
+		Value: export.FormatterNamePlainText,
+	}
+
+	cliFlagWithContracts = cli.BoolFlag{
+		Name:  "with-contracts",
+		Usage: "Whether to include contracts in the export.",
+	}
+
+	cliFlagWithZero = cli.BoolFlag{
+		Name:  "with-zero",
+		Usage: "Whether to include accounts with zero balance in the export.",
 	}
 )
 
@@ -97,6 +110,8 @@ func getAllCliFlags() []cli.Flag {
 		cliFlagCurrency,
 		cliFlagCurrencyDecimals,
 		cliFlagExportFormat,
+		cliFlagWithContracts,
+		cliFlagWithZero,
 	}
 }
 
@@ -109,8 +124,10 @@ type parsedCliFlags struct {
 	logLevel         string
 	saveLogFile      bool
 	currency         string
-	currencyDecimals uint32
+	currencyDecimals uint
 	exportFormat     string
+	withContracts    bool
+	withZero         bool
 }
 
 func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
@@ -123,7 +140,9 @@ func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
 		logLevel:         ctx.GlobalString(cliFlagLogLevel.Name),
 		saveLogFile:      ctx.GlobalBool(cliFlagLogSaveFile.Name),
 		currency:         ctx.GlobalString(cliFlagCurrency.Name),
-		currencyDecimals: uint32(ctx.GlobalUint(cliFlagCurrencyDecimals.Name)),
+		currencyDecimals: uint(ctx.GlobalUint(cliFlagCurrencyDecimals.Name)),
 		exportFormat:     ctx.GlobalString(cliFlagExportFormat.Name),
+		withContracts:    ctx.GlobalBool(cliFlagWithContracts.Name),
+		withZero:         ctx.GlobalBool(cliFlagWithZero.Name),
 	}
 }

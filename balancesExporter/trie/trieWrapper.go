@@ -22,7 +22,7 @@ func (tw *trieWrapper) IsRootHashAvailable(rootHash []byte) bool {
 	return true
 }
 
-func (tw *trieWrapper) GetAllUserAccounts(rootHash []byte) ([]*state.UserAccountData, error) {
+func (tw *trieWrapper) GetUserAccounts(rootHash []byte, predicate func(*state.UserAccountData) bool) ([]*state.UserAccountData, error) {
 	ch, err := tw.trie.GetAllLeavesOnChannel(rootHash)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,9 @@ func (tw *trieWrapper) GetAllUserAccounts(rootHash []byte) ([]*state.UserAccount
 			continue
 		}
 
-		users = append(users, user)
+		if predicate(user) {
+			users = append(users, user)
+		}
 	}
 
 	return users, nil

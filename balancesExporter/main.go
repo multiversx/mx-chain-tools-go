@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/ElrondNetwork/elrond-go/sharding"
@@ -75,12 +74,13 @@ func startExport(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println(bestBlock.GetNonce())
-
 	exporter := export.NewExporter(export.ArgsNewExporter{
 		TrieWrapper:      trieWrapper,
+		Format:           cliFlags.exportFormat,
 		Currency:         cliFlags.currency,
 		CurrencyDecimals: cliFlags.currencyDecimals,
+		WithContracts:    cliFlags.withContracts,
+		WithZero:         cliFlags.withZero,
 	})
 
 	err = exporter.ExportBalancesAfterBlock(bestBlock)

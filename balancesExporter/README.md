@@ -1,12 +1,20 @@
-## Description
+# Balances exporter
 
+This tool exports account balances, as found in the trie database, under a specific roothash. The roothash is automatically selected by the tool given the provided epoch.
 
-# How to use
+## How to use
 
-1. compile the binary by issuing a `go build` command in elrond-tools-go/balancesExporter directory
-2. download a Node `db`
-3. start the app as follows:
+Compile the code as follows:
 
 ```
-./balancesExporter --log-level *:DEBUG --log-save --db-path=my-db-path/1 --shard=0 --epoch=689
+cd elrond-tools-go/balancesExporter
+go build .
+```
+
+Make sure you have a node database prepared (synchronized or downloaded) in advance.
+
+Then, run the export command for an epoch of your choice:
+
+```
+./balancesExporter --log-save --db-path=db/1 --shard=0 --epoch=690 --format=plain-json
 ```
