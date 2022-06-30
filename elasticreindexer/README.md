@@ -52,6 +52,7 @@ next things:
 
 1. Run an instance of `elasticreindexer` only with the indices from the list `indices-no-timestamp`
 2. Run multiple instance of `elasticreindexer` with the next configurations for `indices-with-timestamp`:
+
     `a` `indices-with-timestamp = ["accountsesdt", "tokens"]`
 
     `b` `indices-with-timestamp = ["blocks", "receipts", "rounds"`
