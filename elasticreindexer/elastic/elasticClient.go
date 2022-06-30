@@ -144,7 +144,7 @@ func (esc *esClient) DoesIndexExist(index string) bool {
 	return exists(res, err)
 }
 
-// DoesTemplateExist checks weather a template is already created
+// DoesTemplateExist checks whether a template is already created
 func (esc *esClient) DoesTemplateExist(index string) bool {
 	res, err := esc.client.Indices.ExistsTemplate([]string{index})
 
