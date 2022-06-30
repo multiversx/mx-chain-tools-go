@@ -9,7 +9,7 @@ populated by the Elrond nodes from the genesis till the current time ).
 
 ## How to use
 ### STEP 1
-- In order to can reindex all the information from an Elasticsearch cluster to another had to create all the indices mappings. 
+- In order to reindex all the information from an Elasticsearch cluster to another had to create all the indices mappings. 
 To do that have to use the `indices-creator` tool:
 
     ```
