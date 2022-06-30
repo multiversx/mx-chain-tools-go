@@ -25,8 +25,11 @@ of the Elasticsearch cluster, and for what indices have to create the mappings.
 
 - Run `./indices-creator` in order to create all the indices and mappings
 
+***
 
 _*This step can be skipped for the clusters the already have information indexed_ 
+
+***
 
 ### STEP 2
 - After the mappings and indices was created we can start to copy all the information. In order to do this have to use the `elasticreindexer` tool that 
@@ -45,6 +48,12 @@ from the `input` instance will be copied )
 - Also, if you want to copy indices with timestamp have to set in the `config.toml` file the `blockchain-start-time` ( by default is the one from the mainnet)
 
 - Run `./elasticreindexer --skip-mappings` ( will start to reindex all the information from the input cluster in the output cluster based on the `config.toml` file)
+
+***
+
+_** Don't start the observing-squad only after the indices `accounts`, `accountsesdt` and `tokens` are copied_
+
+***
 
 #### SPEED UP STEP 2
 - The `STEP 2` will take a lot of time because are `hundreds of gigabytes` of data and in order to speed up the process we can do the 
@@ -66,6 +75,15 @@ next things:
     `f.` `indices-with-timestamp = ["logs"]`
 
     `g.` `indices-with-timestamp = ["operations"]`
+
+*** 
+
+*** For all the configs from `a-g` the field `indices-no-timestamp` have to be empty or commented
+
+_**** Don't start the observing-squad only after the instance with `indices-not-timetamp` finish to copy index `accounts`
+and the instance from the point `a.` finish to copy `accountsesdt` and `tokens` indices_
+
+***
 
 ## Audience
 
