@@ -46,7 +46,25 @@ from the `input` instance will be copied )
 
 - Run `./elasticreindexer --skip-mappings` ( will start to reindex all the information from the input cluster in the output cluster based on the `config.toml` file)
 
+#### SPEED UP STEP 2
+- The `STEP 2` will take a look of time because are `hundreds of gigabytes` of data and in order to speed up the process we can do the 
+next things:
 
+1. Run an instance of `elasticreindexer` only with the indices from the list `indices-no-timestamp`
+2. Run multiple instance of `elasticreindexer` with the next configurations for `indices-with-timestamp`:
+    `a` `indices-with-timestamp = ["accountsesdt", "tokens"]`
+
+    `b` `indices-with-timestamp = ["blocks", "receipts", "rounds"`
+
+    `c` `indices-with-timestamp = ["transactions", "miniblocks", "scdeploys"]`
+
+    `d` `indices-with-timestamp = ["accountshistory", "scresults"]`
+
+    `e` `indices-with-timestamp = ["accountsesdthistory"]`
+
+    `f` `indices-with-timestamp = ["logs"]`
+
+    `g` `indices-with-timestamp = ["operations"]`
 
 ## Audience
 
