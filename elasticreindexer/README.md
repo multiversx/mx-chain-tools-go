@@ -84,5 +84,5 @@ and the instance from the point `a.` finished to copy `accountsesdt` and `tokens
 
 ## Audience
 
-This tool should be as generic as possible, and it doesn't have any custom code related to Elrond instances
+This tool should be as generic as possible, and it shouldn't have any custom code related to Elrond instances
 of Elasticsearch
