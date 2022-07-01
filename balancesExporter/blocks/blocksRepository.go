@@ -140,7 +140,9 @@ func hasScheduledMiniblocks(block data.HeaderHandler) bool {
 	for _, miniblock := range miniblocks {
 		processingType := dataBlock.ProcessingType(miniblock.GetProcessingType())
 		isScheduledProcessingType := processingType == dataBlock.Scheduled || processingType == dataBlock.Processed
-		return isScheduledProcessingType
+		if isScheduledProcessingType {
+			return true
+		}
 	}
 
 	return false
