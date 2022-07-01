@@ -1,4 +1,4 @@
-package trie
+package common
 
 import (
 	"fmt"
@@ -12,17 +12,17 @@ type simplePathManager struct {
 }
 
 // NewSimplePathManager creates a new instance of the simplePathManager
-func newSimplePathManager(dbPath string) *simplePathManager {
+func NewSimplePathManager(dbPath string) *simplePathManager {
 	return &simplePathManager{
 		dbPath: dbPath,
 	}
 }
 
 // PathForEpoch returns the path for epoch taking into account the epoch and the shard
-func (spm *simplePathManager) PathForEpoch(shardId string, epoch uint32, _ string) string {
+func (spm *simplePathManager) PathForEpoch(shardId string, epoch uint32, identifier string) string {
 	epochPart := fmt.Sprintf("Epoch_%d", epoch)
 	shardPart := fmt.Sprintf("Shard_%s", shardId)
-	path := filepath.Join(spm.dbPath, epochPart, shardPart, "AccountsTrie")
+	path := filepath.Join(spm.dbPath, epochPart, shardPart, identifier)
 	return path
 }
 

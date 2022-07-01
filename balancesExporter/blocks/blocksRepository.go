@@ -2,13 +2,18 @@ package blocks
 
 import (
 	"fmt"
-	"path"
 	"sort"
+	"strconv"
 
 	"github.com/ElrondNetwork/elrond-go-core/data"
 	dataBlock "github.com/ElrondNetwork/elrond-go-core/data/block"
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	"github.com/ElrondNetwork/elrond-go/storage/storageUnit"
+	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/common"
+)
+
+const (
+	storageUnitIdentifier = "BlockHeaders"
 )
 
 var (
@@ -124,10 +129,9 @@ func (repository *blocksRepository) loadMarshalizedBlocksInEpoch() ([][]byte, er
 }
 
 func (repository *blocksRepository) getStorageUnitPath() string {
-	epochPart := fmt.Sprintf("Epoch_%d", repository.epoch)
-	shardPart := fmt.Sprintf("Shard_%d", repository.shard)
-	unitPath := path.Join(repository.dbPath, epochPart, shardPart, "BlockHeaders")
-	return unitPath
+	pathManager := common.NewSimplePathManager(repository.dbPath)
+	path := pathManager.PathForEpoch(strconv.Itoa(int(repository.shard)), repository.epoch, storageUnitIdentifier)
+	return path
 }
 
 func hasScheduledMiniblocks(block data.HeaderHandler) bool {
@@ -135,13 +139,8 @@ func hasScheduledMiniblocks(block data.HeaderHandler) bool {
 
 	for _, miniblock := range miniblocks {
 		processingType := dataBlock.ProcessingType(miniblock.GetProcessingType())
-
-		if processingType == dataBlock.Scheduled {
-			return true
-		}
-		if processingType == dataBlock.Processed {
-			return true
-		}
+		isScheduledProcessingType := processingType == dataBlock.Scheduled || processingType == dataBlock.Processed
+		return isScheduledProcessingType
 	}
 
 	return false

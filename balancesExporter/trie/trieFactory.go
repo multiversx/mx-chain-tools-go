@@ -8,13 +8,15 @@ import (
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
+	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/common"
 
 	storageFactory "github.com/ElrondNetwork/elrond-go/storage/factory"
 )
 
 const (
-	maxTrieLevelInMemory = 5
-	maxBatchSize         = 45000
+	maxTrieLevelInMemory  = 5
+	maxBatchSize          = 45000
+	storageUnitIdentifier = "AccountsTrie"
 )
 
 var (
@@ -48,10 +50,10 @@ func NewTrieFactory(args ArgsNewTrieFactory) *trieFactory {
 func (factory *trieFactory) CreateTrie() (*trieWrapper, error) {
 	cacheConfig := getCacheConfig()
 	dbConfig := getDbConfig(factory.dbPath)
-	pathManager := newSimplePathManager(factory.dbPath)
+	pathManager := common.NewSimplePathManager(factory.dbPath)
 
 	args := &pruning.StorerArgs{
-		Identifier:                "",
+		Identifier:                storageUnitIdentifier,
 		ShardCoordinator:          factory.shardCoordinator,
 		CacheConf:                 cacheConfig,
 		PathManager:               pathManager,
