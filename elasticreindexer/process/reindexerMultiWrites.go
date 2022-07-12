@@ -43,6 +43,10 @@ func NewReindexerMultiWrite(reindexer ReindexerHandler, cfg config.IndicesConfig
 
 func (rmw *reindexerMultiWrite) ProcessNoTimestamp(overwrite bool, skipMappings bool) error {
 	for _, index := range rmw.indicesNoTimestamp {
+		if index == "" {
+			continue
+		}
+
 		err := rmw.reindexerClient.Process(overwrite, skipMappings, index)
 		if err != nil {
 			return err
