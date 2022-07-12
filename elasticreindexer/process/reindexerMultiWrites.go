@@ -68,6 +68,10 @@ func (rmw *reindexerMultiWrite) ProcessWithTimestamp(overwrite bool, skipMapping
 	}
 
 	for _, index := range rmw.indicesWithTimestamp {
+		if index == "" {
+			continue
+		}
+
 		err = rmw.reindexBasedOnIntervals(index, intervals, overwrite, skipMappings)
 		if err != nil {
 			return err
