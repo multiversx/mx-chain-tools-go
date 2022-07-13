@@ -1,8 +1,8 @@
 # Elastic reindexer tool
 
 - This tool can be used to copy an Elasticsearch index/indices from a cluster to another. It can also copy the indices 
-mappings (we recommend to use it without copying the mappings because most often are not exposed). The indices mappings part can be done with the `indices-creator` tool.
-Also, with the `indices-creator` tool some properties of the indices can be changed (depending on the needs).
+mappings (we recommend to use it without copying the mappings because most often they are not exposed). The indices mappings part can be done with the `indices-creator` tool.
+Also, by using the `indices-creator` tool, some properties of the indices can be changed (depending on the needs).
 
 - The main scope of these tools is to copy all the information from an Elasticsearch cluster to another (all the indices that were
 populated by the Elrond nodes from the genesis until the current time).
