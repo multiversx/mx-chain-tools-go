@@ -64,7 +64,7 @@ next things:
 
     `a.` `indices-with-timestamp = ["accountsesdt", "tokens"]`
 
-    `b.` `indices-with-timestamp = ["blocks", "receipts", "rounds"`
+    `b.` `indices-with-timestamp = ["blocks", "receipts", "rounds"]`
 
     `c.` `indices-with-timestamp = ["transactions", "miniblocks", "scdeploys"]`
 
