@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go/sharding"
 	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/blocks"
 	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/export"
@@ -47,13 +48,13 @@ func startExport(ctx *cli.Context) error {
 		_ = fileLogging.Close()
 	}()
 
-	shardCoordinator, err := sharding.NewMultiShardCoordinator(cliFlags.numShards, cliFlags.shard)
+	actualShardCoordinator, projectedShardCoordinator, err := createShardCoordinators(cliFlags)
 	if err != nil {
 		return err
 	}
 
 	trieFactory := trie.NewTrieFactory(trie.ArgsNewTrieFactory{
-		ShardCoordinator: shardCoordinator,
+		ShardCoordinator: actualShardCoordinator,
 		DbPath:           cliFlags.dbPath,
 		Epoch:            cliFlags.epoch,
 	})
@@ -77,6 +78,7 @@ func startExport(ctx *cli.Context) error {
 	}
 
 	exporter := export.NewExporter(export.ArgsNewExporter{
+		ShardCoordinator: projectedShardCoordinator,
 		TrieWrapper:      trieWrapper,
 		Format:           cliFlags.exportFormat,
 		Currency:         cliFlags.currency,
@@ -91,4 +93,22 @@ func startExport(ctx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func createShardCoordinators(cliFlags parsedCliFlags) (sharding.Coordinator, sharding.Coordinator, error) {
+	actualShardCoordinator, err := sharding.NewMultiShardCoordinator(cliFlags.numShards, cliFlags.shard)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	projectedShardCoordinator, err := sharding.NewMultiShardCoordinator(core.MaxNumShards, cliFlags.projectedShard)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if cliFlags.projectedShardIsSet {
+		return actualShardCoordinator, projectedShardCoordinator, nil
+	}
+
+	return actualShardCoordinator, actualShardCoordinator, nil
 }

@@ -6,11 +6,13 @@ import (
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/data"
+	"github.com/ElrondNetwork/elrond-go/sharding"
 	"github.com/ElrondNetwork/elrond-go/state"
 )
 
 // ArgsNewExporter holds arguments for creating an exporter
 type ArgsNewExporter struct {
+	ShardCoordinator sharding.Coordinator
 	TrieWrapper      trieWrapper
 	Format           string
 	Currency         string
@@ -20,6 +22,7 @@ type ArgsNewExporter struct {
 }
 
 type exporter struct {
+	shardCoordinator sharding.Coordinator
 	trie             trieWrapper
 	format           string
 	currency         string
@@ -31,6 +34,7 @@ type exporter struct {
 // NewExporter creates a new exporter
 func NewExporter(args ArgsNewExporter) *exporter {
 	return &exporter{
+		shardCoordinator: args.ShardCoordinator,
 		trie:             args.TrieWrapper,
 		format:           args.Format,
 		currency:         args.Currency,
@@ -85,6 +89,9 @@ func (e *exporter) shouldExportAccount(account *state.UserAccountData) bool {
 		return false
 	}
 	if !e.withZero && account.Balance.Sign() == 0 {
+		return false
+	}
+	if e.shardCoordinator.ComputeId(account.Address) != e.shardCoordinator.SelfId() {
 		return false
 	}
 
