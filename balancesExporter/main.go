@@ -11,12 +11,14 @@ import (
 )
 
 const (
+	appVersion     = "0.1.1"
 	rootHashLength = 32
 	addressLength  = 32
 )
 
 func main() {
 	app := cli.NewApp()
+	app.Version = appVersion
 	app.Name = "Balances exporter CLI app"
 	app.Usage = "Tool for exporting balances of accounts (given a node db)"
 	app.Flags = getAllCliFlags()
