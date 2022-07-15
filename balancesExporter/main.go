@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 
-	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go/sharding"
 	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/blocks"
 	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/export"
@@ -48,7 +47,7 @@ func startExport(ctx *cli.Context) error {
 		_ = fileLogging.Close()
 	}()
 
-	actualShardCoordinator, projectedShardCoordinator, err := createShardCoordinators(cliFlags)
+	actualShardCoordinator, err := sharding.NewMultiShardCoordinator(cliFlags.numShards, cliFlags.shard)
 	if err != nil {
 		return err
 	}
@@ -77,15 +76,19 @@ func startExport(ctx *cli.Context) error {
 		return err
 	}
 
-	exporter := export.NewExporter(export.ArgsNewExporter{
-		ShardCoordinator: projectedShardCoordinator,
-		TrieWrapper:      trieWrapper,
-		Format:           cliFlags.exportFormat,
-		Currency:         cliFlags.currency,
-		CurrencyDecimals: cliFlags.currencyDecimals,
-		WithContracts:    cliFlags.withContracts,
-		WithZero:         cliFlags.withZero,
+	exporter, err := export.NewExporter(export.ArgsNewExporter{
+		TrieWrapper:         trieWrapper,
+		ProjectedShard:      cliFlags.projectedShard,
+		ProjectedShardIsSet: cliFlags.projectedShardIsSet,
+		Format:              cliFlags.exportFormat,
+		Currency:            cliFlags.currency,
+		CurrencyDecimals:    cliFlags.currencyDecimals,
+		WithContracts:       cliFlags.withContracts,
+		WithZero:            cliFlags.withZero,
 	})
+	if err != nil {
+		return err
+	}
 
 	err = exporter.ExportBalancesAtBlock(bestBlock)
 	if err != nil {
@@ -93,22 +96,4 @@ func startExport(ctx *cli.Context) error {
 	}
 
 	return nil
-}
-
-func createShardCoordinators(cliFlags parsedCliFlags) (sharding.Coordinator, sharding.Coordinator, error) {
-	actualShardCoordinator, err := sharding.NewMultiShardCoordinator(cliFlags.numShards, cliFlags.shard)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	projectedShardCoordinator, err := sharding.NewMultiShardCoordinator(core.MaxNumShards, cliFlags.projectedShard)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if cliFlags.projectedShardIsSet {
-		return actualShardCoordinator, projectedShardCoordinator, nil
-	}
-
-	return actualShardCoordinator, actualShardCoordinator, nil
 }
