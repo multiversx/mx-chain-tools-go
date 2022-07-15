@@ -14,21 +14,21 @@ import (
 
 // ArgsNewExporter holds arguments for creating an exporter
 type ArgsNewExporter struct {
-	TrieWrapper         trieWrapper
-	Format              string
-	ProjectedShard      uint32
-	ProjectedShardIsSet bool
-	Currency            string
-	CurrencyDecimals    uint
-	WithContracts       bool
-	WithZero            bool
+	TrieWrapper             trieWrapper
+	Format                  string
+	WithProjectedShard      uint32
+	WithProjectedShardIsSet bool
+	Currency                string
+	CurrencyDecimals        uint
+	WithContracts           bool
+	WithZero                bool
 }
 
 type exporter struct {
 	trie                      trieWrapper
 	format                    string
-	projectedShard            uint32
-	projectedShardIsSet       bool
+	withProjectedShard        uint32
+	withProjectedShardIsSet   bool
 	projectedShardCoordinator sharding.Coordinator
 	currency                  string
 	currencyDecimals          uint
@@ -38,7 +38,7 @@ type exporter struct {
 
 // NewExporter creates a new exporter
 func NewExporter(args ArgsNewExporter) (*exporter, error) {
-	projectedShardCoordinator, err := sharding.NewMultiShardCoordinator(core.MaxNumShards, args.ProjectedShard)
+	projectedShardCoordinator, err := sharding.NewMultiShardCoordinator(core.MaxNumShards, args.WithProjectedShard)
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +46,8 @@ func NewExporter(args ArgsNewExporter) (*exporter, error) {
 	return &exporter{
 		trie:                      args.TrieWrapper,
 		format:                    args.Format,
-		projectedShard:            args.ProjectedShard,
-		projectedShardIsSet:       args.ProjectedShardIsSet,
+		withProjectedShard:        args.WithProjectedShard,
+		withProjectedShardIsSet:   args.WithProjectedShardIsSet,
 		projectedShardCoordinator: projectedShardCoordinator,
 		currency:                  args.Currency,
 		currencyDecimals:          args.CurrencyDecimals,
@@ -97,7 +97,7 @@ func (e *exporter) shouldExportAccount(account *state.UserAccountData) bool {
 	}
 
 	hasDesiredProjectedShard := e.projectedShardCoordinator.ComputeId(account.Address) == e.projectedShardCoordinator.SelfId()
-	if e.projectedShardIsSet && !hasDesiredProjectedShard {
+	if e.withProjectedShardIsSet && !hasDesiredProjectedShard {
 		return false
 	}
 
@@ -144,11 +144,11 @@ func (e *exporter) getFormatter(block data.HeaderHandler) (formatter, error) {
 }
 
 func (e *exporter) getOutputFileBasename(block data.HeaderHandler) string {
-	if e.projectedShardIsSet {
+	if e.withProjectedShardIsSet {
 		return fmt.Sprintf("%s_shard_%d(%d)_epoch_%d_nonce_%d_%s",
 			block.GetChainID(),
 			block.GetShardID(),
-			e.projectedShard,
+			e.withProjectedShard,
 			block.GetEpoch(),
 			block.GetNonce(),
 			e.currency,
@@ -166,19 +166,19 @@ func (e *exporter) getOutputFileBasename(block data.HeaderHandler) string {
 
 func (e *exporter) saveMetadataFile(block data.HeaderHandler, numAccounts int) error {
 	metadata := &exportMetadata{
-		ChainID:             string(block.GetChainID()),
-		ActualShardID:       block.GetShardID(),
-		ProjectedShardID:    e.projectedShard,
-		ProjectedShardIsSet: e.projectedShardIsSet,
-		Epoch:               block.GetEpoch(),
-		BlockNonce:          block.GetNonce(),
-		BlockRootHash:       hex.EncodeToString(block.GetRootHash()),
-		Format:              e.format,
-		Currency:            e.currency,
-		CurrencyDecimals:    e.currencyDecimals,
-		WithContracts:       e.withContracts,
-		WithZero:            e.withZero,
-		NumAccounts:         numAccounts,
+		ChainID:                 string(block.GetChainID()),
+		ActualShardID:           block.GetShardID(),
+		Epoch:                   block.GetEpoch(),
+		BlockNonce:              block.GetNonce(),
+		BlockRootHash:           hex.EncodeToString(block.GetRootHash()),
+		Format:                  e.format,
+		Currency:                e.currency,
+		CurrencyDecimals:        e.currencyDecimals,
+		WithContracts:           e.withContracts,
+		WithZero:                e.withZero,
+		WithProjectedShardID:    e.withProjectedShard,
+		WithProjectedShardIsSet: e.withProjectedShardIsSet,
+		NumAccounts:             numAccounts,
 	}
 
 	metadataJson, err := json.MarshalIndent(metadata, "", fourSpaces)

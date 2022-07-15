@@ -77,14 +77,14 @@ func startExport(ctx *cli.Context) error {
 	}
 
 	exporter, err := export.NewExporter(export.ArgsNewExporter{
-		TrieWrapper:         trieWrapper,
-		ProjectedShard:      cliFlags.projectedShard,
-		ProjectedShardIsSet: cliFlags.projectedShardIsSet,
-		Format:              cliFlags.exportFormat,
-		Currency:            cliFlags.currency,
-		CurrencyDecimals:    cliFlags.currencyDecimals,
-		WithContracts:       cliFlags.withContracts,
-		WithZero:            cliFlags.withZero,
+		TrieWrapper:             trieWrapper,
+		Format:                  cliFlags.exportFormat,
+		Currency:                cliFlags.currency,
+		CurrencyDecimals:        cliFlags.currencyDecimals,
+		WithContracts:           cliFlags.withContracts,
+		WithZero:                cliFlags.withZero,
+		WithProjectedShard:      cliFlags.withProjectedShard,
+		WithProjectedShardIsSet: cliFlags.withProjectedShardIsSet,
 	})
 	if err != nil {
 		return err
