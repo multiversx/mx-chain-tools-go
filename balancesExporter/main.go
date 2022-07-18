@@ -11,12 +11,14 @@ import (
 )
 
 const (
+	appVersion     = "1.0.0"
 	rootHashLength = 32
 	addressLength  = 32
 )
 
 func main() {
 	app := cli.NewApp()
+	app.Version = appVersion
 	app.Name = "Balances exporter CLI app"
 	app.Usage = "Tool for exporting balances of accounts (given a node db)"
 	app.Flags = getAllCliFlags()
@@ -47,13 +49,13 @@ func startExport(ctx *cli.Context) error {
 		_ = fileLogging.Close()
 	}()
 
-	shardCoordinator, err := sharding.NewMultiShardCoordinator(cliFlags.numShards, cliFlags.shard)
+	actualShardCoordinator, err := sharding.NewMultiShardCoordinator(cliFlags.numShards, cliFlags.shard)
 	if err != nil {
 		return err
 	}
 
 	trieFactory := trie.NewTrieFactory(trie.ArgsNewTrieFactory{
-		ShardCoordinator: shardCoordinator,
+		ShardCoordinator: actualShardCoordinator,
 		DbPath:           cliFlags.dbPath,
 		Epoch:            cliFlags.epoch,
 	})
@@ -76,14 +78,18 @@ func startExport(ctx *cli.Context) error {
 		return err
 	}
 
-	exporter := export.NewExporter(export.ArgsNewExporter{
+	exporter, err := export.NewExporter(export.ArgsNewExporter{
 		TrieWrapper:      trieWrapper,
 		Format:           cliFlags.exportFormat,
 		Currency:         cliFlags.currency,
 		CurrencyDecimals: cliFlags.currencyDecimals,
 		WithContracts:    cliFlags.withContracts,
 		WithZero:         cliFlags.withZero,
+		ByProjectedShard: cliFlags.byProjectedShard,
 	})
+	if err != nil {
+		return err
+	}
 
 	err = exporter.ExportBalancesAtBlock(bestBlock)
 	if err != nil {

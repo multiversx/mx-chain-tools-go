@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/common"
 	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/export"
 	"github.com/urfave/cli"
 )
@@ -90,6 +91,12 @@ VERSION:
 		Name:  "with-zero",
 		Usage: "Whether to include accounts with zero balance in the export.",
 	}
+
+	cliFlagByProjectedShard = cli.Uint64Flag{
+		Name:     "by-projected-shard",
+		Usage:    "The projected shard to use for export.",
+		Required: false,
+	}
 )
 
 func getAllCliFlags() []cli.Flag {
@@ -105,6 +112,7 @@ func getAllCliFlags() []cli.Flag {
 		cliFlagExportFormat,
 		cliFlagWithContracts,
 		cliFlagWithZero,
+		cliFlagByProjectedShard,
 	}
 }
 
@@ -120,6 +128,7 @@ type parsedCliFlags struct {
 	exportFormat     string
 	withContracts    bool
 	withZero         bool
+	byProjectedShard common.OptionalUint32
 }
 
 func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
@@ -135,5 +144,9 @@ func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
 		exportFormat:     ctx.GlobalString(cliFlagExportFormat.Name),
 		withContracts:    ctx.GlobalBool(cliFlagWithContracts.Name),
 		withZero:         ctx.GlobalBool(cliFlagWithZero.Name),
+		byProjectedShard: common.OptionalUint32{
+			Value:    uint32(ctx.GlobalUint64(cliFlagByProjectedShard.Name)),
+			HasValue: ctx.GlobalIsSet(cliFlagByProjectedShard.Name),
+		},
 	}
 }

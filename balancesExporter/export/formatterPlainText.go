@@ -1,11 +1,9 @@
 package export
 
 import (
-	"encoding/hex"
 	"fmt"
 	"strings"
 
-	"github.com/ElrondNetwork/elrond-go-core/data"
 	"github.com/ElrondNetwork/elrond-go/state"
 )
 
@@ -33,13 +31,6 @@ func (f *formatterPlainText) toText(accounts []*state.UserAccountData, args form
 	return builder.String(), nil
 }
 
-func (f *formatterPlainText) getFileName(block data.HeaderHandler, args formatterArgs) string {
-	return fmt.Sprintf("%s_shard_%d_epoch_%d_nonce_%d_roothash_%s_%s.txt",
-		block.GetChainID(),
-		block.GetShardID(),
-		block.GetEpoch(),
-		block.GetNonce(),
-		hex.EncodeToString(block.GetRootHash()),
-		args.currency,
-	)
+func (f *formatterPlainText) getFileExtension() string {
+	return "txt"
 }

@@ -1,11 +1,8 @@
 package export
 
 import (
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
 
-	"github.com/ElrondNetwork/elrond-go-core/data"
 	"github.com/ElrondNetwork/elrond-go/state"
 )
 
@@ -56,13 +53,6 @@ func (f *formatterRosettaJson) toText(accounts []*state.UserAccountData, args fo
 	return string(recordsJson), nil
 }
 
-func (f *formatterRosettaJson) getFileName(block data.HeaderHandler, args formatterArgs) string {
-	return fmt.Sprintf("%s_shard_%d_epoch_%d_nonce_%d_roothash_%s_%s.rosetta.json",
-		block.GetChainID(),
-		block.GetShardID(),
-		block.GetEpoch(),
-		block.GetNonce(),
-		hex.EncodeToString(block.GetRootHash()),
-		args.currency,
-	)
+func (f *formatterRosettaJson) getFileExtension() string {
+	return "rosetta.json"
 }
