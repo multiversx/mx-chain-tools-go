@@ -33,7 +33,7 @@ Furthermore, you can configure the filters applied to the exported accounts, as 
 
 ```
 # exclude accounts that do not match the provided projected shard
-./balancesExporter [...] --with-projected-shard=4
+./balancesExporter [...] --by-projected-shard=4
 ```
 
 **Note:** the *projected shard of an account* is its containing shard, given a network with the maximum number of shards (256). In other words, the projected shard is given by the last byte of the public key.

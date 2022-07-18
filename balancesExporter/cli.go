@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/common"
 	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/export"
 	"github.com/urfave/cli"
 )
@@ -91,8 +92,8 @@ VERSION:
 		Usage: "Whether to include accounts with zero balance in the export.",
 	}
 
-	cliFlagWithProjectedShard = cli.Uint64Flag{
-		Name:     "with-projected-shard",
+	cliFlagByProjectedShard = cli.Uint64Flag{
+		Name:     "by-projected-shard",
 		Usage:    "The projected shard to use for export.",
 		Required: false,
 	}
@@ -111,40 +112,41 @@ func getAllCliFlags() []cli.Flag {
 		cliFlagExportFormat,
 		cliFlagWithContracts,
 		cliFlagWithZero,
-		cliFlagWithProjectedShard,
+		cliFlagByProjectedShard,
 	}
 }
 
 type parsedCliFlags struct {
-	dbPath                  string
-	shard                   uint32
-	numShards               uint32
-	epoch                   uint32
-	logLevel                string
-	saveLogFile             bool
-	currency                string
-	currencyDecimals        uint
-	exportFormat            string
-	withContracts           bool
-	withZero                bool
-	withProjectedShard      uint32
-	withProjectedShardIsSet bool
+	dbPath           string
+	shard            uint32
+	numShards        uint32
+	epoch            uint32
+	logLevel         string
+	saveLogFile      bool
+	currency         string
+	currencyDecimals uint
+	exportFormat     string
+	withContracts    bool
+	withZero         bool
+	byProjectedShard common.OptionalUint32
 }
 
 func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
 	return parsedCliFlags{
-		dbPath:                  ctx.GlobalString(cliFlagDbPath.Name),
-		shard:                   uint32(ctx.GlobalUint64(cliFlagShard.Name)),
-		numShards:               uint32(ctx.GlobalUint(cliFlagNumShards.Name)),
-		epoch:                   uint32(ctx.GlobalUint64(cliFlagEpoch.Name)),
-		logLevel:                ctx.GlobalString(cliFlagLogLevel.Name),
-		saveLogFile:             ctx.GlobalBool(cliFlagLogSaveFile.Name),
-		currency:                ctx.GlobalString(cliFlagCurrency.Name),
-		currencyDecimals:        uint(ctx.GlobalUint(cliFlagCurrencyDecimals.Name)),
-		exportFormat:            ctx.GlobalString(cliFlagExportFormat.Name),
-		withContracts:           ctx.GlobalBool(cliFlagWithContracts.Name),
-		withZero:                ctx.GlobalBool(cliFlagWithZero.Name),
-		withProjectedShard:      uint32(ctx.GlobalUint64(cliFlagWithProjectedShard.Name)),
-		withProjectedShardIsSet: ctx.GlobalIsSet(cliFlagWithProjectedShard.Name),
+		dbPath:           ctx.GlobalString(cliFlagDbPath.Name),
+		shard:            uint32(ctx.GlobalUint64(cliFlagShard.Name)),
+		numShards:        uint32(ctx.GlobalUint(cliFlagNumShards.Name)),
+		epoch:            uint32(ctx.GlobalUint64(cliFlagEpoch.Name)),
+		logLevel:         ctx.GlobalString(cliFlagLogLevel.Name),
+		saveLogFile:      ctx.GlobalBool(cliFlagLogSaveFile.Name),
+		currency:         ctx.GlobalString(cliFlagCurrency.Name),
+		currencyDecimals: uint(ctx.GlobalUint(cliFlagCurrencyDecimals.Name)),
+		exportFormat:     ctx.GlobalString(cliFlagExportFormat.Name),
+		withContracts:    ctx.GlobalBool(cliFlagWithContracts.Name),
+		withZero:         ctx.GlobalBool(cliFlagWithZero.Name),
+		byProjectedShard: common.OptionalUint32{
+			Value:    uint32(ctx.GlobalUint64(cliFlagByProjectedShard.Name)),
+			HasValue: ctx.GlobalIsSet(cliFlagByProjectedShard.Name),
+		},
 	}
 }

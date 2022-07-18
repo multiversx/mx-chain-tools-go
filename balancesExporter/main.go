@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	appVersion     = "0.1.1"
+	appVersion     = "1.0.0"
 	rootHashLength = 32
 	addressLength  = 32
 )
@@ -79,14 +79,13 @@ func startExport(ctx *cli.Context) error {
 	}
 
 	exporter, err := export.NewExporter(export.ArgsNewExporter{
-		TrieWrapper:             trieWrapper,
-		Format:                  cliFlags.exportFormat,
-		Currency:                cliFlags.currency,
-		CurrencyDecimals:        cliFlags.currencyDecimals,
-		WithContracts:           cliFlags.withContracts,
-		WithZero:                cliFlags.withZero,
-		WithProjectedShard:      cliFlags.withProjectedShard,
-		WithProjectedShardIsSet: cliFlags.withProjectedShardIsSet,
+		TrieWrapper:      trieWrapper,
+		Format:           cliFlags.exportFormat,
+		Currency:         cliFlags.currency,
+		CurrencyDecimals: cliFlags.currencyDecimals,
+		WithContracts:    cliFlags.withContracts,
+		WithZero:         cliFlags.withZero,
+		ByProjectedShard: cliFlags.byProjectedShard,
 	})
 	if err != nil {
 		return err
