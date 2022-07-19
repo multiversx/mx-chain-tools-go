@@ -63,13 +63,13 @@ var (
 	hexRootHash = cli.StringFlag{
 		Name:  "hex-roothash",
 		Usage: "This flag specifies the roothash to start the checking from",
-		Value: "fe4ae44105be738f1d1541d283cabd1765b2246a8bd0b0ad9a2ffe10c6802576",
+		Value: "",
 	}
 	// address defines a flag that specifies the bech32 address of the account to fetch the storage for
 	address = cli.StringFlag{
 		Name:  "address",
 		Usage: "This flag specifies the bech32 address to fetch the storage for",
-		Value: "erd1qqqqqqqqqqqqqpgqh664xhyxeqhmzxzhn75aa2yfy33hd58fhneql8e9ee",
+		Value: "",
 	}
 )
 

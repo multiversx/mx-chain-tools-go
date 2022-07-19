@@ -20,7 +20,9 @@ var (
 		MaxBatchSize:      45000,
 		MaxOpenFiles:      10,
 	}
-	log        = logger.GetOrCreate("main")
-	hasher     = blake2b.NewBlake2b()
-	marshaller = &marshal.GogoProtoMarshalizer{}
+	log             = logger.GetOrCreate("main")
+	hasher          = blake2b.NewBlake2b()
+	marshaller      = &marshal.GogoProtoMarshalizer{}
+	outputFileName  = "output.json"
+	outputFilePerms = 0644
 )

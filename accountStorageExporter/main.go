@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -235,9 +236,12 @@ func exportStorage(address string, flags config.ContextFlagsConfig, mainRootHash
 
 	fmt.Println(keyValueMap)
 
-	file, _ := json.MarshalIndent(keyValueMap, "", " ")
+	jsonBytes, err := json.MarshalIndent(keyValueMap, "", " ")
+	if err != nil {
+		return err
+	}
 
-	err = ioutil.WriteFile("output.json", file, 0644)
+	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
 	if err != nil {
 		return err
 	}
