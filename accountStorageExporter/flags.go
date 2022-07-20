@@ -57,7 +57,7 @@ var (
 	dbDirectory = cli.StringFlag{
 		Name:  "db-directory",
 		Usage: "This flag specifies the `directory` where the application will find the trie storage.",
-		Value: "dbsh2",
+		Value: "db",
 	}
 	// hexRootHash defines a flag for the trie root hash expressed in hex format
 	hexRootHash = cli.StringFlag{

@@ -11,6 +11,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
@@ -224,17 +225,31 @@ func exportStorage(address string, flags config.ContextFlagsConfig, mainRootHash
 		return fmt.Errorf("cannot cast AccountHandler to UserAccountHandler")
 	}
 
-	leavesCh, err := userAccount.DataTrie().GetAllLeavesOnChannel(mainRootHash)
+	if check.IfNil(userAccount.DataTrie()) {
+		return fmt.Errorf("the provided address doesn't have a data trie")
+	}
+
+	rootHash, err := userAccount.DataTrie().RootHash()
+	if err != nil {
+		return err
+	}
+
+	leavesCh, err := userAccount.DataTrie().GetAllLeavesOnChannel(rootHash)
 	if err != nil {
 		return err
 	}
 
 	keyValueMap := make(map[string]string)
 	for leaf := range leavesCh {
-		keyValueMap[hex.EncodeToString(leaf.Key())] = hex.EncodeToString(leaf.Value())
-	}
+		suffix := append(leaf.Key(), userAccount.AddressBytes()...)
+		value, errVal := leaf.ValueWithoutSuffix(suffix)
+		if errVal != nil {
+			log.Warn("cannot get value without suffix", "error", errVal, "key", leaf.Key())
+			continue
+		}
 
-	fmt.Println(keyValueMap)
+		keyValueMap[hex.EncodeToString(leaf.Key())] = hex.EncodeToString(value)
+	}
 
 	jsonBytes, err := json.MarshalIndent(keyValueMap, "", " ")
 	if err != nil {
@@ -245,6 +260,8 @@ func exportStorage(address string, flags config.ContextFlagsConfig, mainRootHash
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(keyValueMap)
 
 	return nil
 }
