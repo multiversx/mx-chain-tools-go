@@ -14,7 +14,7 @@ The input required by this tool is:
 
 If everything is successfully, the map containing the key-value pairs from the address storage will be printed in the console and also written in the `output.json`
 
-Note that both the keys and the values and hex-encoded.
+Note that both the keys and the values are hex-encoded.
 
 ## How to use
 
