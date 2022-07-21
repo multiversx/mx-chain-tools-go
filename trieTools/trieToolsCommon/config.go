@@ -1,4 +1,4 @@
-package config
+package trieToolsCommon
 
 // ContextFlagsConfig the configuration for flags
 type ContextFlagsConfig struct {

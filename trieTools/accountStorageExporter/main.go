@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,22 +12,26 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common"
+	commonDisabled "github.com/ElrondNetwork/elrond-go/common/disabled"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/ElrondNetwork/elrond-go/epochStart/notifier"
 	"github.com/ElrondNetwork/elrond-go/state"
 	stateFactory "github.com/ElrondNetwork/elrond-go/state/factory"
 	"github.com/ElrondNetwork/elrond-go/state/storagePruningManager/disabled"
+	dbRemoverDisabled "github.com/ElrondNetwork/elrond-go/storage/databaseremover/disabled"
 	"github.com/ElrondNetwork/elrond-go/storage/factory"
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
-	"github.com/ElrondNetwork/elrond-tools-go/accountStorageExporter/components"
-	"github.com/ElrondNetwork/elrond-tools-go/accountStorageExporter/config"
+	"github.com/ElrondNetwork/elrond-tools-go/common/trieToolsCommon"
+	"github.com/ElrondNetwork/elrond-tools-go/components"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/accountStorageExporter/config"
 	"github.com/urfave/cli"
 )
 
@@ -98,11 +103,15 @@ func startProcess(c *cli.Context) error {
 	return exportStorage(flagsConfig.Address, flagsConfig, rootHash, maxDBValue)
 }
 
-func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
+func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfigAddr) (elrondFactory.FileLoggingHandler, error) {
 	var fileLogging elrondFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
-		fileLogging, err = logging.NewFileLogging(flagsConfig.WorkingDir, defaultLogsPath, logFilePrefix)
+		fileLogging, err = logging.NewFileLogging(logging.ArgsFileLogging{
+			WorkingDir:      flagsConfig.WorkingDir,
+			DefaultLogsPath: defaultLogsPath,
+			LogFilePrefix:   logFilePrefix,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("%w creating a log file", err)
 		}
@@ -184,7 +193,7 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-func exportStorage(address string, flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue int) error {
+func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRootHash []byte, maxDBValue int) error {
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
 		return err
@@ -234,7 +243,8 @@ func exportStorage(address string, flags config.ContextFlagsConfig, mainRootHash
 		return err
 	}
 
-	leavesCh, err := userAccount.DataTrie().GetAllLeavesOnChannel(rootHash)
+	leavesCh := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
+	err = userAccount.DataTrie().GetAllLeavesOnChannel(leavesCh, context.Background(), rootHash)
 	if err != nil {
 		return err
 	}
@@ -266,7 +276,7 @@ func exportStorage(address string, flags config.ContextFlagsConfig, mainRootHash
 	return nil
 }
 
-func getTrie(flags config.ContextFlagsConfig, maxDBValue int) (common.Trie, error) {
+func getTrie(flags config.ContextFlagsConfigAddr, maxDBValue int) (common.Trie, error) {
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
@@ -280,6 +290,7 @@ func getTrie(flags config.ContextFlagsConfig, maxDBValue int) (common.Trie, erro
 		PersisterFactory:          factory.NewPersisterFactory(localDbConfig),
 		Notifier:                  notifier.NewManualEpochStartNotifier(),
 		OldDataCleanerProvider:    &testscommon.OldDataCleanerProviderStub{},
+		CustomDatabaseRemover:     dbRemoverDisabled.NewDisabledCustomDatabaseRemover(),
 		MaxBatchSize:              45000,
 		NumOfEpochsToKeep:         uint32(maxDBValue) + 1,
 		NumOfActivePersisters:     uint32(maxDBValue) + 1,
@@ -298,20 +309,21 @@ func getTrie(flags config.ContextFlagsConfig, maxDBValue int) (common.Trie, erro
 		return nil, err
 	}
 
-	return trie.NewTrie(tsm, marshaller, hasher, maxTrieLevelInMemory)
+	return trie.NewTrie(tsm, trieToolsCommon.Marshaller, trieToolsCommon.Hasher, maxTrieLevelInMemory)
 }
 
 func newAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 	accCreator := stateFactory.NewAccountCreator()
 	storagePruningManager := disabled.NewDisabledStoragePruningManager()
-	accountsAdapter, err := state.NewAccountsDB(
-		trie,
-		hasher,
-		marshaller,
-		accCreator,
-		storagePruningManager,
-		common.Normal,
-	)
+	accountsAdapter, err := state.NewAccountsDB(state.ArgsAccountsDB{
+		Trie:                  trie,
+		Hasher:                trieToolsCommon.Hasher,
+		Marshaller:            trieToolsCommon.Marshaller,
+		AccountFactory:        accCreator,
+		StoragePruningManager: storagePruningManager,
+		ProcessingMode:        common.Normal,
+		ProcessStatusHandler:  commonDisabled.NewProcessStatusHandler(),
+	})
 
 	return accountsAdapter, err
 }
