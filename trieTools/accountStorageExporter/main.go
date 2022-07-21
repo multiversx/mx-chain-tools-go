@@ -271,7 +271,7 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		return err
 	}
 
-	fmt.Println(keyValueMap)
+	log.Info("key-value map", "value", keyValueMap)
 
 	return nil
 }
