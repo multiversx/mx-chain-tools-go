@@ -29,9 +29,9 @@ import (
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
-	"github.com/ElrondNetwork/elrond-tools-go/common/trieToolsCommon"
-	"github.com/ElrondNetwork/elrond-tools-go/components"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/accountStorageExporter/config"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
 	"github.com/urfave/cli"
 )
 

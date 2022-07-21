@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/ElrondNetwork/elrond-tools-go/common/trieToolsCommon"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/accountStorageExporter/config"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
 )
 
