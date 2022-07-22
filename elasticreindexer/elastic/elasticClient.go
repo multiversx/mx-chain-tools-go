@@ -19,7 +19,7 @@ import (
 
 var (
 	log                  = logger.GetOrCreate("elastic")
-	httpStatusesForRetry = []int{429, 502, 503, 504}
+	httpStatusesForRetry = []int{http.StatusTooManyRequests, http.StatusBadGateway, http.StatusInternalServerError, http.StatusServiceUnavailable, http.StatusGatewayTimeout}
 )
 
 const (
