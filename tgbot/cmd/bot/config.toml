@@ -1,7 +1,7 @@
 [config]
     [config.general]
-        gatewayURL = "https://gateway.elrond.com"
-        address = "erd16x7le8dpkjsafgwjx0e5kw94evsqw039rwp42m2j9eesd88x8zzs75tzry"
+        gatewayURL = ""
+        address = ""
         balanceThreshold = "100000000000000000000000" # 100k EGLD
         checkIntervalInMin = 30
         notificationStep = 8 # num times to skip notifying if the balance check issue persists
