@@ -6,6 +6,8 @@ import (
 )
 
 var (
-	Hasher     = blake2b.NewBlake2b()
+	// Hasher represents the internal hasher used by the node
+	Hasher = blake2b.NewBlake2b()
+	// Marshaller represents the internal marshaller used by the node
 	Marshaller = &marshal.GogoProtoMarshalizer{}
 )
