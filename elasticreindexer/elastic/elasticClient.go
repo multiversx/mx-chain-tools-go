@@ -18,8 +18,7 @@ import (
 )
 
 var (
-	log                  = logger.GetOrCreate("elastic")
-	httpStatusesForRetry = []int{http.StatusTooManyRequests, http.StatusBadGateway, http.StatusInternalServerError, http.StatusServiceUnavailable, http.StatusGatewayTimeout}
+	log = logger.GetOrCreate("elastic")
 )
 
 const (
@@ -41,7 +40,7 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 		Addresses:     []string{cfg.URL},
 		Username:      cfg.Username,
 		Password:      cfg.Password,
-		RetryOnStatus: httpStatusesForRetry,
+		RetryOnStatus: generateSliceWithCodes(),
 		RetryBackoff: func(i int) time.Duration {
 			// A simple exponential delay
 			d := time.Duration(math.Exp2(float64(i))) * time.Second
@@ -58,6 +57,15 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 		client:      elasticClient,
 		countScroll: 0,
 	}, nil
+}
+
+func generateSliceWithCodes() []int {
+	codes := make([]int, 0, 200)
+	for code := 400; code < 600; code++ {
+		codes = append(codes, code)
+	}
+
+	return codes
 }
 
 // GetCount returns the total number of documents available in the provided index
