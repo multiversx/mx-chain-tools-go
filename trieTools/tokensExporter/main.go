@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -26,6 +25,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/trie"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
+	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
 	"github.com/urfave/cli"
 	"io/fs"
 	"io/ioutil"
@@ -37,7 +37,7 @@ import (
 
 const (
 	defaultLogsPath      = "logs"
-	logFilePrefix        = "trie-checker"
+	logFilePrefix        = "accounts-tokens-exporter"
 	maxTrieLevelInMemory = 5
 	rootHashLength       = 32
 	addressLength        = 32
@@ -49,7 +49,7 @@ const (
 func main() {
 	app := cli.NewApp()
 	app.Name = "Tokens exporter CLI app"
-	app.Usage = "This is the entry point for the tool that exports all address balances for a given root hash"
+	app.Usage = "This is the entry point for the tool that exports all tokens for a given root hash"
 	app.Flags = getFlags()
 	app.Authors = []cli.Author{
 		{
@@ -69,7 +69,7 @@ func main() {
 		return
 	}
 
-	log.Info("finished exporting token's balances")
+	log.Info("finished exporting address-tokens map")
 }
 
 func startProcess(c *cli.Context) error {
@@ -228,50 +228,69 @@ func exportTokens(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte,
 	}
 
 	numAccountsOnMainTrie := 0
-	ret := make(map[string]map[string]struct{})
-	for kv := range ch {
+	addressTokensMap := make(map[string]map[string]struct{})
+	for keyValue := range ch {
+		address, found := getAddress(keyValue)
+		if !found {
+			continue
+		}
+
 		numAccountsOnMainTrie++
-		userAccount := &state.UserAccountData{}
-		errUnmarshal := trieToolsCommon.Marshaller.Unmarshal(userAccount, kv.Value())
-		if errUnmarshal != nil {
-			// probably a code node
-			continue
-		}
-		if len(userAccount.RootHash) == 0 {
-			continue
+
+		account, errGetAccount := accDb.GetExistingAccount(address)
+		if errGetAccount != nil {
+			return errGetAccount
 		}
 
-		address := addressConverter.Encode(kv.Key())
-		//addressBytes, err := addressConverter.Decode(address)
-		//if err != nil {
-		//	return err
-		//}
+		esdtTokens, errGetESDT := getAllESDTTokens(account)
+		if errGetESDT != nil {
+			return errGetESDT
+		}
 
-		esdtTokens, err := GetAllESDTTokens(kv.Key(), accDb)
-		log.LogIfError(err)
-
-		ret[address] = esdtTokens
+		if len(esdtTokens) > 0 {
+			encodedAddress := addressConverter.Encode(address)
+			addressTokensMap[encodedAddress] = esdtTokens
+		}
 	}
 
 	log.Info("parsed main trie",
-		"num accounts", numAccountsOnMainTrie)
+		"num accounts", numAccountsOnMainTrie,
+		"num accounts with tokens", len(addressTokensMap))
 
-	jsonBytes, err := json.MarshalIndent(ret, "", " ")
+	return saveAndPrintResult(addressTokensMap)
+}
+
+func getAddress(kv core.KeyValueHolder) ([]byte, bool) {
+	userAccount := &state.UserAccountData{}
+	errUnmarshal := trieToolsCommon.Marshaller.Unmarshal(userAccount, kv.Value())
+	if errUnmarshal != nil {
+		// probably a code node
+		return nil, false
+	}
+	if len(userAccount.RootHash) == 0 {
+		return nil, false
+	}
+
+	return kv.Key(), true
+}
+
+func saveAndPrintResult(addressTokensMap map[string]map[string]struct{}) error {
+	jsonBytes, err := json.MarshalIndent(addressTokensMap, "", " ")
 	if err != nil {
 		return err
 	}
 
+	log.Info("parsing result written in", "file", outputFileName)
 	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
 	if err != nil {
 		return err
 	}
 
-	for addr, tokens := range ret {
+	for address, tokens := range addressTokensMap {
 		for token := range tokens {
-			log.Info("", "address", addr, "token", token)
+			log.Info("", "address", address, "token", token)
 		}
 	}
-	//log.Info("key-value map", "value", ret)
 
 	return nil
 }
@@ -328,25 +347,17 @@ func newAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 	return accountsAdapter, err
 }
 
-// GetAllESDTTokens returns all the ESDTs that the given address interacted with
-func GetAllESDTTokens(address []byte, accDb state.AccountsAdapter) (map[string]struct{}, error) {
-	account, err := accDb.GetExistingAccount(address)
-	if err != nil {
-		return nil, err
-	}
-
+func getAllESDTTokens(account vmcommon.AccountHandler) (map[string]struct{}, error) {
 	userAccount, ok := account.(state.UserAccountHandler)
 	if !ok {
-		return nil, errors.New("could not convert to user account")
+		return nil, fmt.Errorf("could not convert account to user account, address = %s",
+			hex.EncodeToString(account.AddressBytes()))
 	}
 
 	allESDTs := make(map[string]struct{})
 	if check.IfNil(userAccount.DataTrie()) {
 		return allESDTs, nil
 	}
-
-	esdtPrefix := []byte(core.ElrondProtectedKeyPrefix + core.ESDTKeyIdentifier)
-	lenESDTPrefix := len(esdtPrefix)
 
 	rootHash, err := userAccount.DataTrie().RootHash()
 	if err != nil {
@@ -359,26 +370,32 @@ func GetAllESDTTokens(address []byte, accDb state.AccountsAdapter) (map[string]s
 		return nil, err
 	}
 
+	esdtPrefix := []byte(core.ElrondProtectedKeyPrefix + core.ESDTKeyIdentifier)
 	for leaf := range chLeaves {
 		if !bytes.HasPrefix(leaf.Key(), esdtPrefix) {
 			continue
 		}
 
 		tokenKey := leaf.Key()
-		tokenName := string(tokenKey[lenESDTPrefix:])
+		lenESDTPrefix := len(esdtPrefix)
+		tokenName := getPrettyTokenName(tokenKey[lenESDTPrefix:])
 
-		actualTokenName, nonce := common.ExtractTokenIDAndNonceFromTokenStorageKey([]byte(tokenName))
-		if nonce != 0 {
-			log.Info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", "token", tokenName, "nonce", nonce)
-			tokens := bytes.Split(actualTokenName, []byte("-"))
-			actualTokenName = append(tokens[0], []byte("-")...)
-			actualTokenName = append(actualTokenName, tokens[1]...)
-			actualTokenName = append(actualTokenName, []byte("-")...)
-			actualTokenName = append(actualTokenName, []byte(big.NewInt(int64(nonce)).String())...)
-		}
-
-		allESDTs[string(actualTokenName)] = struct{}{}
+		allESDTs[tokenName] = struct{}{}
 	}
 
 	return allESDTs, nil
+}
+
+func getPrettyTokenName(tokenName []byte) string {
+	token, nonce := common.ExtractTokenIDAndNonceFromTokenStorageKey(tokenName)
+	if nonce != 0 {
+		tokens := bytes.Split(token, []byte("-"))
+
+		token = append(tokens[0], []byte("-")...)                           // ticker-
+		token = append(token, tokens[1]...)                                 // ticker-randSequence
+		token = append(token, []byte("-")...)                               // ticker-randSequence-
+		token = append(token, []byte(big.NewInt(int64(nonce)).String())...) // ticker-randSequence-nonce
+	}
+
+	return string(token)
 }
