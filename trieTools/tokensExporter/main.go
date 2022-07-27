@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ElrondNetwork/elrond-go-core/core"
@@ -15,10 +16,9 @@ import (
 	commonDisabled "github.com/ElrondNetwork/elrond-go/common/disabled"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/ElrondNetwork/elrond-go/epochStart/notifier"
-	disabled2 "github.com/ElrondNetwork/elrond-go/state/storagePruningManager/disabled"
-
 	"github.com/ElrondNetwork/elrond-go/state"
 	stateFactory "github.com/ElrondNetwork/elrond-go/state/factory"
+	disabled2 "github.com/ElrondNetwork/elrond-go/state/storagePruningManager/disabled"
 	"github.com/ElrondNetwork/elrond-go/storage/databaseremover/disabled"
 	"github.com/ElrondNetwork/elrond-go/storage/factory"
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
@@ -27,6 +27,7 @@ import (
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
 	"github.com/urfave/cli"
+	"io/fs"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -41,6 +42,8 @@ const (
 	rootHashLength       = 32
 	addressLength        = 32
 	maxDirs              = 100
+	outputFileName       = "output.json"
+	outputFilePerms      = 0644
 )
 
 func main() {
@@ -227,13 +230,24 @@ func exportTokens(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte,
 	numAccountsOnMainTrie := 0
 	ret := make(map[string]map[string]struct{})
 	for kv := range ch {
-		address := addressConverter.Encode(kv.Key())
-		addressBytes, err := addressConverter.Decode(address)
-		if err != nil {
-			return err
+		numAccountsOnMainTrie++
+		userAccount := &state.UserAccountData{}
+		errUnmarshal := trieToolsCommon.Marshaller.Unmarshal(userAccount, kv.Value())
+		if errUnmarshal != nil {
+			// probably a code node
+			continue
+		}
+		if len(userAccount.RootHash) == 0 {
+			continue
 		}
 
-		esdtTokens, err := GetAllESDTTokens(addressBytes, accDb)
+		address := addressConverter.Encode(kv.Key())
+		//addressBytes, err := addressConverter.Decode(address)
+		//if err != nil {
+		//	return err
+		//}
+
+		esdtTokens, err := GetAllESDTTokens(kv.Key(), accDb)
 		log.LogIfError(err)
 
 		ret[address] = esdtTokens
@@ -242,8 +256,22 @@ func exportTokens(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte,
 	log.Info("parsed main trie",
 		"num accounts", numAccountsOnMainTrie)
 
-	log.Info("parsed all tries",
-		"num accounts", numAccountsOnMainTrie)
+	jsonBytes, err := json.MarshalIndent(ret, "", " ")
+	if err != nil {
+		return err
+	}
+
+	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
+	if err != nil {
+		return err
+	}
+
+	for addr, tokens := range ret {
+		for token := range tokens {
+			log.Info("", "address", addr, "token", token)
+		}
+	}
+	//log.Info("key-value map", "value", ret)
 
 	return nil
 }
@@ -300,10 +328,8 @@ func newAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 	return accountsAdapter, err
 }
 
-// ----------------------------
 // GetAllESDTTokens returns all the ESDTs that the given address interacted with
 func GetAllESDTTokens(address []byte, accDb state.AccountsAdapter) (map[string]struct{}, error) {
-
 	account, err := accDb.GetExistingAccount(address)
 	if err != nil {
 		return nil, err
@@ -341,7 +367,17 @@ func GetAllESDTTokens(address []byte, accDb state.AccountsAdapter) (map[string]s
 		tokenKey := leaf.Key()
 		tokenName := string(tokenKey[lenESDTPrefix:])
 
-		allESDTs[tokenName] = struct{}{}
+		actualTokenName, nonce := common.ExtractTokenIDAndNonceFromTokenStorageKey([]byte(tokenName))
+		if nonce != 0 {
+			log.Info("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", "token", tokenName, "nonce", nonce)
+			tokens := bytes.Split(actualTokenName, []byte("-"))
+			actualTokenName = append(tokens[0], []byte("-")...)
+			actualTokenName = append(actualTokenName, tokens[1]...)
+			actualTokenName = append(actualTokenName, []byte("-")...)
+			actualTokenName = append(actualTokenName, []byte(big.NewInt(int64(nonce)).String())...)
+		}
+
+		allESDTs[string(actualTokenName)] = struct{}{}
 	}
 
 	return allESDTs, nil
