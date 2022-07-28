@@ -1,13 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 )
 
 const (
@@ -60,6 +63,15 @@ func startProcess(c *cli.Context) error {
 
 	log.Info("starting processing trie", "pid", os.Getpid())
 
+	mydir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	_, err = readInputs(filepath.Join(mydir, flagsConfig.tokensDirectory))
+	if err != nil {
+		return err
+	}
+
 	return exportZeroTokensBalances()
 }
 
@@ -100,6 +112,60 @@ func attachFileLogger(log logger.Logger, flagsConfig trieToolsCommon.ContextFlag
 	log.Trace("logger updated", "level", logLevelFlagValue, "disable ANSI color", flagsConfig.DisableAnsiColor)
 
 	return fileLogging, nil
+}
+
+func readInputs(parentDir string) (map[string]map[string]struct{}, error) {
+	fmt.Println("HEREEEEE" + parentDir)
+	contents, err := ioutil.ReadDir(parentDir)
+	if err != nil {
+		return nil, err
+	}
+
+	allAddressesTokensMap := make(map[string]map[string]struct{})
+	for _, c := range contents {
+		if c.IsDir() {
+			continue
+		}
+
+		jsonFile, err := os.Open(filepath.Join(parentDir, c.Name()))
+		if err != nil {
+			return nil, err
+		}
+
+		bytesFromJson, _ := ioutil.ReadAll(jsonFile)
+		addressTokensMapInCurrFile := make(map[string]map[string]struct{})
+		err = json.Unmarshal(bytesFromJson, &addressTokensMapInCurrFile)
+		if err != nil {
+			return nil, err
+		}
+
+		merge(allAddressesTokensMap, addressTokensMapInCurrFile)
+		log.Info("read data from",
+			"file", c.Name(),
+			"num addresses in current file", len(addressTokensMapInCurrFile),
+			"num addresses in total", len(allAddressesTokensMap))
+	}
+
+	//for address, tokens := range allAddressesTokensMap {
+	//	for token := range tokens {
+	//		log.Info("", "address", address, "token", token)
+	//	}
+	//}
+
+	return allAddressesTokensMap, nil
+}
+
+func merge(dest, src map[string]map[string]struct{}) {
+	for addressSrc, tokensSrc := range src {
+		_, existsInDest := dest[addressSrc]
+		if !existsInDest {
+			dest[addressSrc] = tokensSrc
+		} else {
+			for tokenInSrc := range tokensSrc {
+				dest[addressSrc][tokenInSrc] = struct{}{}
+			}
+		}
+	}
 }
 
 func exportZeroTokensBalances() error {
