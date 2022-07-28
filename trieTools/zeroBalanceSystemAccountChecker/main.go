@@ -2,21 +2,27 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
 	"github.com/urfave/cli"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
 	defaultLogsPath = "logs"
 	logFilePrefix   = "accounts-tokens-exporter"
-	outputFileName  = "output.json"
+	addressLength   = 32
+	outputFileName  = "extraTokens.json"
 	outputFilePerms = 0644
 )
 
@@ -43,7 +49,7 @@ func main() {
 		return
 	}
 
-	log.Info("finished exporting address-tokens map")
+	log.Info("finished")
 }
 
 func startProcess(c *cli.Context) error {
@@ -67,12 +73,12 @@ func startProcess(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	_, err = readInputs(filepath.Join(mydir, flagsConfig.tokensDirectory))
+	addressTokensMap, err := readInputs(filepath.Join(mydir, flagsConfig.tokensDirectory))
 	if err != nil {
 		return err
 	}
 
-	return exportZeroTokensBalances()
+	return exportZeroTokensBalances(addressTokensMap)
 }
 
 func attachFileLogger(log logger.Logger, flagsConfig trieToolsCommon.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
@@ -115,13 +121,13 @@ func attachFileLogger(log logger.Logger, flagsConfig trieToolsCommon.ContextFlag
 }
 
 func readInputs(parentDir string) (map[string]map[string]struct{}, error) {
-	fmt.Println("HEREEEEE" + parentDir)
 	contents, err := ioutil.ReadDir(parentDir)
 	if err != nil {
 		return nil, err
 	}
 
 	allAddressesTokensMap := make(map[string]map[string]struct{})
+
 	for _, c := range contents {
 		if c.IsDir() {
 			continue
@@ -168,6 +174,70 @@ func merge(dest, src map[string]map[string]struct{}) {
 	}
 }
 
-func exportZeroTokensBalances() error {
+func exportZeroTokensBalances(allAddressesTokensMap map[string]map[string]struct{}) error {
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	if err != nil {
+		return err
+	}
+
+	systemSCAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
+	allTokensInSystemSCAddress, foundSystemSCAddress := allAddressesTokensMap[systemSCAddress]
+	if !foundSystemSCAddress {
+		return errors.New("no system account address found")
+	}
+
+	delete(allAddressesTokensMap, systemSCAddress)
+
+	allTokens := make(map[string]struct{})
+	for _, tokens := range allAddressesTokensMap {
+		for token := range tokens {
+			allTokens[token] = struct{}{}
+		}
+	}
+
+	log.Info("found",
+		"total num of tokens for all addresses", len(allTokens),
+		"total num of tokens in system sc address", len(allTokensInSystemSCAddress))
+
+	ctTokensInSystemAccButNotInOtherAddress := 0
+	cTokensBothSystemAccAndOtherAddresses := 0
+	tokensToDelete := make(map[string]struct{})
+	SFTsNFTsToDelete := 0
+	ESDTsToDelete := 0
+	for tokenInSystemSC := range allTokensInSystemSCAddress {
+		_, exists := allTokens[tokenInSystemSC]
+
+		if !exists {
+			ctTokensInSystemAccButNotInOtherAddress++
+			tokensToDelete[tokenInSystemSC] = struct{}{}
+			ctDelimiter := strings.Count(tokenInSystemSC, "-")
+			if ctDelimiter == 2 {
+				SFTsNFTsToDelete++
+			} else if ctDelimiter == 1 {
+				ESDTsToDelete++
+			}
+
+		} else {
+			cTokensBothSystemAccAndOtherAddresses++
+		}
+	}
+	log.Info("found",
+		"num tokens in system account, but not in any other address", ctTokensInSystemAccButNotInOtherAddress,
+		"num of tokens in both system account and other addresses", cTokensBothSystemAccAndOtherAddresses,
+		"num of sfts/nfts to delete", SFTsNFTsToDelete,
+		"num esdts to delete", ESDTsToDelete,
+	)
+
+	jsonBytes, err := json.MarshalIndent(tokensToDelete, "", " ")
+	if err != nil {
+		return err
+	}
+
+	log.Info("parsing result written in", "file", outputFileName)
+	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
