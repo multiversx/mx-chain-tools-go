@@ -23,6 +23,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/tokensExporter/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
 	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
@@ -42,7 +43,6 @@ const (
 	rootHashLength       = 32
 	addressLength        = 32
 	maxDirs              = 100
-	outputFileName       = "output.json"
 	outputFilePerms      = 0644
 )
 
@@ -68,14 +68,12 @@ func main() {
 		os.Exit(1)
 		return
 	}
-
-	log.Info("finished exporting address-tokens map")
 }
 
 func startProcess(c *cli.Context) error {
 	flagsConfig := getFlagsConfig(c)
 
-	_, errLogger := attachFileLogger(log, flagsConfig)
+	_, errLogger := attachFileLogger(log, flagsConfig.ContextFlagsConfig)
 	if errLogger != nil {
 		return errLogger
 	}
@@ -195,13 +193,13 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-func exportTokens(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte, maxDBValue int) error {
+func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, maxDBValue int) error {
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
 		return err
 	}
 
-	tr, err := getTrie(flags, maxDBValue)
+	tr, err := getTrie(flags.ContextFlagsConfig, maxDBValue)
 	if err != nil {
 		return err
 	}
@@ -253,11 +251,18 @@ func exportTokens(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte,
 		}
 	}
 
+	encodedAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
 	log.Info("parsed main trie",
 		"num accounts", numAccountsOnMainTrie,
-		"num accounts with tokens", len(addressTokensMap))
+		"num accounts with tokens", len(addressTokensMap),
+		"num tokens in system account address", len(addressTokensMap[encodedAddress]))
 
-	return saveAndPrintResult(addressTokensMap)
+	_, found := addressTokensMap[encodedAddress]
+	if !found {
+		log.Warn(fmt.Sprintf("system account address(%s) not found, input dbs might be incomplete/corrupted", encodedAddress))
+	}
+
+	return saveResult(addressTokensMap, flags.Outfile)
 }
 
 func getAddress(kv core.KeyValueHolder) ([]byte, bool) {
@@ -274,24 +279,19 @@ func getAddress(kv core.KeyValueHolder) ([]byte, bool) {
 	return kv.Key(), true
 }
 
-func saveAndPrintResult(addressTokensMap map[string]map[string]struct{}) error {
+func saveResult(addressTokensMap map[string]map[string]struct{}, outfile string) error {
 	jsonBytes, err := json.MarshalIndent(addressTokensMap, "", " ")
 	if err != nil {
 		return err
 	}
 
-	log.Info("parsing result written in", "file", outputFileName)
-	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
+	log.Info("writing result in", "file", outfile)
+	err = ioutil.WriteFile(outfile, jsonBytes, fs.FileMode(outputFilePerms))
 	if err != nil {
 		return err
 	}
 
-	for address, tokens := range addressTokensMap {
-		for token := range tokens {
-			log.Info("", "address", address, "token", token)
-		}
-	}
-
+	log.Info("finished exporting address-tokens map")
 	return nil
 }
 
@@ -391,11 +391,20 @@ func getPrettyTokenName(tokenName []byte) string {
 	if nonce != 0 {
 		tokens := bytes.Split(token, []byte("-"))
 
-		token = append(tokens[0], []byte("-")...)                           // ticker-
-		token = append(token, tokens[1]...)                                 // ticker-randSequence
-		token = append(token, []byte("-")...)                               // ticker-randSequence-
-		token = append(token, []byte(big.NewInt(int64(nonce)).String())...) // ticker-randSequence-nonce
+		token = append(tokens[0], []byte("-")...)          // ticker-
+		token = append(token, tokens[1]...)                // ticker-randSequence
+		token = append(token, []byte("-")...)              // ticker-randSequence-
+		token = append(token, getPrettyHexNonce(nonce)...) // ticker-randSequence-nonce
 	}
 
 	return string(token)
+}
+
+func getPrettyHexNonce(nonce uint64) []byte {
+	nonceStr := fmt.Sprintf("%x", nonce)
+	if len(nonceStr)%2 != 0 {
+		nonceStr = "0" + nonceStr
+	}
+
+	return []byte(nonceStr)
 }
