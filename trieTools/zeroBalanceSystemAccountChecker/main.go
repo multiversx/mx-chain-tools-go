@@ -3,13 +3,18 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common/logging"
+	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
+	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/elastic"
+	"github.com/tidwall/gjson"
+	"github.com/urfave/cli"
+
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
-	"github.com/urfave/cli"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -21,12 +26,12 @@ import (
 )
 
 const (
-	defaultLogsPath            = "logs"
-	logFilePrefix              = "accounts-tokens-exporter"
-	addressLength              = 32
-	outputFilePerms            = 0644
-	maxIndexerRetrials         = 10
-	crossCheckProgressInterval = 1000
+	defaultLogsPath    = "logs"
+	logFilePrefix      = "accounts-tokens-exporter"
+	addressLength      = 32
+	outputFilePerms    = 0644
+	maxIndexerRetrials = 10
+	multipleSearchBulk = 10000
 )
 
 func main() {
@@ -272,42 +277,93 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 	numTokens := len(tokens)
 	log.Info("starting to cross-check", "num of tokens", numTokens)
 
+	elasticClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
+		URL:      "https://elastic-do-nvme-ams-k8s-gateway.elrond.ro/",
+		Username: "read_user",
+		Password: "RLnGWsyW8xAEuAWzvAwoCI",
+	})
+	if err != nil {
+		return err
+	}
+
+	bulkSize := core.MinInt(multipleSearchBulk, numTokens)
+	requests := make([]string, 0, bulkSize)
 	numTokensCrossChecked := 0
+	ctBulks := 0
+	ctRequests := 0
 	for token := range tokens {
-		resp, err := getResponseWithRetrial(token)
-		if err != nil {
-			log.Error("failed to cross check", "token", token, "error", err)
+		ctBulks++
+		requests = append(requests, createRequest(token))
+		if len(requests) < bulkSize && ctBulks != numTokens {
 			continue
 		}
 
-		decoder := json.NewDecoder(resp.Body)
-		response := indexerResp{}
-		err = decoder.Decode(&response)
+		respBytes, err := elasticClient.GetMultiple("accountsesdt", requests)
 		if err != nil {
-			log.Error("failed to decode body response",
-				"token", token,
+			log.Error("elasticClient.GetMultiple(accountsesdt, requests)",
 				"error", err,
-				"response body", getBody(resp),
-				"response status", resp.Status)
+				"requests", requests)
 			continue
 		}
+		ctRequests += len(requests)
 
-		if response.Count != 0 {
-			log.Error("cross-check failed",
-				"token", token,
-				"actual num of addresses holding the token", response.Count)
+		responses := gjson.Get(string(respBytes), "responses").Array()
+		idx := 0
+		for _, res := range responses {
+			hits := res.Get("hits.hits").Array()
+			numTokensCrossChecked++
+			if len(hits) != 0 {
+
+				warnToken := gjson.Get(requests[idx], "query.match.identifier.query").String()
+				log.Warn("found token in indexer with hits/accounts",
+					"token", warnToken,
+					"num hits/accounts", len(hits))
+
+				for _, hit := range hits {
+					address := hit.Get("_source.address").String()
+					addressTokens, err := getAddressTokensWithRetrial(address)
+					if err != nil {
+						log.Error("getAddressTokensWithRetrial failed", "error", err)
+						continue
+					}
+
+					log.Warn("checking gateway if token still exists in trie",
+						"token", warnToken,
+						"address", address)
+
+					_, found := addressTokens[warnToken]
+					if found {
+						log.Error("cross-check failed; found token which is still in other address",
+							"token", warnToken,
+							"address", address)
+						break
+					} else {
+						log.Warn("possible indexer problem",
+							"token", gjson.Get(requests[idx], "query.match.identifier.query").String(),
+							"hit in address", address,
+							"found in trie", false)
+						break
+					}
+
+				}
+			}
+			idx++
+
 		}
 
-		numTokensCrossChecked++
-		if numTokensCrossChecked%crossCheckProgressInterval == 0 {
+		if numTokensCrossChecked%bulkSize*10 == 0 {
 			go printProgress(numTokens, numTokensCrossChecked)
 		}
-
+		requests = make([]string, 0, bulkSize)
 		time.Sleep(40 * time.Millisecond)
 	}
 
-	log.Info("finished cross-checking")
+	log.Info("finished cross-checking", "bulks", ctBulks, "ctRequests", ctRequests)
 	return nil
+}
+
+func createRequest(token string) string {
+	return `{"query" : {"match" : { "identifier": {"query":"` + token + `","operator":"and"}}}}`
 }
 
 func printProgress(numTokens, numTokensCrossChecked int) {
@@ -317,24 +373,38 @@ func printProgress(numTokens, numTokensCrossChecked int) {
 		"progress(%)", (100*numTokensCrossChecked)/numTokens) // this should not panic with div by zero, since func is only called if numTokens > 0
 }
 
-func getResponseWithRetrial(token string) (*http.Response, error) {
+var cacheAddressesTokens = make(map[string]map[string]struct{})
+
+func getAddressTokensWithRetrial(address string) (map[string]struct{}, error) {
 	ctRetrials := 0
-	for ctRetrials < maxIndexerRetrials {
-		resp, err := http.Get("https://index.elrond.com/accountsesdt/_count?default_operator=AND&q=identifier:" + token)
-		if err == nil {
-			return resp, nil
+	tokens, exist := cacheAddressesTokens[address]
+	if !exist {
+		for ctRetrials < maxIndexerRetrials {
+			resp, err := http.Get(fmt.Sprintf("https://gateway.elrond.com/address/%s/esdt", address))
+			if err == nil {
+				//save in cache
+				for esdt := range gjson.Get(getBody(resp), "data.esdts").Map() {
+					esdtEntry := make(map[string]struct{})
+					esdtEntry[esdt] = struct{}{}
+					cacheAddressesTokens[address] = esdtEntry
+				}
+				//cacheAddressesTokens[address]
+				return cacheAddressesTokens[address], nil
+			}
+
+			log.Warn("could tokens",
+				"address", address,
+				"error", err,
+				"response body", getBody(resp),
+				"num retrials", ctRetrials)
+
+			ctRetrials++
 		}
-
-		log.Warn("could not get http response",
-			"token", token,
-			"error", err,
-			"response body", getBody(resp),
-			"num retrials", ctRetrials)
-
-		ctRetrials++
+		return nil, fmt.Errorf("could not get adress's tokens = %s after num of retrials = %d", address, maxIndexerRetrials)
 	}
 
-	return nil, fmt.Errorf("could not get indexer status for token = %s after num of retrials = %d", token, maxIndexerRetrials)
+	return tokens, nil
+
 }
 
 func getBody(response *http.Response) string {
