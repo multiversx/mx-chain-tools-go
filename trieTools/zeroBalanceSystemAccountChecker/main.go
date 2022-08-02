@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -11,25 +10,29 @@ import (
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
 	"github.com/urfave/cli"
+	"io"
 	"io/fs"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
-	defaultLogsPath = "logs"
-	logFilePrefix   = "accounts-tokens-exporter"
-	addressLength   = 32
-	outputFileName  = "extraTokens.json"
-	outputFilePerms = 0644
+	defaultLogsPath            = "logs"
+	logFilePrefix              = "accounts-tokens-exporter"
+	addressLength              = 32
+	outputFilePerms            = 0644
+	maxIndexerRetrials         = 10
+	crossCheckProgressInterval = 1000
 )
 
 func main() {
 	app := cli.NewApp()
 	app.Name = "Tokens exporter CLI app"
-	app.Usage = "This is the entry point for the tool that exports all tokens for a given root hash"
+	app.Usage = "This is the entry point for the tool that checks which tokens are not used anymore(only stored in system account)"
 	app.Flags = getFlags()
 	app.Authors = []cli.Author{
 		{
@@ -48,8 +51,6 @@ func main() {
 		os.Exit(1)
 		return
 	}
-
-	log.Info("finished")
 }
 
 func startProcess(c *cli.Context) error {
@@ -69,16 +70,21 @@ func startProcess(c *cli.Context) error {
 
 	log.Info("starting processing trie", "pid", os.Getpid())
 
-	mydir, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-	addressTokensMap, err := readInputs(filepath.Join(mydir, flagsConfig.tokensDirectory))
+	addressTokensMap, err := readInputs(flagsConfig.TokensDirectory)
 	if err != nil {
 		return err
 	}
 
-	return exportZeroTokensBalances(addressTokensMap)
+	extraTokens, err := exportZeroTokensBalances(addressTokensMap, flagsConfig.Outfile)
+	if err != nil {
+		return err
+	}
+
+	if flagsConfig.CrossCheck {
+		return crossCheckExtraTokens(extraTokens)
+	}
+
+	return nil
 }
 
 func attachFileLogger(log logger.Logger, flagsConfig trieToolsCommon.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
@@ -120,45 +126,57 @@ func attachFileLogger(log logger.Logger, flagsConfig trieToolsCommon.ContextFlag
 	return fileLogging, nil
 }
 
-func readInputs(parentDir string) (map[string]map[string]struct{}, error) {
-	contents, err := ioutil.ReadDir(parentDir)
+func readInputs(tokensDir string) (map[string]map[string]struct{}, error) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+
+	fullPath := filepath.Join(workingDir, tokensDir)
+	contents, err := ioutil.ReadDir(fullPath)
 	if err != nil {
 		return nil, err
 	}
 
 	allAddressesTokensMap := make(map[string]map[string]struct{})
-
-	for _, c := range contents {
-		if c.IsDir() {
+	for _, file := range contents {
+		if file.IsDir() {
 			continue
 		}
 
-		jsonFile, err := os.Open(filepath.Join(parentDir, c.Name()))
-		if err != nil {
-			return nil, err
-		}
-
-		bytesFromJson, _ := ioutil.ReadAll(jsonFile)
-		addressTokensMapInCurrFile := make(map[string]map[string]struct{})
-		err = json.Unmarshal(bytesFromJson, &addressTokensMapInCurrFile)
+		addressTokensMapInCurrFile, err := getFileContent(filepath.Join(fullPath, file.Name()))
 		if err != nil {
 			return nil, err
 		}
 
 		merge(allAddressesTokensMap, addressTokensMapInCurrFile)
 		log.Info("read data from",
-			"file", c.Name(),
+			"file", file.Name(),
 			"num addresses in current file", len(addressTokensMapInCurrFile),
-			"num addresses in total", len(allAddressesTokensMap))
+			"num addresses in total, after merge", len(allAddressesTokensMap))
 	}
 
-	//for address, tokens := range allAddressesTokensMap {
-	//	for token := range tokens {
-	//		log.Info("", "address", address, "token", token)
-	//	}
-	//}
-
 	return allAddressesTokensMap, nil
+}
+
+func getFileContent(file string) (map[string]map[string]struct{}, error) {
+	jsonFile, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+
+	bytesFromJson, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		return nil, err
+	}
+
+	addressTokensMapInCurrFile := make(map[string]map[string]struct{})
+	err = json.Unmarshal(bytesFromJson, &addressTokensMapInCurrFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return addressTokensMapInCurrFile, nil
 }
 
 func merge(dest, src map[string]map[string]struct{}) {
@@ -167,6 +185,7 @@ func merge(dest, src map[string]map[string]struct{}) {
 		if !existsInDest {
 			dest[addressSrc] = tokensSrc
 		} else {
+			log.Debug("same address found in multiple files", "address", addressSrc)
 			for tokenInSrc := range tokensSrc {
 				dest[addressSrc][tokenInSrc] = struct{}{}
 			}
@@ -174,18 +193,49 @@ func merge(dest, src map[string]map[string]struct{}) {
 	}
 }
 
-func exportZeroTokensBalances(allAddressesTokensMap map[string]map[string]struct{}) error {
+func exportZeroTokensBalances(allAddressesTokensMap map[string]map[string]struct{}, outfile string) (map[string]struct{}, error) {
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	systemSCAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
 	allTokensInSystemSCAddress, foundSystemSCAddress := allAddressesTokensMap[systemSCAddress]
 	if !foundSystemSCAddress {
-		return errors.New("no system account address found")
+		return nil, fmt.Errorf("no system account address(%s) found", systemSCAddress)
 	}
 
+	allTokens := getAllTokensWithoutSystemAccount(allAddressesTokensMap, systemSCAddress)
+	log.Info("found",
+		"total num of tokens in all addresses", len(allTokens),
+		"total num of tokens in system sc address", len(allTokensInSystemSCAddress))
+
+	ctTokensInSystemAccButNotInOtherAddress := 0
+	tokensToDelete := make(map[string]struct{})
+	for tokenInSystemSC := range allTokensInSystemSCAddress {
+		_, exists := allTokens[tokenInSystemSC]
+		if !exists {
+
+			ctTokensInSystemAccButNotInOtherAddress++
+			if strings.Count(tokenInSystemSC, "-") == 2 {
+				tokensToDelete[tokenInSystemSC] = struct{}{}
+			}
+		}
+	}
+
+	log.Info("found",
+		"num tokens in system account, but not in any other address", ctTokensInSystemAccButNotInOtherAddress,
+		"num of sfts/nfts/metaesdts metadata only found in system sc address", len(tokensToDelete),
+	)
+	err = saveResult(tokensToDelete, outfile)
+	if err != nil {
+		return nil, err
+	}
+
+	return tokensToDelete, nil
+}
+
+func getAllTokensWithoutSystemAccount(allAddressesTokensMap map[string]map[string]struct{}, systemSCAddress string) map[string]struct{} {
 	delete(allAddressesTokensMap, systemSCAddress)
 
 	allTokens := make(map[string]struct{})
@@ -195,49 +245,104 @@ func exportZeroTokensBalances(allAddressesTokensMap map[string]map[string]struct
 		}
 	}
 
-	log.Info("found",
-		"total num of tokens for all addresses", len(allTokens),
-		"total num of tokens in system sc address", len(allTokensInSystemSCAddress))
+	return allTokens
+}
 
-	ctTokensInSystemAccButNotInOtherAddress := 0
-	cTokensBothSystemAccAndOtherAddresses := 0
-	tokensToDelete := make(map[string]struct{})
-	SFTsNFTsToDelete := 0
-	ESDTsToDelete := 0
-	for tokenInSystemSC := range allTokensInSystemSCAddress {
-		_, exists := allTokens[tokenInSystemSC]
-
-		if !exists {
-			ctTokensInSystemAccButNotInOtherAddress++
-			tokensToDelete[tokenInSystemSC] = struct{}{}
-			ctDelimiter := strings.Count(tokenInSystemSC, "-")
-			if ctDelimiter == 2 {
-				SFTsNFTsToDelete++
-			} else if ctDelimiter == 1 {
-				ESDTsToDelete++
-			}
-
-		} else {
-			cTokensBothSystemAccAndOtherAddresses++
-		}
-	}
-	log.Info("found",
-		"num tokens in system account, but not in any other address", ctTokensInSystemAccButNotInOtherAddress,
-		"num of tokens in both system account and other addresses", cTokensBothSystemAccAndOtherAddresses,
-		"num of sfts/nfts to delete", SFTsNFTsToDelete,
-		"num esdts to delete", ESDTsToDelete,
-	)
-
-	jsonBytes, err := json.MarshalIndent(tokensToDelete, "", " ")
+func saveResult(tokens map[string]struct{}, outfile string) error {
+	jsonBytes, err := json.MarshalIndent(tokens, "", " ")
 	if err != nil {
 		return err
 	}
 
-	log.Info("parsing result written in", "file", outputFileName)
-	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
+	log.Info("writing result in", "file", outfile)
+	err = ioutil.WriteFile(outfile, jsonBytes, fs.FileMode(outputFilePerms))
 	if err != nil {
 		return err
 	}
 
+	log.Info("finished exporting zero balance tokens map")
 	return nil
+}
+
+type indexerResp struct {
+	Count uint64 `json:"count"`
+}
+
+func crossCheckExtraTokens(tokens map[string]struct{}) error {
+	numTokens := len(tokens)
+	log.Info("starting to cross-check", "num of tokens", numTokens)
+
+	numTokensCrossChecked := 0
+	for token := range tokens {
+		resp, err := getResponseWithRetrial(token)
+		if err != nil {
+			log.Error("failed to cross check", "token", token, "error", err)
+			continue
+		}
+
+		decoder := json.NewDecoder(resp.Body)
+		response := indexerResp{}
+		err = decoder.Decode(&response)
+		if err != nil {
+			log.Error("failed to decode body response",
+				"token", token,
+				"error", err,
+				"response body", getBody(resp),
+				"response status", resp.Status)
+			continue
+		}
+
+		if response.Count != 0 {
+			log.Error("cross-check failed",
+				"token", token,
+				"actual num of addresses holding the token", response.Count)
+		}
+
+		numTokensCrossChecked++
+		if numTokensCrossChecked%crossCheckProgressInterval == 0 {
+			go printProgress(numTokens, numTokensCrossChecked)
+		}
+
+		time.Sleep(40 * time.Millisecond)
+	}
+
+	log.Info("finished cross-checking")
+	return nil
+}
+
+func printProgress(numTokens, numTokensCrossChecked int) {
+	log.Info("status",
+		"num cross checked tokens", numTokensCrossChecked,
+		"remaining num of tokens to check", numTokens-numTokensCrossChecked,
+		"progress(%)", (100*numTokensCrossChecked)/numTokens) // this should not panic with div by zero, since func is only called if numTokens > 0
+}
+
+func getResponseWithRetrial(token string) (*http.Response, error) {
+	ctRetrials := 0
+	for ctRetrials < maxIndexerRetrials {
+		resp, err := http.Get("https://index.elrond.com/accountsesdt/_count?default_operator=AND&q=identifier:" + token)
+		if err == nil {
+			return resp, nil
+		}
+
+		log.Warn("could not get http response",
+			"token", token,
+			"error", err,
+			"response body", getBody(resp),
+			"num retrials", ctRetrials)
+
+		ctRetrials++
+	}
+
+	return nil, fmt.Errorf("could not get indexer status for token = %s after num of retrials = %d", token, maxIndexerRetrials)
+}
+
+func getBody(response *http.Response) string {
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Error("could not ready bytes from body", "error", err)
+		return ""
+	}
+
+	return string(bodyBytes)
 }
