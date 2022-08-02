@@ -10,6 +10,8 @@ import (
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
+	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/export"
 	"github.com/urfave/cli"
 )
 
@@ -49,13 +51,24 @@ func generateKeys(ctx *cli.Context) error {
 		return err
 	}
 
+	exporter, err := export.NewExporter(export.ArgsNewExporter{
+		ActualShard:    cliFlags.actualShard,
+		ProjectedShard: cliFlags.projectedShard,
+		StartIndex:     cliFlags.startIndex,
+		NumKeys:        int(cliFlags.numKeys),
+		Format:         cliFlags.exportFormat,
+	})
+	if err != nil {
+		return err
+	}
+
 	mnemonic, err := askMnemonic()
 	if err != nil {
 		return err
 	}
 
 	var wg sync.WaitGroup
-	generatedKeysByTask := make([][]generatedKey, cliFlags.numTasks)
+	generatedKeysByTask := make([][]common.GeneratedKey, cliFlags.numTasks)
 
 	for taskIndex := 0; taskIndex < cliFlags.numTasks; taskIndex++ {
 		wg.Add(1)
@@ -83,7 +96,7 @@ func generateKeys(ctx *cli.Context) error {
 
 	wg.Wait()
 
-	allGeneratedKeys := make([]generatedKey, 0, cliFlags.numKeys)
+	allGeneratedKeys := make([]common.GeneratedKey, 0, cliFlags.numKeys)
 
 	for _, keys := range generatedKeysByTask {
 		allGeneratedKeys = append(allGeneratedKeys, keys...)
@@ -98,6 +111,11 @@ func generateKeys(ctx *cli.Context) error {
 
 	for _, key := range allGeneratedKeys {
 		fmt.Println(key.Index, key.Address)
+	}
+
+	err = exporter.ExportKeys(allGeneratedKeys)
+	if err != nil {
+		return err
 	}
 
 	return nil

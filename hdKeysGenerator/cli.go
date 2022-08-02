@@ -1,8 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 
+	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
+	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/export"
 	"github.com/urfave/cli"
 )
 
@@ -61,6 +64,12 @@ VERSION:
 		Usage: "How many tasks to use (parallelization level).",
 		Value: runtime.NumCPU(),
 	}
+
+	cliFlagExportFormat = cli.StringFlag{
+		Name:  "format",
+		Usage: fmt.Sprintf("Export format. One of the following: %s", export.AllFormattersNames),
+		Value: export.FormatterNamePlainText,
+	}
 )
 
 func getAllCliFlags() []cli.Flag {
@@ -72,27 +81,29 @@ func getAllCliFlags() []cli.Flag {
 		cliFlagStartIndex,
 		cliFlagUseAccountIndex,
 		cliFlagNumTasks,
+		cliFlagExportFormat,
 	}
 }
 
 type parsedCliFlags struct {
 	numShards       uint32
-	actualShard     optionalUint32
-	projectedShard  optionalUint32
+	actualShard     common.OptionalUint32
+	projectedShard  common.OptionalUint32
 	numKeys         uint
 	startIndex      int
 	useAccountIndex bool
 	numTasks        int
+	exportFormat    string
 }
 
 func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
 	return parsedCliFlags{
 		numShards: uint32(ctx.GlobalUint(cliFlagNumShards.Name)),
-		actualShard: optionalUint32{
+		actualShard: common.OptionalUint32{
 			Value:    uint32(ctx.GlobalUint64(cliFlagActualShard.Name)),
 			HasValue: ctx.GlobalIsSet(cliFlagActualShard.Name),
 		},
-		projectedShard: optionalUint32{
+		projectedShard: common.OptionalUint32{
 			Value:    uint32(ctx.GlobalUint64(cliFlagProjectedShard.Name)),
 			HasValue: ctx.GlobalIsSet(cliFlagProjectedShard.Name),
 		},
@@ -100,5 +111,6 @@ func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
 		startIndex:      ctx.GlobalInt(cliFlagStartIndex.Name),
 		useAccountIndex: ctx.GlobalBool(cliFlagUseAccountIndex.Name),
 		numTasks:        ctx.GlobalInt(cliFlagNumTasks.Name),
+		exportFormat:    ctx.GlobalString(cliFlagExportFormat.Name),
 	}
 }

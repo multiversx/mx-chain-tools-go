@@ -3,16 +3,17 @@ package main
 import (
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go/sharding"
+	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
 )
 
 type constraints struct {
-	actualShard               optionalUint32
-	projectedShard            optionalUint32
+	actualShard               common.OptionalUint32
+	projectedShard            common.OptionalUint32
 	actualShardCoordinator    sharding.Coordinator
 	projectedShardCoordinator sharding.Coordinator
 }
 
-func newConstraints(numShards uint32, actualShard optionalUint32, projectedShard optionalUint32) (*constraints, error) {
+func newConstraints(numShards uint32, actualShard common.OptionalUint32, projectedShard common.OptionalUint32) (*constraints, error) {
 	actualShardCoordinator, err := sharding.NewMultiShardCoordinator(numShards, actualShard.Value)
 	if err != nil {
 		return nil, err

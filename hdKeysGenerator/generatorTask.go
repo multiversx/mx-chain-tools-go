@@ -6,6 +6,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
+	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
 )
 
 type generatorTask struct {
@@ -18,12 +19,13 @@ type generatorTask struct {
 	numKeys         int
 }
 
-func (g *generatorTask) doGenerateKeys() ([]generatedKey, error) {
+func (g *generatorTask) doGenerateKeys() ([]common.GeneratedKey, error) {
 	wallet := interactors.NewWallet()
+	seed := wallet.CreateSeedFromMnemonic(g.mnemonic)
 
 	numGeneratedTotal := 0
 	numGeneratedWithConstraints := 0
-	generatedKeys := make([]generatedKey, 0, g.numKeys)
+	generatedKeys := make([]common.GeneratedKey, 0, g.numKeys)
 
 	accountIndex := 0
 	addressIndex := 0
@@ -44,17 +46,17 @@ func (g *generatorTask) doGenerateKeys() ([]generatedKey, error) {
 			continue
 		}
 
-		privateKey := wallet.GetPrivateKeyFromMnemonic(g.mnemonic, uint32(accountIndex), uint32(addressIndex))
-		addressHandler, err := wallet.GetAddressFromPrivateKey(privateKey)
+		secretKey := wallet.GetPrivateKeyFromSeed(seed, uint32(accountIndex), uint32(addressIndex))
+		addressHandler, err := wallet.GetAddressFromPrivateKey(secretKey)
 		if err != nil {
 			return nil, err
 		}
 
 		if g.constraints.areSatisfiedByPublicKey(addressHandler.AddressBytes()) {
-			generatedKeys = append(generatedKeys, generatedKey{
+			generatedKeys = append(generatedKeys, common.GeneratedKey{
 				Index:     *changingIndex,
-				SecretKey: hex.EncodeToString(privateKey),
-				PublicKey: hex.EncodeToString(addressHandler.AddressBytes()),
+				SecretKey: secretKey,
+				PublicKey: addressHandler.AddressBytes(),
 				Address:   addressHandler.AddressAsBech32String(),
 			})
 
