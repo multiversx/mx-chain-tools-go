@@ -17,7 +17,7 @@ type plainExportedKey struct {
 type formatterPlainJson struct {
 }
 
-func (f *formatterPlainJson) toText(keys []common.GeneratedKey, args formatterArgs) (string, error) {
+func (f *formatterPlainJson) toText(keys []common.GeneratedKey) (string, error) {
 	records := make([]plainExportedKey, 0, len(keys))
 
 	for _, key := range keys {

@@ -13,6 +13,3 @@ const (
 var (
 	AllFormattersNames = strings.Join([]string{FormatterNamePlainText, FormatterNamePlainText}, ", ")
 )
-
-type formatterArgs struct {
-}

@@ -3,6 +3,6 @@ package export
 import "github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
 
 type formatter interface {
-	toText(keys []common.GeneratedKey, args formatterArgs) (string, error)
+	toText(keys []common.GeneratedKey) (string, error)
 	getFileExtension() string
 }

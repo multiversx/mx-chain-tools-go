@@ -62,9 +62,7 @@ func (e *exporter) saveKeysFile(keys []common.GeneratedKey) error {
 		return err
 	}
 
-	formatterArgs := formatterArgs{}
-
-	text, err := formatter.toText(keys, formatterArgs)
+	text, err := formatter.toText(keys)
 	if err != nil {
 		return err
 	}

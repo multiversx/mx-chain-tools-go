@@ -11,7 +11,7 @@ import (
 type formatterPlainText struct {
 }
 
-func (f *formatterPlainText) toText(keys []common.GeneratedKey, args formatterArgs) (string, error) {
+func (f *formatterPlainText) toText(keys []common.GeneratedKey) (string, error) {
 	var builder strings.Builder
 
 	header := "Index\tAddress\tPublicKey\tSecretKey"
