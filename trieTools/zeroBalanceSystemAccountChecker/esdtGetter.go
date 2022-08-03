@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/tidwall/gjson"
+	"io"
 	"net/http"
 )
 
@@ -21,9 +22,10 @@ func newESDTsGetter(proxyURL string) *esdtsGetter {
 func (eg *esdtsGetter) getTokens(address string) (map[string]struct{}, error) {
 	tokens, exist := eg.cache[address]
 	if exist {
+		log.Debug("fetching esdts from cache", "address", address)
 		return tokens, nil
 	}
-
+	log.Debug("fetching esdts from proxy", "address", address)
 	return eg.fetchTokensFromProxy(address)
 }
 
@@ -41,7 +43,7 @@ func (eg *esdtsGetter) fetchTokensFromProxy(address string) (map[string]struct{}
 		log.Warn("could tokens",
 			"address", address,
 			"error", err,
-			"response body", getBody(resp),
+			"response body", eg.getBody(resp),
 			"num retrials", ctRetrials)
 
 		ctRetrials++
@@ -51,12 +53,29 @@ func (eg *esdtsGetter) fetchTokensFromProxy(address string) (map[string]struct{}
 }
 
 func (eg *esdtsGetter) saveInCache(address string, resp *http.Response) {
-	body := getBody(resp)
+	body := eg.getBody(resp)
 	esdts := gjson.Get(body, "data.esdts").Map()
+	log.Debug("saving in cache", "address", address, "num esdts", len(esdts))
 	for esdt := range esdts {
 		esdtEntry := make(map[string]struct{})
 		esdtEntry[esdt] = struct{}{}
 
 		eg.cache[address] = esdtEntry
 	}
+}
+
+func (eg *esdtsGetter) getBody(response *http.Response) string {
+	bodyBytes, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Error("could not ready bytes from body", "error", err)
+		return ""
+	}
+
+	bodyStr := string(bodyBytes)
+	bodyErr := gjson.Get(bodyStr, "error").String()
+	if len(bodyErr) != 0 {
+		log.Error("got error in body response when getting esdt tokens", "proxy url", eg.proxyURL, "error", bodyErr)
+	}
+
+	return string(bodyBytes)
 }

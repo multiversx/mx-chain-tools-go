@@ -15,10 +15,8 @@ import (
 
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
-	"io"
 	"io/fs"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -80,7 +78,12 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	extraTokens, err := exportZeroTokensBalances(addressTokensMap, flagsConfig.Outfile)
+	extraTokens, err := exportSystemAccZeroTokensBalances(addressTokensMap)
+	if err != nil {
+		return err
+	}
+
+	err = saveResult(extraTokens, flagsConfig.Outfile)
 	if err != nil {
 		return err
 	}
@@ -191,14 +194,18 @@ func merge(dest, src map[string]map[string]struct{}) {
 			dest[addressSrc] = tokensSrc
 		} else {
 			log.Debug("same address found in multiple files", "address", addressSrc)
-			for tokenInSrc := range tokensSrc {
-				dest[addressSrc][tokenInSrc] = struct{}{}
-			}
+			addTokensInDestAddress(tokensSrc, dest, addressSrc)
 		}
 	}
 }
 
-func exportZeroTokensBalances(allAddressesTokensMap map[string]map[string]struct{}, outfile string) (map[string]struct{}, error) {
+func addTokensInDestAddress(tokens map[string]struct{}, dest map[string]map[string]struct{}, address string) {
+	for token := range tokens {
+		dest[address][token] = struct{}{}
+	}
+}
+
+func exportSystemAccZeroTokensBalances(allAddressesTokensMap map[string]map[string]struct{}) (map[string]struct{}, error) {
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
 		return nil, err
@@ -215,29 +222,7 @@ func exportZeroTokensBalances(allAddressesTokensMap map[string]map[string]struct
 		"total num of tokens in all addresses", len(allTokens),
 		"total num of tokens in system sc address", len(allTokensInSystemSCAddress))
 
-	ctTokensInSystemAccButNotInOtherAddress := 0
-	tokensToDelete := make(map[string]struct{})
-	for tokenInSystemSC := range allTokensInSystemSCAddress {
-		_, exists := allTokens[tokenInSystemSC]
-		if !exists {
-
-			ctTokensInSystemAccButNotInOtherAddress++
-			if strings.Count(tokenInSystemSC, "-") == 2 {
-				tokensToDelete[tokenInSystemSC] = struct{}{}
-			}
-		}
-	}
-
-	log.Info("found",
-		"num tokens in system account, but not in any other address", ctTokensInSystemAccButNotInOtherAddress,
-		"num of sfts/nfts/metaesdts metadata only found in system sc address", len(tokensToDelete),
-	)
-	err = saveResult(tokensToDelete, outfile)
-	if err != nil {
-		return nil, err
-	}
-
-	return tokensToDelete, nil
+	return getExtraTokens(allTokens, allTokensInSystemSCAddress), nil
 }
 
 func getAllTokensWithoutSystemAccount(allAddressesTokensMap map[string]map[string]struct{}, systemSCAddress string) map[string]struct{} {
@@ -251,6 +236,34 @@ func getAllTokensWithoutSystemAccount(allAddressesTokensMap map[string]map[strin
 	}
 
 	return allTokens
+}
+
+func getExtraTokens(allTokens, allTokensInSystemSCAddress map[string]struct{}) map[string]struct{} {
+	ctTokensOnlyInSystemAcc := 0
+	extraTokens := make(map[string]struct{})
+	for tokenInSystemSC := range allTokensInSystemSCAddress {
+		_, exists := allTokens[tokenInSystemSC]
+		if !exists {
+			ctTokensOnlyInSystemAcc++
+			addTokenInMapIfHasNonce(tokenInSystemSC, extraTokens)
+		}
+	}
+
+	log.Info("found",
+		"num tokens in system account, but not in any other address", ctTokensOnlyInSystemAcc,
+		"num of sfts/nfts/metaesdts metadata only found in system sc address", len(extraTokens))
+
+	return extraTokens
+}
+
+func addTokenInMapIfHasNonce(token string, tokens map[string]struct{}) {
+	if hasNonce(token) {
+		tokens[token] = struct{}{}
+	}
+}
+
+func hasNonce(token string) bool {
+	return strings.Count(token, "-") == 2
 }
 
 func saveResult(tokens map[string]struct{}, outfile string) error {
@@ -267,10 +280,6 @@ func saveResult(tokens map[string]struct{}, outfile string) error {
 
 	log.Info("finished exporting zero balance tokens map")
 	return nil
-}
-
-type indexerResp struct {
-	Count uint64 `json:"count"`
 }
 
 func crossCheckExtraTokens(tokens map[string]struct{}) error {
@@ -291,6 +300,7 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 	numTokensCrossChecked := 0
 	ctBulks := 0
 	ctRequests := 0
+	esdtGetter := newESDTsGetter("https://gateway.elrond.com")
 	for token := range tokens {
 		ctBulks++
 		requests = append(requests, createRequest(token))
@@ -321,7 +331,7 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 
 				for _, hit := range hits {
 					address := hit.Get("_source.address").String()
-					addressTokens, err := getAddressTokensWithRetrial(address)
+					addressTokens, err := esdtGetter.getTokens(address)
 					if err != nil {
 						log.Error("getAddressTokensWithRetrial failed", "error", err)
 						continue
@@ -351,9 +361,8 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 
 		}
 
-		if numTokensCrossChecked%bulkSize*10 == 0 {
-			go printProgress(numTokens, numTokensCrossChecked)
-		}
+		go printProgress(numTokens, numTokensCrossChecked)
+
 		requests = make([]string, 0, bulkSize)
 		time.Sleep(40 * time.Millisecond)
 	}
@@ -371,48 +380,4 @@ func printProgress(numTokens, numTokensCrossChecked int) {
 		"num cross checked tokens", numTokensCrossChecked,
 		"remaining num of tokens to check", numTokens-numTokensCrossChecked,
 		"progress(%)", (100*numTokensCrossChecked)/numTokens) // this should not panic with div by zero, since func is only called if numTokens > 0
-}
-
-var cacheAddressesTokens = make(map[string]map[string]struct{})
-
-func getAddressTokensWithRetrial(address string) (map[string]struct{}, error) {
-	ctRetrials := 0
-	tokens, exist := cacheAddressesTokens[address]
-	if !exist {
-		for ctRetrials < maxIndexerRetrials {
-			resp, err := http.Get(fmt.Sprintf("https://gateway.elrond.com/address/%s/esdt", address))
-			if err == nil {
-				//save in cache
-				for esdt := range gjson.Get(getBody(resp), "data.esdts").Map() {
-					esdtEntry := make(map[string]struct{})
-					esdtEntry[esdt] = struct{}{}
-					cacheAddressesTokens[address] = esdtEntry
-				}
-				//cacheAddressesTokens[address]
-				return cacheAddressesTokens[address], nil
-			}
-
-			log.Warn("could tokens",
-				"address", address,
-				"error", err,
-				"response body", getBody(resp),
-				"num retrials", ctRetrials)
-
-			ctRetrials++
-		}
-		return nil, fmt.Errorf("could not get adress's tokens = %s after num of retrials = %d", address, maxIndexerRetrials)
-	}
-
-	return tokens, nil
-
-}
-
-func getBody(response *http.Response) string {
-	bodyBytes, err := io.ReadAll(response.Body)
-	if err != nil {
-		log.Error("could not ready bytes from body", "error", err)
-		return ""
-	}
-
-	return string(bodyBytes)
 }
