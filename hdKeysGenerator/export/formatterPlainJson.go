@@ -8,10 +8,10 @@ import (
 )
 
 type plainExportedKey struct {
-	Index     int
-	SecretKey string `json:"secretKey"`
-	PublicKey string `json:"publicKey"`
+	Index     int    `json:"index"`
 	Address   string `json:"address"`
+	PublicKey string `json:"publicKey"`
+	SecretKey string `json:"secretKey"`
 }
 
 type formatterPlainJson struct {
