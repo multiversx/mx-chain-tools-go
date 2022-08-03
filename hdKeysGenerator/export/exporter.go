@@ -38,7 +38,7 @@ func NewExporter(args ArgsNewExporter) (*exporter, error) {
 }
 
 func (e *exporter) ExportKeys(keys []common.GeneratedKey) error {
-	log.Info("Exporting:",
+	log.Info("exporting:",
 		"numKeys", len(keys),
 		"formatType", e.format,
 	)
@@ -106,7 +106,12 @@ func (e *exporter) getOutputFileBasename() string {
 
 func (e *exporter) saveMetadataFile() error {
 	metadata := &exportMetadata{
-		ActualShardID: 0,
+		ActualShardID:          e.actualShard.Value,
+		ActualShardHasValue:    e.actualShard.HasValue,
+		ProjectedShardID:       e.projectedShard.Value,
+		ProjectedShardHasValue: e.projectedShard.HasValue,
+		StartIndex:             e.startIndex,
+		NumKeys:                e.numKeys,
 	}
 
 	metadataJson, err := json.MarshalIndent(metadata, "", fourSpaces)
@@ -130,6 +135,6 @@ func (e *exporter) saveFile(filename string, text string) error {
 		return err
 	}
 
-	log.Info("Saved file:", "file", filename)
+	log.Info("saved file:", "file", filename)
 	return nil
 }

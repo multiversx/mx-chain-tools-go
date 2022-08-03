@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -12,37 +11,47 @@ import (
 type generatorTask struct {
 	numTasks        int
 	taskIndex       int
-	mnemonic        data.Mnemonic
-	constraints     *constraints
 	useAccountIndex bool
 	startIndex      int
 	numKeys         int
 }
 
-func (g *generatorTask) doGenerateKeys() ([]common.GeneratedKey, error) {
-	wallet := interactors.NewWallet()
-	seed := wallet.CreateSeedFromMnemonic(g.mnemonic)
+func createTasks(cliFlags parsedCliFlags) []generatorTask {
+	tasks := make([]generatorTask, 0, cliFlags.numTasks)
 
-	numGeneratedTotal := 0
-	numGeneratedWithConstraints := 0
-	generatedKeys := make([]common.GeneratedKey, 0, g.numKeys)
+	for taskIndex := 0; taskIndex < cliFlags.numTasks; taskIndex++ {
+		task := generatorTask{
+			numTasks:        cliFlags.numTasks,
+			taskIndex:       taskIndex,
+			useAccountIndex: cliFlags.useAccountIndex,
+			startIndex:      cliFlags.startIndex,
+			numKeys:         int(cliFlags.numKeys)/cliFlags.numTasks + 1,
+		}
+
+		tasks = append(tasks, task)
+	}
+
+	return tasks
+}
+
+func (task *generatorTask) doGenerateKeys(mnemonic data.Mnemonic, constraints *constraints) ([]common.GeneratedKey, error) {
+	wallet := interactors.NewWallet()
+	seed := wallet.CreateSeedFromMnemonic(mnemonic)
+	goodKeys := make([]common.GeneratedKey, 0, task.numKeys)
 
 	accountIndex := 0
 	addressIndex := 0
 	var changingIndex *int
 
-	if g.useAccountIndex {
+	if task.useAccountIndex {
 		changingIndex = &accountIndex
 	} else {
 		changingIndex = &addressIndex
 	}
 
-	*changingIndex = g.startIndex - 1
-
-	for numGeneratedWithConstraints < g.numKeys {
-		*changingIndex++
-
-		if *changingIndex%g.numTasks != g.taskIndex {
+	for len(goodKeys) < task.numKeys {
+		if *changingIndex%task.numTasks != task.taskIndex {
+			*changingIndex++
 			continue
 		}
 
@@ -52,20 +61,27 @@ func (g *generatorTask) doGenerateKeys() ([]common.GeneratedKey, error) {
 			return nil, err
 		}
 
-		if g.constraints.areSatisfiedByPublicKey(addressHandler.AddressBytes()) {
-			generatedKeys = append(generatedKeys, common.GeneratedKey{
+		isGoodKey := constraints.areSatisfiedByPublicKey(addressHandler.AddressBytes())
+		if isGoodKey {
+			goodKeys = append(goodKeys, common.GeneratedKey{
 				Index:     *changingIndex,
 				SecretKey: secretKey,
 				PublicKey: addressHandler.AddressBytes(),
 				Address:   addressHandler.AddressAsBech32String(),
 			})
 
-			fmt.Println(g.taskIndex, accountIndex, addressIndex, hex.EncodeToString(addressHandler.AddressBytes()), addressHandler.AddressAsBech32String())
-			numGeneratedWithConstraints++
+			task.logProgress(len(goodKeys))
 		}
 
-		numGeneratedTotal++
+		*changingIndex++
 	}
 
-	return generatedKeys, nil
+	return goodKeys, nil
+}
+
+func (task *generatorTask) logProgress(numGenerated int) {
+	if numGenerated%100 == 0 && numGenerated > 0 {
+		progress := int(float64(numGenerated) / float64(task.numKeys) * 100)
+		log.Info("generating keys...", "task", task.taskIndex, "progress", fmt.Sprintf("%d %%", progress))
+	}
 }

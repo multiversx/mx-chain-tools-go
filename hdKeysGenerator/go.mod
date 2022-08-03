@@ -8,6 +8,7 @@ require (
 	github.com/ElrondNetwork/elrond-go-logger v1.0.7
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.0
 	github.com/urfave/cli v1.22.9
+	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
 
 require (

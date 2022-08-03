@@ -2,17 +2,18 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
-	"sync"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
 	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/export"
 	"github.com/urfave/cli"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -23,6 +24,7 @@ var log = logger.GetOrCreate("main")
 
 func main() {
 	app := cli.NewApp()
+	cli.AppHelpTemplate = helpTemplate
 	app.Version = appVersion
 	app.Name = "HD keys generator app"
 	app.Usage = "Tool for generating (deriving) HD keys from a given mnemonic"
@@ -67,53 +69,16 @@ func generateKeys(ctx *cli.Context) error {
 		return err
 	}
 
-	var wg sync.WaitGroup
-	generatedKeysByTask := make([][]common.GeneratedKey, cliFlags.numTasks)
-
-	for taskIndex := 0; taskIndex < cliFlags.numTasks; taskIndex++ {
-		wg.Add(1)
-
-		task := generatorTask{
-			numTasks:        cliFlags.numTasks,
-			taskIndex:       taskIndex,
-			mnemonic:        mnemonic,
-			constraints:     constraints,
-			useAccountIndex: cliFlags.useAccountIndex,
-			startIndex:      cliFlags.startIndex,
-			numKeys:         int(cliFlags.numKeys)/cliFlags.numTasks + 1,
-		}
-
-		go func(t generatorTask) {
-			generatedKeysByTask[t.taskIndex], err = t.doGenerateKeys()
-			if err != nil {
-				log.Error(err.Error())
-				return
-			}
-
-			wg.Done()
-		}(task)
+	tasks := createTasks(cliFlags)
+	generatedKeys, err := generateKeysInParallel(context.Background(), tasks, mnemonic, constraints)
+	if err != nil {
+		return err
 	}
 
-	wg.Wait()
+	generatedKeys = generatedKeys[:cliFlags.numKeys]
+	log.Info("done key generation")
 
-	allGeneratedKeys := make([]common.GeneratedKey, 0, cliFlags.numKeys)
-
-	for _, keys := range generatedKeysByTask {
-		allGeneratedKeys = append(allGeneratedKeys, keys...)
-	}
-
-	sort.Slice(allGeneratedKeys, func(i, j int) bool {
-		return allGeneratedKeys[i].Index < allGeneratedKeys[j].Index
-	})
-
-	fmt.Println("Generated", len(allGeneratedKeys))
-	fmt.Println("...")
-
-	for _, key := range allGeneratedKeys {
-		fmt.Println(key.Index, key.Address)
-	}
-
-	err = exporter.ExportKeys(allGeneratedKeys)
+	err = exporter.ExportKeys(generatedKeys)
 	if err != nil {
 		return err
 	}
@@ -140,4 +105,47 @@ func readLine() (string, error) {
 	}
 
 	return strings.TrimSpace(line), nil
+}
+
+func generateKeysInParallel(
+	ctx context.Context,
+	tasks []generatorTask,
+	mnemonic data.Mnemonic,
+	constraints *constraints,
+) ([]common.GeneratedKey, error) {
+	generatedKeysByTask := make([][]common.GeneratedKey, len(tasks))
+
+	errs, _ := errgroup.WithContext(ctx)
+
+	for _, task := range tasks {
+		t := task
+
+		errs.Go(func() error {
+			keys, err := t.doGenerateKeys(mnemonic, constraints)
+			if err != nil {
+				return err
+			}
+
+			generatedKeysByTask[t.taskIndex] = keys
+			return nil
+		})
+	}
+
+	err := errs.Wait()
+	if err != nil {
+		return nil, err
+	}
+
+	allGeneratedKeys := make([]common.GeneratedKey, 0)
+
+	for _, keys := range generatedKeysByTask {
+		allGeneratedKeys = append(allGeneratedKeys, keys...)
+	}
+
+	// Sort generated keys by index
+	sort.Slice(allGeneratedKeys, func(i, j int) bool {
+		return allGeneratedKeys[i].Index < allGeneratedKeys[j].Index
+	})
+
+	return allGeneratedKeys, nil
 }
