@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
@@ -20,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 const (
@@ -28,7 +28,7 @@ const (
 	logFilePrefix      = "accounts-tokens-exporter"
 	addressLength      = 32
 	outputFilePerms    = 0644
-	maxIndexerRetrials = 10
+	maxRequestsRetrial = 10
 	multipleSearchBulk = 10000
 )
 
@@ -297,14 +297,16 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 
 	bulkSize := core.MinInt(multipleSearchBulk, numTokens)
 	requests := make([]string, 0, bulkSize)
-	numTokensCrossChecked := 0
-	ctBulks := 0
+	currTokenIdx := 0
 	ctRequests := 0
-	esdtGetter := newESDTsGetter("https://gateway.elrond.com")
+	nftGetter := newNFTBalanceGetter("https://gateway.elrond.com")
 	for token := range tokens {
-		ctBulks++
+		currTokenIdx++
 		requests = append(requests, createRequest(token))
-		if len(requests) < bulkSize && ctBulks != numTokens {
+
+		notEnoughRequests := len(requests) < bulkSize
+		notLastBulk := currTokenIdx != numTokens
+		if notEnoughRequests && notLastBulk {
 			continue
 		}
 
@@ -313,62 +315,87 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 			log.Error("elasticClient.GetMultiple(accountsesdt, requests)",
 				"error", err,
 				"requests", requests)
-			continue
+			return err
 		}
-		ctRequests += len(requests)
 
 		responses := gjson.Get(string(respBytes), "responses").Array()
-		idx := 0
-		for _, res := range responses {
-			hits := res.Get("hits.hits").Array()
-			numTokensCrossChecked++
-			if len(hits) != 0 {
-
-				warnToken := gjson.Get(requests[idx], "query.match.identifier.query").String()
-				log.Warn("found token in indexer with hits/accounts",
-					"token", warnToken,
-					"num hits/accounts", len(hits))
-
-				for _, hit := range hits {
-					address := hit.Get("_source.address").String()
-					addressTokens, err := esdtGetter.getTokens(address)
-					if err != nil {
-						log.Error("getAddressTokensWithRetrial failed", "error", err)
-						continue
-					}
-
-					log.Warn("checking gateway if token still exists in trie",
-						"token", warnToken,
-						"address", address)
-
-					_, found := addressTokens[warnToken]
-					if found {
-						log.Error("cross-check failed; found token which is still in other address",
-							"token", warnToken,
-							"address", address)
-						break
-					} else {
-						log.Warn("possible indexer problem",
-							"token", gjson.Get(requests[idx], "query.match.identifier.query").String(),
-							"hit in address", address,
-							"found in trie", false)
-						break
-					}
-
-				}
-			}
-			idx++
-
+		err = checkIndexerResponse(requests, responses, nftGetter)
+		if err != nil {
+			return err
 		}
 
-		go printProgress(numTokens, numTokensCrossChecked)
+		go printProgress(numTokens, currTokenIdx)
 
+		ctRequests += len(requests)
 		requests = make([]string, 0, bulkSize)
-		time.Sleep(40 * time.Millisecond)
 	}
 
-	log.Info("finished cross-checking", "bulks", ctBulks, "ctRequests", ctRequests)
+	log.Info("finished cross-checking",
+		"total num of tokens", numTokens,
+		"total num of tokens cross-checked", currTokenIdx,
+		"total num of tokens requests in indexer", ctRequests)
+
+	if numTokens != currTokenIdx || numTokens != ctRequests {
+		return errors.New("failed to cross check all tokens, check logs")
+	}
+
 	return nil
+}
+
+func checkIndexerResponse(requests []string, responses []gjson.Result, nftBalanceGetter *nftBalanceGetter) error {
+	idxRequestedToken := 0
+	for _, res := range responses {
+		hits := res.Get("hits.hits").Array()
+		if len(hits) != 0 {
+			token := gjson.Get(requests[idxRequestedToken], "query.match.identifier.query").String()
+			log.Debug("found token in indexer with hits/accounts",
+				"token", token,
+				"num hits/accounts", len(hits))
+
+			checkFailed, err := crossCheckToken(hits, token, nftBalanceGetter)
+			if err != nil {
+				return err
+			}
+
+			if checkFailed {
+				//TODO: HERREEEE
+			}
+		}
+		idxRequestedToken++
+	}
+
+	return nil
+}
+
+func crossCheckToken(hits []gjson.Result, warnToken string, nftBalanceGetter *nftBalanceGetter) (bool, error) {
+	checkFailed := false
+	for _, hit := range hits {
+		address := hit.Get("_source.address").String()
+		balance, err := nftBalanceGetter.getBalance(address, warnToken)
+		if err != nil {
+			return false, err
+		}
+
+		log.Debug("checking gateway if token still exists in trie",
+			"token", warnToken,
+			"address", address)
+
+		if balance != "0" {
+			checkFailed = true
+			log.Error("cross-check failed; found token which is still in other address",
+				"token", warnToken,
+				"balance", balance,
+				"address", address)
+			break
+		} else {
+			log.Warn("possible indexer problem",
+				"token", warnToken,
+				"hit in address", address,
+				"found in trie", false)
+		}
+	}
+
+	return checkFailed, nil
 }
 
 func createRequest(token string) string {
