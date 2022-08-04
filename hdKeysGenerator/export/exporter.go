@@ -92,10 +92,6 @@ func (e *exporter) getFormatter() (formatter, error) {
 	return nil, fmt.Errorf("unknown format: %s", e.format)
 }
 
-func (e *exporter) getOutputFileBasename() string {
-	return strings.TrimSuffix(e.outputFile, filepath.Ext(e.outputFile))
-}
-
 func (e *exporter) saveMetadataFile() error {
 	metadata := &exportMetadata{
 		ActualShardID:          e.actualShard.Value,
