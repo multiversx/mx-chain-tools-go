@@ -21,7 +21,11 @@ func TestCreateTasks(t *testing.T) {
 		},
 	}
 
-	tasks, newIndex := createTasks(numTasks, startIndex, false)
+	tasks, newIndex := createTasks(argsCreateTasks{
+		numTasks:        numTasks,
+		startIndex:      startIndex,
+		useAccountIndex: false,
+	})
 	require.Equal(t, expectedTasks, tasks)
 	require.Equal(t, newIndex, startIndex+fixedTaskSize*2)
 }

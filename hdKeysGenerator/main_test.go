@@ -60,14 +60,14 @@ func TestInlineSortKeysByIndexes(t *testing.T) {
 func TestGenerateKeysInParallel_GeneratesKeyAsInSequence(t *testing.T) {
 	numKeys := 9
 	startIndex := 1
-	params := parsedCliFlags{
-		numKeys:    uint(numKeys),
+	args := argsGenerateKeysInParallel{
+		numKeys:    numKeys,
 		startIndex: startIndex,
 		numTasks:   4,
 	}
 
 	noConstraints, _ := newConstraints(3, common.OptionalUint32{}, common.OptionalUint32{})
-	keys, err := generateKeysInParallel(context.Background(), params, DummyMnemonic, noConstraints)
+	keys, err := generateKeysInParallel(context.Background(), args, DummyMnemonic, noConstraints)
 
 	require.Nil(t, err)
 	require.Equal(t, numKeys, len(keys))

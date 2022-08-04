@@ -66,7 +66,14 @@ func generateKeys(ctx *cli.Context) error {
 		return err
 	}
 
-	generatedKeys, err := generateKeysInParallel(context.Background(), cliFlags, mnemonic, constraints)
+	args := argsGenerateKeysInParallel{
+		numTasks:        cliFlags.numTasks,
+		startIndex:      cliFlags.startIndex,
+		useAccountIndex: cliFlags.useAccountIndex,
+		numKeys:         cliFlags.numTasks,
+	}
+
+	generatedKeys, err := generateKeysInParallel(context.Background(), args, mnemonic, constraints)
 	if err != nil {
 		return err
 	}
@@ -84,15 +91,15 @@ func generateKeys(ctx *cli.Context) error {
 
 func generateKeysInParallel(
 	ctx context.Context,
-	params parsedCliFlags,
+	args argsGenerateKeysInParallel,
 	mnemonic data.Mnemonic,
 	constraints *constraints,
 ) ([]common.GeneratedKey, error) {
-	allGeneratedKeys := make([]common.GeneratedKey, 0, params.numKeys)
+	allGeneratedKeys := make([]common.GeneratedKey, 0, args.numKeys)
 
-	numKeys := int(params.numKeys)
-	numTasks := params.numTasks
-	slidingIndex := params.startIndex
+	numKeys := int(args.numKeys)
+	numTasks := args.numTasks
+	slidingIndex := args.startIndex
 
 	// Description of the model:
 	// In a loop, as long as there are keys to be generated:
@@ -106,7 +113,11 @@ func generateKeysInParallel(
 	// However, the model should behave well when a lot of account / address indexes have to be checked for eligibility.
 	for len(allGeneratedKeys) < numKeys {
 		generatedKeysByTask := make([][]common.GeneratedKey, numTasks)
-		tasks, newSlidingIndex := createTasks(numTasks, slidingIndex, params.useAccountIndex)
+		tasks, newSlidingIndex := createTasks(argsCreateTasks{
+			numTasks:        numTasks,
+			startIndex:      slidingIndex,
+			useAccountIndex: args.useAccountIndex,
+		})
 
 		errs, _ := errgroup.WithContext(ctx)
 

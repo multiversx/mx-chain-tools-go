@@ -16,13 +16,13 @@ type generatorTask struct {
 	lastIndex       int
 }
 
-func createTasks(numTasks int, startingIndex int, useAccountIndex bool) ([]generatorTask, int) {
-	tasks := make([]generatorTask, 0, numTasks)
-	slidingIndex := startingIndex
+func createTasks(args argsCreateTasks) ([]generatorTask, int) {
+	tasks := make([]generatorTask, 0, args.numTasks)
+	slidingIndex := args.startIndex
 
-	for taskIndex := 0; taskIndex < numTasks; taskIndex++ {
+	for taskIndex := 0; taskIndex < args.numTasks; taskIndex++ {
 		task := generatorTask{
-			useAccountIndex: useAccountIndex,
+			useAccountIndex: args.useAccountIndex,
 			firstIndex:      slidingIndex,
 			lastIndex:       slidingIndex + fixedTaskSize,
 		}
