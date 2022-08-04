@@ -13,6 +13,50 @@ const (
 	DummyMnemonic = "moral volcano peasant pass circle pen over picture flat shop clap goat never lyrics gather prepare woman film husband gravity behind test tiger improve"
 )
 
+func TestInlineSortKeysByIndexes(t *testing.T) {
+	keys := []common.GeneratedKey{
+		{
+			AccountIndex: 0,
+			AddressIndex: 4,
+		},
+		{
+			AccountIndex: 0,
+			AddressIndex: 3,
+		},
+		{
+			AccountIndex: 4,
+			AddressIndex: 1,
+		},
+		{
+			AccountIndex: 3,
+			AddressIndex: 3,
+		},
+	}
+
+	sortedKeys := []common.GeneratedKey{
+		{
+			AccountIndex: 0,
+			AddressIndex: 3,
+		},
+		{
+			AccountIndex: 0,
+			AddressIndex: 4,
+		},
+		{
+			AccountIndex: 3,
+			AddressIndex: 3,
+		},
+		{
+			AccountIndex: 4,
+			AddressIndex: 1,
+		},
+	}
+
+	inlineSortKeysByIndexes(keys)
+
+	require.Equal(t, sortedKeys, keys)
+}
+
 func TestGenerateKeysInParallel_GeneratesKeyAsInSequence(t *testing.T) {
 	numKeys := 9
 	startIndex := 1

@@ -153,13 +153,10 @@ func inlineSortKeysByIndexes(keys []common.GeneratedKey) {
 		a := keys[i]
 		b := keys[j]
 
-		if a.AccountIndex < b.AccountIndex {
-			return true
-		}
-		if a.AddressIndex < b.AddressIndex {
-			return true
+		if a.AccountIndex != b.AccountIndex {
+			return a.AccountIndex < b.AccountIndex
 		}
 
-		return false
+		return a.AddressIndex < b.AddressIndex
 	})
 }
