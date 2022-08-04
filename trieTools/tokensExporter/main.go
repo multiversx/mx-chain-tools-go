@@ -144,15 +144,15 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 		}
 	}
 
-	encodedAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
+	encodedSysAccAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
 	log.Info("parsed main trie",
 		"num accounts", numAccountsOnMainTrie,
 		"num accounts with tokens", len(addressTokensMap),
-		"num tokens in system account address", len(addressTokensMap[encodedAddress]))
+		"num tokens in system account address", len(addressTokensMap[encodedSysAccAddress]))
 
-	_, found := addressTokensMap[encodedAddress]
+	_, found := addressTokensMap[encodedSysAccAddress]
 	if !found {
-		log.Warn(fmt.Sprintf("system account address(%s) not found, input dbs might be incomplete/corrupted", encodedAddress))
+		log.Warn(fmt.Sprintf("system account address(%s) not found, input dbs might be incomplete/corrupted", encodedSysAccAddress))
 	}
 
 	return saveResult(addressTokensMap, flags.Outfile)
