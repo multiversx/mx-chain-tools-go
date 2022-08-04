@@ -61,13 +61,13 @@ func TestGenerateKeysInParallel_GeneratesKeyAsInSequence(t *testing.T) {
 	numKeys := 9
 	startIndex := 1
 	args := argsGenerateKeysInParallel{
-		numKeys:    numKeys,
-		startIndex: startIndex,
-		numTasks:   4,
+		numKeys:     numKeys,
+		startIndex:  startIndex,
+		numTasks:    4,
+		constraints: constraints{},
 	}
 
-	noConstraints, _ := newConstraints(3, common.OptionalUint32{}, common.OptionalUint32{})
-	keys, err := generateKeysInParallel(context.Background(), args, DummyMnemonic, noConstraints)
+	keys, err := generateKeysInParallel(context.Background(), args, DummyMnemonic)
 
 	require.Nil(t, err)
 	require.Equal(t, numKeys, len(keys))

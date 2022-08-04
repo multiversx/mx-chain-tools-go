@@ -42,7 +42,7 @@ When running the tool, you can specify the desired export format. The available 
 
 ```
 AccountIndex AddressIndex	Address	PublicKey	SecretKey
-0            5	            erd1...	aaaa	    bbbb
+0            5	            erd1...	aaaa        bbbb
 0            8	            erd1...	cccc        dddd
 ```
 

@@ -13,18 +13,19 @@ type constraints struct {
 	projectedShardCoordinator sharding.Coordinator
 }
 
-func newConstraints(numShards uint32, actualShard common.OptionalUint32, projectedShard common.OptionalUint32) (*constraints, error) {
+// Question for review: "makeConstraints", "createConstraints", since it does not return a pointer?
+func newConstraints(numShards uint32, actualShard common.OptionalUint32, projectedShard common.OptionalUint32) (constraints, error) {
 	actualShardCoordinator, err := sharding.NewMultiShardCoordinator(numShards, actualShard.Value)
 	if err != nil {
-		return nil, err
+		return constraints{}, err
 	}
 
 	projectedShardCoordinator, err := sharding.NewMultiShardCoordinator(core.MaxNumShards, projectedShard.Value)
 	if err != nil {
-		return nil, err
+		return constraints{}, err
 	}
 
-	return &constraints{
+	return constraints{
 		actualShard:               actualShard,
 		projectedShard:            projectedShard,
 		actualShardCoordinator:    actualShardCoordinator,

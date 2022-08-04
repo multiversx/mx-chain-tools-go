@@ -71,9 +71,10 @@ func generateKeys(ctx *cli.Context) error {
 		startIndex:      cliFlags.startIndex,
 		useAccountIndex: cliFlags.useAccountIndex,
 		numKeys:         cliFlags.numTasks,
+		constraints:     constraints,
 	}
 
-	generatedKeys, err := generateKeysInParallel(context.Background(), args, mnemonic, constraints)
+	generatedKeys, err := generateKeysInParallel(context.Background(), args, mnemonic)
 	if err != nil {
 		return err
 	}
@@ -92,7 +93,6 @@ func generateKeysInParallel(
 	ctx context.Context,
 	args argsGenerateKeysInParallel,
 	mnemonic data.Mnemonic,
-	constraints *constraints,
 ) ([]common.GeneratedKey, error) {
 	allGeneratedKeys := make([]common.GeneratedKey, 0, args.numKeys)
 
@@ -117,6 +117,7 @@ func generateKeysInParallel(
 			numTasks:        numTasks,
 			startIndex:      slidingIndex,
 			useAccountIndex: args.useAccountIndex,
+			constraints:     args.constraints,
 		})
 
 		errs, _ := errgroup.WithContext(ctx)
@@ -126,7 +127,7 @@ func generateKeysInParallel(
 			t := task
 
 			errs.Go(func() error {
-				keys, err := t.doGenerateKeys(mnemonic, constraints)
+				keys, err := t.doGenerateKeys(mnemonic)
 				if err != nil {
 					return err
 				}

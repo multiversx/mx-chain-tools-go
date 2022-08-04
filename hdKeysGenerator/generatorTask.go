@@ -14,6 +14,7 @@ type generatorTask struct {
 	useAccountIndex bool
 	firstIndex      int
 	lastIndex       int
+	constraints     constraints
 }
 
 func createTasks(args argsCreateTasks) ([]generatorTask, int) {
@@ -25,6 +26,7 @@ func createTasks(args argsCreateTasks) ([]generatorTask, int) {
 			useAccountIndex: args.useAccountIndex,
 			firstIndex:      slidingIndex,
 			lastIndex:       slidingIndex + fixedTaskSize,
+			constraints:     args.constraints,
 		}
 
 		tasks = append(tasks, task)
@@ -35,7 +37,7 @@ func createTasks(args argsCreateTasks) ([]generatorTask, int) {
 	return tasks, slidingIndex
 }
 
-func (task *generatorTask) doGenerateKeys(mnemonic data.Mnemonic, constraints *constraints) ([]common.GeneratedKey, error) {
+func (task *generatorTask) doGenerateKeys(mnemonic data.Mnemonic) ([]common.GeneratedKey, error) {
 	wallet := interactors.NewWallet()
 	seed := wallet.CreateSeedFromMnemonic(mnemonic)
 	goodKeys := make([]common.GeneratedKey, 0)
@@ -59,7 +61,7 @@ func (task *generatorTask) doGenerateKeys(mnemonic data.Mnemonic, constraints *c
 			return nil, err
 		}
 
-		isGoodKey := constraints.areSatisfiedByPublicKey(addressHandler.AddressBytes())
+		isGoodKey := task.constraints.areSatisfiedByPublicKey(addressHandler.AddressBytes())
 		if isGoodKey {
 			goodKeys = append(goodKeys, common.GeneratedKey{
 				AccountIndex: accountIndex,
