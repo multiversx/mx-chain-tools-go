@@ -70,6 +70,12 @@ VERSION:
 		Usage: fmt.Sprintf("Export format. One of the following: %s", export.AllFormattersNames),
 		Value: export.FormatterNamePlainText,
 	}
+
+	cliFlagOutputFile = cli.StringFlag{
+		Name:     "output",
+		Usage:    "The output file.",
+		Required: true,
+	}
 )
 
 func getAllCliFlags() []cli.Flag {
@@ -82,6 +88,7 @@ func getAllCliFlags() []cli.Flag {
 		cliFlagUseAccountIndex,
 		cliFlagNumTasks,
 		cliFlagExportFormat,
+		cliFlagOutputFile,
 	}
 }
 
@@ -94,6 +101,7 @@ type parsedCliFlags struct {
 	useAccountIndex bool
 	numTasks        int
 	exportFormat    string
+	outputFile      string
 }
 
 func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
@@ -112,5 +120,6 @@ func getParsedCliFlags(ctx *cli.Context) parsedCliFlags {
 		useAccountIndex: ctx.GlobalBool(cliFlagUseAccountIndex.Name),
 		numTasks:        ctx.GlobalInt(cliFlagNumTasks.Name),
 		exportFormat:    ctx.GlobalString(cliFlagExportFormat.Name),
+		outputFile:      ctx.GlobalString(cliFlagOutputFile.Name),
 	}
 }

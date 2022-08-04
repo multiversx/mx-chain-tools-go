@@ -56,6 +56,7 @@ func generateKeys(ctx *cli.Context) error {
 		StartIndex:     cliFlags.startIndex,
 		NumKeys:        int(cliFlags.numKeys),
 		Format:         cliFlags.exportFormat,
+		OutputFile:     cliFlags.outputFile,
 	})
 	if err != nil {
 		return err
@@ -70,7 +71,7 @@ func generateKeys(ctx *cli.Context) error {
 		numTasks:        cliFlags.numTasks,
 		startIndex:      cliFlags.startIndex,
 		useAccountIndex: cliFlags.useAccountIndex,
-		numKeys:         cliFlags.numTasks,
+		numKeys:         int(cliFlags.numKeys),
 		constraints:     constraints,
 	}
 

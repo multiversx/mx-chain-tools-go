@@ -30,7 +30,6 @@ func createTasks(args argsCreateTasks) ([]generatorTask, int) {
 		}
 
 		tasks = append(tasks, task)
-
 		slidingIndex += fixedTaskSize
 	}
 

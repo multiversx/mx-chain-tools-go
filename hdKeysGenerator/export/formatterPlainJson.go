@@ -38,7 +38,3 @@ func (f *formatterPlainJson) toText(keys []common.GeneratedKey) (string, error) 
 
 	return string(recordsJson), nil
 }
-
-func (f *formatterPlainJson) getFileExtension() string {
-	return "json"
-}

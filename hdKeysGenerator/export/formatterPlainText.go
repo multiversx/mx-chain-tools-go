@@ -36,7 +36,3 @@ func (f *formatterPlainText) toText(keys []common.GeneratedKey) (string, error) 
 
 	return builder.String(), nil
 }
-
-func (f *formatterPlainText) getFileExtension() string {
-	return "txt"
-}

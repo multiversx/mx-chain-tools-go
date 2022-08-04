@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"path/filepath"
+	"strings"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
@@ -16,6 +18,7 @@ type ArgsNewExporter struct {
 	StartIndex     int
 	NumKeys        int
 	Format         string
+	OutputFile     string
 }
 
 type exporter struct {
@@ -24,6 +27,7 @@ type exporter struct {
 	startIndex     int
 	numKeys        int
 	format         string
+	outputFile     string
 }
 
 // NewExporter creates a new exporter
@@ -34,9 +38,11 @@ func NewExporter(args ArgsNewExporter) (*exporter, error) {
 		startIndex:     args.StartIndex,
 		numKeys:        args.NumKeys,
 		format:         args.Format,
+		outputFile:     args.OutputFile,
 	}, nil
 }
 
+// ExportKeys exports the generated keys to a file
 func (e *exporter) ExportKeys(keys []common.GeneratedKey) error {
 	log.Info("exporting:",
 		"numKeys", len(keys),
@@ -67,9 +73,7 @@ func (e *exporter) saveKeysFile(keys []common.GeneratedKey) error {
 		return err
 	}
 
-	fileBasename := e.getOutputFileBasename()
-	filename := fmt.Sprintf("%s.%s", fileBasename, formatter.getFileExtension())
-	err = e.saveFile(filename, text)
+	err = e.saveFile(e.outputFile, text)
 	if err != nil {
 		return err
 	}
@@ -89,19 +93,7 @@ func (e *exporter) getFormatter() (formatter, error) {
 }
 
 func (e *exporter) getOutputFileBasename() string {
-	actualShardPart := "actualShard_None"
-	projectedShardPart := "projectedShard_None"
-	startIndexPart := fmt.Sprintf("start_%d", e.startIndex)
-	numKeysPart := fmt.Sprintf("numKeys_%d", e.numKeys)
-
-	if e.actualShard.HasValue {
-		actualShardPart = fmt.Sprintf("ActualShard_%d", e.actualShard.Value)
-	}
-	if e.projectedShard.HasValue {
-		projectedShardPart = fmt.Sprintf("ProjectedShard_%d", e.projectedShard.Value)
-	}
-
-	return fmt.Sprintf("Keys_%s_%s_%s_%s", actualShardPart, projectedShardPart, startIndexPart, numKeysPart)
+	return strings.TrimSuffix(e.outputFile, filepath.Ext(e.outputFile))
 }
 
 func (e *exporter) saveMetadataFile() error {
@@ -119,8 +111,8 @@ func (e *exporter) saveMetadataFile() error {
 		return err
 	}
 
-	fileBasename := e.getOutputFileBasename()
-	metadataFilename := fmt.Sprintf("%s.%s.metadata.json", fileBasename, e.format)
+	fileBasename := strings.TrimSuffix(e.outputFile, filepath.Ext(e.outputFile))
+	metadataFilename := fmt.Sprintf("%s.metadata.json", fileBasename)
 	err = e.saveFile(metadataFilename, string(metadataJson))
 	if err != nil {
 		return err

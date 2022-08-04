@@ -19,19 +19,19 @@ go build .
 Then, run the command as follows:
 
 ```
-./hdKeysGenerator --num-keys=5000 --format=plain-json
+./hdKeysGenerator --num-keys=5000 --format=plain-json --output=testKeys.json
 ```
 
 You can configure the public key (address) constraints as follows:
 
 ```
 # generate keys in the provided actual shard
-./hdKeysGenerator --num-keys=5000 --actual-shard=2 --num-shards=3
+./hdKeysGenerator --num-keys=5000 --actual-shard=2 --num-shards=3 --output=testKeys.txt
 ```
 
 ```
 # generate keys in the provided projected shard
-./hdKeysGenerator --num-keys=5000 --projected-shard=5
+./hdKeysGenerator --num-keys=5000 --projected-shard=5 --output=testKeys.txt
 ```
 
 ### Export formats
