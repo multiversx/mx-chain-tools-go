@@ -78,7 +78,6 @@ func generateKeys(ctx *cli.Context) error {
 		return err
 	}
 
-	generatedKeys = generatedKeys[:cliFlags.numKeys]
 	log.Info("done key generation")
 
 	err = exporter.ExportKeys(generatedKeys)
@@ -101,12 +100,13 @@ func generateKeysInParallel(
 	numTasks := args.numTasks
 	slidingIndex := args.startIndex
 
-	// Description of the model:
+	// Description of the parallel model:
 	// In a loop, as long as there are keys to be generated:
 	//	- a number of "numTasks" (parallel) tasks are created.
 	// 	- each task checks a number of "fixedTaskSize" indexes account / address indexes for eligibility.
-	//  - the output (generated keys) is accumulated in a slice
-	// At the end of the loop, the accumulator slice is sorted by account & address indexes.
+	//  - the output (selected indexes, generated keys) is accumulated in a slice
+	// At the end of the loop, the accumulator slice is sorted by account & address indexes,
+	// while redundantly-generated keys are ignored.
 	//
 	// This parallelization model leads to some redundant work when a small number of keys are requested
 	// and / or the generation constraints are "easy" (they do not imply a lot of index skipping).
