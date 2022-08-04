@@ -27,7 +27,6 @@ var (
 
 func getFlags() []cli.Flag {
 	return []cli.Flag{
-		trieToolsCommon.WorkingDirectory,
 		trieToolsCommon.LogLevel,
 		trieToolsCommon.DisableAnsiColor,
 		trieToolsCommon.LogSaveFile,
@@ -42,7 +41,6 @@ func getFlags() []cli.Flag {
 func getFlagsConfig(ctx *cli.Context) config.ContextFlagsZeroBalanceSysAccChecker {
 	flagsConfig := config.ContextFlagsZeroBalanceSysAccChecker{}
 
-	flagsConfig.WorkingDir = ctx.GlobalString(trieToolsCommon.WorkingDirectory.Name)
 	flagsConfig.LogLevel = ctx.GlobalString(trieToolsCommon.LogLevel.Name)
 	flagsConfig.SaveLogFile = ctx.GlobalBool(trieToolsCommon.LogSaveFile.Name)
 	flagsConfig.EnableLogName = ctx.GlobalBool(trieToolsCommon.LogWithLoggerName.Name)

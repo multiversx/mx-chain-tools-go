@@ -83,13 +83,18 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
+	if flagsConfig.CrossCheck {
+		tokensThatStillExist, err := crossCheckExtraTokens(extraTokens)
+		if err != nil {
+			return err
+		}
+
+		removeTokensThatStillExist(tokensThatStillExist, extraTokens)
+	}
+
 	err = saveResult(extraTokens, flagsConfig.Outfile)
 	if err != nil {
 		return err
-	}
-
-	if flagsConfig.CrossCheck {
-		return crossCheckExtraTokens(extraTokens)
 	}
 
 	return nil
@@ -282,7 +287,7 @@ func saveResult(tokens map[string]struct{}, outfile string) error {
 	return nil
 }
 
-func crossCheckExtraTokens(tokens map[string]struct{}) error {
+func crossCheckExtraTokens(tokens map[string]struct{}) ([]string, error) {
 	numTokens := len(tokens)
 	log.Info("starting to cross-check", "num of tokens", numTokens)
 
@@ -292,10 +297,11 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 		Password: "RLnGWsyW8xAEuAWzvAwoCI",
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	bulkSize := core.MinInt(multipleSearchBulk, numTokens)
+	tokensThatStillExist := make([]string, 0)
 	requests := make([]string, 0, bulkSize)
 	currTokenIdx := 0
 	ctRequests := 0
@@ -315,19 +321,20 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 			log.Error("elasticClient.GetMultiple(accountsesdt, requests)",
 				"error", err,
 				"requests", requests)
-			return err
+			return nil, err
 		}
 
 		responses := gjson.Get(string(respBytes), "responses").Array()
-		err = checkIndexerResponse(requests, responses, nftGetter)
+		crossCheckFailedTokens, err := checkIndexerResponse(requests, responses, nftGetter)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		go printProgress(numTokens, currTokenIdx)
 
 		ctRequests += len(requests)
 		requests = make([]string, 0, bulkSize)
+		tokensThatStillExist = append(tokensThatStillExist, crossCheckFailedTokens...)
 	}
 
 	log.Info("finished cross-checking",
@@ -336,15 +343,15 @@ func crossCheckExtraTokens(tokens map[string]struct{}) error {
 		"total num of tokens requests in indexer", ctRequests)
 
 	if numTokens != currTokenIdx || numTokens != ctRequests {
-		return errors.New("failed to cross check all tokens, check logs")
+		return nil, errors.New("failed to cross check all tokens, check logs")
 	}
 
-	return nil
+	return tokensThatStillExist, nil
 }
 
-func checkIndexerResponse(requests []string, responses []gjson.Result, nftBalanceGetter *nftBalanceGetter) error {
-	idxRequestedToken := 0
-	for _, res := range responses {
+func checkIndexerResponse(requests []string, responses []gjson.Result, nftBalanceGetter *nftBalanceGetter) ([]string, error) {
+	tokensThatStillExist := make([]string, 0)
+	for idxRequestedToken, res := range responses {
 		hits := res.Get("hits.hits").Array()
 		if len(hits) != 0 {
 			token := gjson.Get(requests[idxRequestedToken], "query.match.identifier.query").String()
@@ -354,45 +361,45 @@ func checkIndexerResponse(requests []string, responses []gjson.Result, nftBalanc
 
 			checkFailed, err := crossCheckToken(hits, token, nftBalanceGetter)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			if checkFailed {
-				//TODO: HERREEEE
+				tokensThatStillExist = append(tokensThatStillExist, token)
 			}
 		}
 		idxRequestedToken++
 	}
 
-	return nil
+	return tokensThatStillExist, nil
 }
 
-func crossCheckToken(hits []gjson.Result, warnToken string, nftBalanceGetter *nftBalanceGetter) (bool, error) {
+func crossCheckToken(hits []gjson.Result, token string, nftBalanceGetter *nftBalanceGetter) (bool, error) {
 	checkFailed := false
 	for _, hit := range hits {
 		address := hit.Get("_source.address").String()
-		balance, err := nftBalanceGetter.getBalance(address, warnToken)
+		balance, err := nftBalanceGetter.getBalance(address, token)
 		if err != nil {
 			return false, err
 		}
 
 		log.Debug("checking gateway if token still exists in trie",
-			"token", warnToken,
+			"token", token,
 			"address", address)
 
 		if balance != "0" {
 			checkFailed = true
 			log.Error("cross-check failed; found token which is still in other address",
-				"token", warnToken,
+				"token", token,
 				"balance", balance,
 				"address", address)
 			break
-		} else {
-			log.Warn("possible indexer problem",
-				"token", warnToken,
-				"hit in address", address,
-				"found in trie", false)
 		}
+
+		log.Warn("possible indexer problem",
+			"token", token,
+			"hit in address", address,
+			"found in trie", false)
 	}
 
 	return checkFailed, nil
@@ -407,4 +414,18 @@ func printProgress(numTokens, numTokensCrossChecked int) {
 		"num cross checked tokens", numTokensCrossChecked,
 		"remaining num of tokens to check", numTokens-numTokensCrossChecked,
 		"progress(%)", (100*numTokensCrossChecked)/numTokens) // this should not panic with div by zero, since func is only called if numTokens > 0
+}
+
+func removeTokensThatStillExist(tokensThatStillExist []string, tokens map[string]struct{}) {
+	if len(tokensThatStillExist) == 0 {
+		log.Info("all cross-checks were successful; exported tokens are only stored in system account")
+		return
+	}
+
+	log.Error("found tokens with balances that still exist in other accounts; probably found in pending mbs during snapshot; will remove them from exported tokens",
+		"tokens", tokensThatStillExist)
+
+	for _, token := range tokensThatStillExist {
+		delete(tokens, token)
+	}
 }
