@@ -118,11 +118,21 @@ func generateKeysInParallel(
 	numTasks := params.numTasks
 	slidingIndex := params.startIndex
 
+	// Description of the model:
+	// In a loop, as long as there are keys to be generated:
+	//	- a number of "numTasks" (parallel) tasks are created.
+	// 	- each task checks a number of "fixedTaskSize" indexes account / address indexes for eligibility.
+	//  - the output (generated keys) is accumulated in a slice
+	// At the end of the loop, the accumulator slice is sorted by account & address indexes.
+	//
+	// This parallelization model leads to some redundant work when a small number of keys are requested
+	// and / or the generation constraints are "easy" (they do not imply a lot of index skipping).
+	// However, the model should behave well when a lot of account / address indexes have to be checked for eligibility.
 	for len(allGeneratedKeys) < numKeys {
 		generatedKeysByTask := make([][]common.GeneratedKey, numTasks)
-		errs, _ := errgroup.WithContext(ctx)
-
 		tasks, newSlidingIndex := createTasks(numTasks, slidingIndex, params.useAccountIndex)
+
+		errs, _ := errgroup.WithContext(ctx)
 
 		for taskIndex, task := range tasks {
 			i := taskIndex
@@ -139,11 +149,13 @@ func generateKeysInParallel(
 			})
 		}
 
+		// Wait for all tasks
 		err := errs.Wait()
 		if err != nil {
 			return nil, err
 		}
 
+		// Gather output from all tasks
 		for _, keys := range generatedKeysByTask {
 			allGeneratedKeys = append(allGeneratedKeys, keys...)
 		}
@@ -153,10 +165,22 @@ func generateKeysInParallel(
 		log.Info("progress", "numKeys", len(allGeneratedKeys))
 	}
 
-	// Sort generated keys by index
-	sort.Slice(allGeneratedKeys, func(i, j int) bool {
-		return allGeneratedKeys[i].AddressIndex < allGeneratedKeys[j].AddressIndex
-	})
-
+	inlineSortKeysByIndexes(allGeneratedKeys)
 	return allGeneratedKeys, nil
+}
+
+func inlineSortKeysByIndexes(keys []common.GeneratedKey) {
+	sort.Slice(keys, func(i, j int) bool {
+		a := keys[i]
+		b := keys[j]
+
+		if a.AccountIndex < b.AccountIndex {
+			return true
+		}
+		if a.AddressIndex < b.AddressIndex {
+			return true
+		}
+
+		return false
+	})
 }

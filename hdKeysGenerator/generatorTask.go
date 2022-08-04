@@ -6,6 +6,10 @@ import (
 	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
 )
 
+const (
+	fixedTaskSize = 8192
+)
+
 type generatorTask struct {
 	useAccountIndex bool
 	firstIndex      int
@@ -20,12 +24,12 @@ func createTasks(numTasks int, startingIndex int, useAccountIndex bool) ([]gener
 		task := generatorTask{
 			useAccountIndex: useAccountIndex,
 			firstIndex:      slidingIndex,
-			lastIndex:       slidingIndex + defaultTaskSize,
+			lastIndex:       slidingIndex + fixedTaskSize,
 		}
 
 		tasks = append(tasks, task)
 
-		slidingIndex += defaultTaskSize
+		slidingIndex += fixedTaskSize
 	}
 
 	return tasks, slidingIndex

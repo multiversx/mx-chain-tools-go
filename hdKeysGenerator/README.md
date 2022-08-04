@@ -41,9 +41,9 @@ When running the tool, you can specify the desired export format. The available 
 `plain-text`:
 
 ```
-Index	Address	PublicKey	SecretKey
-0	    erd1...	aaaa	    bbbb
-11	    erd1...	cccc        dddd
+AccountIndex AddressIndex	Address	PublicKey	SecretKey
+0            5	            erd1...	aaaa	    bbbb
+0            8	            erd1...	cccc        dddd
 ```
 
 `plain-json`:
@@ -51,7 +51,8 @@ Index	Address	PublicKey	SecretKey
 ```
 [
     {
-        "index": 120,
+        "accountIndex": 0,
+        "addressIndex": 5,
         "address": "erd1...",
         "publicKey": "aaaa",
         "secretKey": "bbbb"
