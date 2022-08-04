@@ -2,16 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
-	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/elastic"
-	"github.com/tidwall/gjson"
+	sysAccConfig "github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/config"
+	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
@@ -24,13 +21,15 @@ import (
 )
 
 const (
-	defaultLogsPath    = "logs"
-	logFilePrefix      = "accounts-tokens-exporter"
-	addressLength      = 32
-	outputFilePerms    = 0644
-	maxRequestsRetrial = 10
-	multipleSearchBulk = 10000
+	logFilePrefix   = "system-account-zero-tokens-balance-checker"
+	addressLength   = 32
+	outputFilePerms = 0644
+	tomlFile        = "./config.toml"
 )
+
+type crossTokenChecker interface {
+	crossCheckExtraTokens(tokens map[string]struct{}) ([]string, error)
+}
 
 func main() {
 	app := cli.NewApp()
@@ -59,7 +58,7 @@ func main() {
 func startProcess(c *cli.Context) error {
 	flagsConfig := getFlagsConfig(c)
 
-	_, errLogger := attachFileLogger(log, flagsConfig.ContextFlagsConfig)
+	_, errLogger := trieToolsCommon.AttachFileLogger(log, logFilePrefix, flagsConfig.ContextFlagsConfig)
 	if errLogger != nil {
 		return errLogger
 	}
@@ -84,12 +83,10 @@ func startProcess(c *cli.Context) error {
 	}
 
 	if flagsConfig.CrossCheck {
-		tokensThatStillExist, err := crossCheckExtraTokens(extraTokens)
+		err = crossCheckExtraTokens(extraTokens)
 		if err != nil {
 			return err
 		}
-
-		removeTokensThatStillExist(tokensThatStillExist, extraTokens)
 	}
 
 	err = saveResult(extraTokens, flagsConfig.Outfile)
@@ -98,45 +95,6 @@ func startProcess(c *cli.Context) error {
 	}
 
 	return nil
-}
-
-func attachFileLogger(log logger.Logger, flagsConfig trieToolsCommon.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
-	var fileLogging elrondFactory.FileLoggingHandler
-	var err error
-	if flagsConfig.SaveLogFile {
-		fileLogging, err = logging.NewFileLogging(logging.ArgsFileLogging{
-			WorkingDir:      flagsConfig.WorkingDir,
-			DefaultLogsPath: defaultLogsPath,
-			LogFilePrefix:   logFilePrefix,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("%w creating a log file", err)
-		}
-	}
-
-	err = logger.SetDisplayByteSlice(logger.ToHex)
-	log.LogIfError(err)
-	logger.ToggleLoggerName(flagsConfig.EnableLogName)
-	logLevelFlagValue := flagsConfig.LogLevel
-	err = logger.SetLogLevel(logLevelFlagValue)
-	if err != nil {
-		return nil, err
-	}
-
-	if flagsConfig.DisableAnsiColor {
-		err = logger.RemoveLogObserver(os.Stdout)
-		if err != nil {
-			return nil, err
-		}
-
-		err = logger.AddLogObserver(os.Stdout, &logger.PlainFormatter{})
-		if err != nil {
-			return nil, err
-		}
-	}
-	log.Trace("logger updated", "level", logLevelFlagValue, "disable ANSI color", flagsConfig.DisableAnsiColor)
-
-	return fileLogging, nil
 }
 
 func readInputs(tokensDir string) (map[string]map[string]struct{}, error) {
@@ -287,133 +245,49 @@ func saveResult(tokens map[string]struct{}, outfile string) error {
 	return nil
 }
 
-func crossCheckExtraTokens(tokens map[string]struct{}) ([]string, error) {
-	numTokens := len(tokens)
-	log.Info("starting to cross-check", "num of tokens", numTokens)
+func crossCheckExtraTokens(extraTokens map[string]struct{}) error {
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
 
+	nftGetter := newNFTBalanceGetter(cfg.Config.Gateway.URL)
 	elasticClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
-		URL:      "https://elastic-do-nvme-ams-k8s-gateway.elrond.ro/",
-		Username: "read_user",
-		Password: "RLnGWsyW8xAEuAWzvAwoCI",
+		URL:      cfg.Config.ElasticIndexerConfig.URL,
+		Username: cfg.Config.ElasticIndexerConfig.Username,
+		Password: cfg.Config.ElasticIndexerConfig.Password,
 	})
+	if err != nil {
+		return err
+	}
+
+	tokensChecker, err := newExtraTokensCrossChecker(elasticClient, nftGetter)
+	if err != nil {
+		return err
+	}
+
+	tokensThatStillExist, err := tokensChecker.crossCheckExtraTokens(extraTokens)
+	if err != nil {
+		return err
+	}
+
+	removeTokensThatStillExist(tokensThatStillExist, extraTokens)
+	return nil
+}
+
+func loadConfig() (*sysAccConfig.GeneralConfig, error) {
+	tomlBytes, err := ioutil.ReadFile(tomlFile)
 	if err != nil {
 		return nil, err
 	}
 
-	bulkSize := core.MinInt(multipleSearchBulk, numTokens)
-	tokensThatStillExist := make([]string, 0)
-	requests := make([]string, 0, bulkSize)
-	currTokenIdx := 0
-	ctRequests := 0
-	nftGetter := newNFTBalanceGetter("https://gateway.elrond.com")
-	for token := range tokens {
-		currTokenIdx++
-		requests = append(requests, createRequest(token))
-
-		notEnoughRequests := len(requests) < bulkSize
-		notLastBulk := currTokenIdx != numTokens
-		if notEnoughRequests && notLastBulk {
-			continue
-		}
-
-		respBytes, err := elasticClient.GetMultiple("accountsesdt", requests)
-		if err != nil {
-			log.Error("elasticClient.GetMultiple(accountsesdt, requests)",
-				"error", err,
-				"requests", requests)
-			return nil, err
-		}
-
-		responses := gjson.Get(string(respBytes), "responses").Array()
-		crossCheckFailedTokens, err := checkIndexerResponse(requests, responses, nftGetter)
-		if err != nil {
-			return nil, err
-		}
-
-		go printProgress(numTokens, currTokenIdx)
-
-		ctRequests += len(requests)
-		requests = make([]string, 0, bulkSize)
-		tokensThatStillExist = append(tokensThatStillExist, crossCheckFailedTokens...)
+	var tc sysAccConfig.GeneralConfig
+	err = toml.Unmarshal(tomlBytes, &tc)
+	if err != nil {
+		return nil, err
 	}
 
-	log.Info("finished cross-checking",
-		"total num of tokens", numTokens,
-		"total num of tokens cross-checked", currTokenIdx,
-		"total num of tokens requests in indexer", ctRequests)
-
-	if numTokens != currTokenIdx || numTokens != ctRequests {
-		return nil, errors.New("failed to cross check all tokens, check logs")
-	}
-
-	return tokensThatStillExist, nil
-}
-
-func checkIndexerResponse(requests []string, responses []gjson.Result, nftBalanceGetter *nftBalanceGetter) ([]string, error) {
-	tokensThatStillExist := make([]string, 0)
-	for idxRequestedToken, res := range responses {
-		hits := res.Get("hits.hits").Array()
-		if len(hits) != 0 {
-			token := gjson.Get(requests[idxRequestedToken], "query.match.identifier.query").String()
-			log.Debug("found token in indexer with hits/accounts",
-				"token", token,
-				"num hits/accounts", len(hits))
-
-			checkFailed, err := crossCheckToken(hits, token, nftBalanceGetter)
-			if err != nil {
-				return nil, err
-			}
-
-			if checkFailed {
-				tokensThatStillExist = append(tokensThatStillExist, token)
-			}
-		}
-		idxRequestedToken++
-	}
-
-	return tokensThatStillExist, nil
-}
-
-func crossCheckToken(hits []gjson.Result, token string, nftBalanceGetter *nftBalanceGetter) (bool, error) {
-	checkFailed := false
-	for _, hit := range hits {
-		address := hit.Get("_source.address").String()
-		balance, err := nftBalanceGetter.getBalance(address, token)
-		if err != nil {
-			return false, err
-		}
-
-		log.Debug("checking gateway if token still exists in trie",
-			"token", token,
-			"address", address)
-
-		if balance != "0" {
-			checkFailed = true
-			log.Error("cross-check failed; found token which is still in other address",
-				"token", token,
-				"balance", balance,
-				"address", address)
-			break
-		}
-
-		log.Warn("possible indexer problem",
-			"token", token,
-			"hit in address", address,
-			"found in trie", false)
-	}
-
-	return checkFailed, nil
-}
-
-func createRequest(token string) string {
-	return `{"query" : {"match" : { "identifier": {"query":"` + token + `","operator":"and"}}}}`
-}
-
-func printProgress(numTokens, numTokensCrossChecked int) {
-	log.Info("status",
-		"num cross checked tokens", numTokensCrossChecked,
-		"remaining num of tokens to check", numTokens-numTokensCrossChecked,
-		"progress(%)", (100*numTokensCrossChecked)/numTokens) // this should not panic with div by zero, since func is only called if numTokens > 0
+	return &tc, nil
 }
 
 func removeTokensThatStillExist(tokensThatStillExist []string, tokens map[string]struct{}) {
