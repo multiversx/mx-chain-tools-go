@@ -7,7 +7,6 @@ This tool efficiently generates a bulk of _hierarchical deterministic_ (HD) keys
 
 **Note:** the *projected shard of an account* is its containing shard, given a network with the maximum number of shards (256). In other words, the projected shard is given by the last byte of the public key.
 
-
 ## How to use
 
 Compile the code as follows:

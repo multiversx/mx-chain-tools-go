@@ -69,8 +69,7 @@ func generateKeys(ctx *cli.Context) error {
 		return err
 	}
 
-	tasks := createTasks(cliFlags)
-	generatedKeys, err := generateKeysInParallel(context.Background(), tasks, mnemonic, constraints)
+	generatedKeys, err := generateKeysInParallel(context.Background(), cliFlags, mnemonic, constraints)
 	if err != nil {
 		return err
 	}
@@ -109,42 +108,54 @@ func readLine() (string, error) {
 
 func generateKeysInParallel(
 	ctx context.Context,
-	tasks []generatorTask,
+	params parsedCliFlags,
 	mnemonic data.Mnemonic,
 	constraints *constraints,
 ) ([]common.GeneratedKey, error) {
-	generatedKeysByTask := make([][]common.GeneratedKey, len(tasks))
+	allGeneratedKeys := make([]common.GeneratedKey, 0, params.numKeys)
 
-	errs, _ := errgroup.WithContext(ctx)
+	numKeys := int(params.numKeys)
+	numTasks := params.numTasks
+	slidingIndex := params.startIndex
 
-	for _, task := range tasks {
-		t := task
+	for len(allGeneratedKeys) < numKeys {
+		generatedKeysByTask := make([][]common.GeneratedKey, numTasks)
+		errs, _ := errgroup.WithContext(ctx)
 
-		errs.Go(func() error {
-			keys, err := t.doGenerateKeys(mnemonic, constraints)
-			if err != nil {
-				return err
-			}
+		tasks, newSlidingIndex := createTasks(numTasks, slidingIndex, params.useAccountIndex)
 
-			generatedKeysByTask[t.taskIndex] = keys
-			return nil
-		})
-	}
+		for taskIndex, task := range tasks {
+			i := taskIndex
+			t := task
 
-	err := errs.Wait()
-	if err != nil {
-		return nil, err
-	}
+			errs.Go(func() error {
+				keys, err := t.doGenerateKeys(mnemonic, constraints)
+				if err != nil {
+					return err
+				}
 
-	allGeneratedKeys := make([]common.GeneratedKey, 0)
+				generatedKeysByTask[i] = keys
+				return nil
+			})
+		}
 
-	for _, keys := range generatedKeysByTask {
-		allGeneratedKeys = append(allGeneratedKeys, keys...)
+		err := errs.Wait()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, keys := range generatedKeysByTask {
+			allGeneratedKeys = append(allGeneratedKeys, keys...)
+		}
+
+		slidingIndex = newSlidingIndex
+
+		log.Info("progress", "numKeys", len(allGeneratedKeys))
 	}
 
 	// Sort generated keys by index
 	sort.Slice(allGeneratedKeys, func(i, j int) bool {
-		return allGeneratedKeys[i].Index < allGeneratedKeys[j].Index
+		return allGeneratedKeys[i].AddressIndex < allGeneratedKeys[j].AddressIndex
 	})
 
 	return allGeneratedKeys, nil

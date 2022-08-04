@@ -1,43 +1,40 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 	"github.com/ElrondNetwork/elrond-tools-go/hdKeysGenerator/common"
 )
 
 type generatorTask struct {
-	numTasks        int
-	taskIndex       int
 	useAccountIndex bool
-	startIndex      int
-	numKeys         int
+	firstIndex      int
+	lastIndex       int
 }
 
-func createTasks(cliFlags parsedCliFlags) []generatorTask {
-	tasks := make([]generatorTask, 0, cliFlags.numTasks)
+func createTasks(numTasks int, startingIndex int, useAccountIndex bool) ([]generatorTask, int) {
+	tasks := make([]generatorTask, 0, numTasks)
+	slidingIndex := startingIndex
 
-	for taskIndex := 0; taskIndex < cliFlags.numTasks; taskIndex++ {
+	for taskIndex := 0; taskIndex < numTasks; taskIndex++ {
 		task := generatorTask{
-			numTasks:        cliFlags.numTasks,
-			taskIndex:       taskIndex,
-			useAccountIndex: cliFlags.useAccountIndex,
-			startIndex:      cliFlags.startIndex,
-			numKeys:         int(cliFlags.numKeys)/cliFlags.numTasks + 1,
+			useAccountIndex: useAccountIndex,
+			firstIndex:      slidingIndex,
+			lastIndex:       slidingIndex + defaultTaskSize,
 		}
 
 		tasks = append(tasks, task)
+
+		slidingIndex += defaultTaskSize
 	}
 
-	return tasks
+	return tasks, slidingIndex
 }
 
 func (task *generatorTask) doGenerateKeys(mnemonic data.Mnemonic, constraints *constraints) ([]common.GeneratedKey, error) {
 	wallet := interactors.NewWallet()
 	seed := wallet.CreateSeedFromMnemonic(mnemonic)
-	goodKeys := make([]common.GeneratedKey, 0, task.numKeys)
+	goodKeys := make([]common.GeneratedKey, 0)
 
 	accountIndex := 0
 	addressIndex := 0
@@ -49,11 +46,8 @@ func (task *generatorTask) doGenerateKeys(mnemonic data.Mnemonic, constraints *c
 		changingIndex = &addressIndex
 	}
 
-	for len(goodKeys) < task.numKeys {
-		if *changingIndex%task.numTasks != task.taskIndex {
-			*changingIndex++
-			continue
-		}
+	for i := task.firstIndex; i < task.lastIndex; i++ {
+		*changingIndex = i
 
 		secretKey := wallet.GetPrivateKeyFromSeed(seed, uint32(accountIndex), uint32(addressIndex))
 		addressHandler, err := wallet.GetAddressFromPrivateKey(secretKey)
@@ -64,24 +58,14 @@ func (task *generatorTask) doGenerateKeys(mnemonic data.Mnemonic, constraints *c
 		isGoodKey := constraints.areSatisfiedByPublicKey(addressHandler.AddressBytes())
 		if isGoodKey {
 			goodKeys = append(goodKeys, common.GeneratedKey{
-				Index:     *changingIndex,
-				SecretKey: secretKey,
-				PublicKey: addressHandler.AddressBytes(),
-				Address:   addressHandler.AddressAsBech32String(),
+				AccountIndex: accountIndex,
+				AddressIndex: addressIndex,
+				SecretKey:    secretKey,
+				PublicKey:    addressHandler.AddressBytes(),
+				Address:      addressHandler.AddressAsBech32String(),
 			})
-
-			task.logProgress(len(goodKeys))
 		}
-
-		*changingIndex++
 	}
 
 	return goodKeys, nil
-}
-
-func (task *generatorTask) logProgress(numGenerated int) {
-	if numGenerated%100 == 0 && numGenerated > 0 {
-		progress := int(float64(numGenerated) / float64(task.numKeys) * 100)
-		log.Info("generating keys...", "task", task.taskIndex, "progress", fmt.Sprintf("%d %%", progress))
-	}
 }

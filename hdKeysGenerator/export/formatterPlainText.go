@@ -14,15 +14,16 @@ type formatterPlainText struct {
 func (f *formatterPlainText) toText(keys []common.GeneratedKey) (string, error) {
 	var builder strings.Builder
 
-	header := "Index\tAddress\tPublicKey\tSecretKey\n"
+	header := "AccountIndex\tAddressIndex\tAddress\tPublicKey\tSecretKey\n"
 	_, err := builder.WriteString(header)
 	if err != nil {
 		return "", err
 	}
 
 	for _, key := range keys {
-		line := fmt.Sprintf("%d\t%s\t%s\t%s\n",
-			key.Index,
+		line := fmt.Sprintf("%d\t%d\t%s\t%s\t%s\n",
+			key.AccountIndex,
+			key.AddressIndex,
 			key.Address,
 			hex.EncodeToString(key.PublicKey),
 			hex.EncodeToString(key.SecretKey),

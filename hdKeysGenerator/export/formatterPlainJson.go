@@ -8,10 +8,11 @@ import (
 )
 
 type plainExportedKey struct {
-	Index     int    `json:"index"`
-	Address   string `json:"address"`
-	PublicKey string `json:"publicKey"`
-	SecretKey string `json:"secretKey"`
+	AddressIndex int    `json:"addressIndex"`
+	AccountIndex int    `json:"accountIndex"`
+	Address      string `json:"address"`
+	PublicKey    string `json:"publicKey"`
+	SecretKey    string `json:"secretKey"`
 }
 
 type formatterPlainJson struct {
@@ -22,10 +23,11 @@ func (f *formatterPlainJson) toText(keys []common.GeneratedKey) (string, error) 
 
 	for _, key := range keys {
 		records = append(records, plainExportedKey{
-			Index:     key.Index,
-			Address:   key.Address,
-			SecretKey: hex.EncodeToString(key.SecretKey),
-			PublicKey: hex.EncodeToString(key.PublicKey),
+			AccountIndex: key.AccountIndex,
+			AddressIndex: key.AddressIndex,
+			Address:      key.Address,
+			SecretKey:    hex.EncodeToString(key.SecretKey),
+			PublicKey:    hex.EncodeToString(key.PublicKey),
 		})
 	}
 
