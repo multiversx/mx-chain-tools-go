@@ -7,7 +7,7 @@ This tool exports account balances, as found in the trie database, under a speci
 Compile the code as follows:
 
 ```
-cd elrond-tools-go/balancesExporter
+cd elrond-tools-go/trieTools/balancesExporter
 go build .
 ```
 
