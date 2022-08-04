@@ -66,10 +66,8 @@ func (esc *esClient) GetMultiple(index string, requests []string) ([]byte, error
 		query += "{}\n" + request + "\n"
 	}
 
-	buffer := bytes.NewBuffer([]byte(query))
-
 	res, err := esc.client.Msearch(
-		buffer,
+		bytes.NewBuffer([]byte(query)),
 		esc.client.Msearch.WithIndex(index),
 	)
 	if err != nil {
