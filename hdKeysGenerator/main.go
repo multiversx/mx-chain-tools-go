@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"sort"
+	"time"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
@@ -35,11 +36,15 @@ func main() {
 
 	app.Action = generateKeys
 
+	start := time.Now()
+
 	err := app.Run(os.Args)
 	if err != nil {
 		log.Error(err.Error())
 		os.Exit(1)
 	}
+
+	log.Info("Done in", "seconds", time.Since(start).Seconds())
 }
 
 func generateKeys(ctx *cli.Context) error {
