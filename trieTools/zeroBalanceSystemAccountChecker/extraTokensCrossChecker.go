@@ -19,7 +19,7 @@ type elasticMultiSearchClient interface {
 	GetMultiple(index string, requests []string) ([]byte, error)
 }
 
-type crossExtraTokensChecker struct {
+type extraTokensChecker struct {
 	nftBalancesGetter nftBalancesGetter
 	elasticClient     elasticMultiSearchClient
 }
@@ -32,13 +32,13 @@ func newExtraTokensCrossChecker(client elasticMultiSearchClient, nftBalancesGett
 		return nil, errors.New("nil nft balances getter provided")
 	}
 
-	return &crossExtraTokensChecker{
+	return &extraTokensChecker{
 		nftBalancesGetter: nftBalancesGetter,
 		elasticClient:     client,
 	}, nil
 }
 
-func (ctc *crossExtraTokensChecker) crossCheckExtraTokens(tokens map[string]struct{}) ([]string, error) {
+func (etc *extraTokensChecker) crossCheckExtraTokens(tokens map[string]struct{}) ([]string, error) {
 	numTokens := len(tokens)
 	log.Info("starting to cross-check", "num of tokens", numTokens)
 
@@ -57,7 +57,7 @@ func (ctc *crossExtraTokensChecker) crossCheckExtraTokens(tokens map[string]stru
 			continue
 		}
 
-		respBytes, err := ctc.elasticClient.GetMultiple("accountsesdt", requests)
+		respBytes, err := etc.elasticClient.GetMultiple("accountsesdt", requests)
 		if err != nil {
 			log.Error("elasticClient.GetMultiple(accountsesdt, requests)",
 				"error", err,
@@ -66,7 +66,7 @@ func (ctc *crossExtraTokensChecker) crossCheckExtraTokens(tokens map[string]stru
 		}
 
 		responses := gjson.Get(string(respBytes), "responses").Array()
-		crossCheckFailedTokens, err := ctc.checkIndexerResponse(requests, responses)
+		tokensThatStillExistFromRequest, err := etc.checkIndexerResponse(requests, responses)
 		if err != nil {
 			return nil, err
 		}
@@ -75,7 +75,7 @@ func (ctc *crossExtraTokensChecker) crossCheckExtraTokens(tokens map[string]stru
 
 		ctRequests += len(requests)
 		requests = make([]string, 0, bulkSize)
-		tokensThatStillExist = append(tokensThatStillExist, crossCheckFailedTokens...)
+		tokensThatStillExist = append(tokensThatStillExist, tokensThatStillExistFromRequest...)
 	}
 
 	log.Info("finished cross-checking",
@@ -90,7 +90,7 @@ func (ctc *crossExtraTokensChecker) crossCheckExtraTokens(tokens map[string]stru
 	return tokensThatStillExist, nil
 }
 
-func (ctc *crossExtraTokensChecker) checkIndexerResponse(requests []string, responses []gjson.Result) ([]string, error) {
+func (etc *extraTokensChecker) checkIndexerResponse(requests []string, responses []gjson.Result) ([]string, error) {
 	tokensThatStillExist := make([]string, 0)
 	for idxRequestedToken, res := range responses {
 		hits := res.Get("hits.hits").Array()
@@ -100,12 +100,12 @@ func (ctc *crossExtraTokensChecker) checkIndexerResponse(requests []string, resp
 				"token", token,
 				"num hits/accounts", len(hits))
 
-			checkFailed, err := ctc.crossCheckToken(hits, token)
+			tokenExists, err := etc.crossCheckToken(hits, token)
 			if err != nil {
 				return nil, err
 			}
 
-			if checkFailed {
+			if tokenExists {
 				tokensThatStillExist = append(tokensThatStillExist, token)
 			}
 		}
@@ -115,11 +115,11 @@ func (ctc *crossExtraTokensChecker) checkIndexerResponse(requests []string, resp
 	return tokensThatStillExist, nil
 }
 
-func (ctc *crossExtraTokensChecker) crossCheckToken(hits []gjson.Result, token string) (bool, error) {
-	checkFailed := false
+func (etc *extraTokensChecker) crossCheckToken(hits []gjson.Result, token string) (bool, error) {
+	tokenExists := false
 	for _, hit := range hits {
 		address := hit.Get("_source.address").String()
-		balance, err := ctc.nftBalancesGetter.getBalance(address, token)
+		balance, err := etc.nftBalancesGetter.getBalance(address, token)
 		if err != nil {
 			return false, err
 		}
@@ -129,7 +129,7 @@ func (ctc *crossExtraTokensChecker) crossCheckToken(hits []gjson.Result, token s
 			"address", address)
 
 		if balance != "0" {
-			checkFailed = true
+			tokenExists = true
 			log.Error("cross-check failed; found token which is still in other address",
 				"token", token,
 				"balance", balance,
@@ -143,7 +143,7 @@ func (ctc *crossExtraTokensChecker) crossCheckToken(hits []gjson.Result, token s
 			"found in trie", false)
 	}
 
-	return checkFailed, nil
+	return tokenExists, nil
 }
 
 func createRequest(token string) string {
