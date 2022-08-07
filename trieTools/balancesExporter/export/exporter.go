@@ -10,7 +10,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/data"
 	"github.com/ElrondNetwork/elrond-go/sharding"
 	"github.com/ElrondNetwork/elrond-go/state"
-	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/common"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/common"
 )
 
 // ArgsNewExporter holds arguments for creating an exporter

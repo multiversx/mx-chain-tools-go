@@ -4,16 +4,14 @@ import (
 	"os"
 
 	"github.com/ElrondNetwork/elrond-go/sharding"
-	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/blocks"
-	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/export"
-	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/trie"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/blocks"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/export"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/trie"
 	"github.com/urfave/cli"
 )
 
 const (
-	appVersion     = "1.0.0"
-	rootHashLength = 32
-	addressLength  = 32
+	appVersion = "1.0.0"
 )
 
 func main() {
