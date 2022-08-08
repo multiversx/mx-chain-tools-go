@@ -1,4 +1,4 @@
-module github.com/ElrondNetwork/elrond-tools-go/elasticreindexer
+module github.com/ElrondNetwork/elrond-tools-go/dbmerger
 
 go 1.13
 
