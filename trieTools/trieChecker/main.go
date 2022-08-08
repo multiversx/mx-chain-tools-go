@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 
+	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
@@ -16,12 +18,13 @@ import (
 	"github.com/ElrondNetwork/elrond-go/common/logging"
 	"github.com/ElrondNetwork/elrond-go/epochStart/notifier"
 	"github.com/ElrondNetwork/elrond-go/state"
+	"github.com/ElrondNetwork/elrond-go/storage/databaseremover/disabled"
 	"github.com/ElrondNetwork/elrond-go/storage/factory"
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
-	"github.com/ElrondNetwork/elrond-tools-go/trieChecker/components"
-	"github.com/ElrondNetwork/elrond-tools-go/trieChecker/config"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
 	"github.com/urfave/cli"
 )
 
@@ -93,11 +96,15 @@ func startProcess(c *cli.Context) error {
 	return checkTrie(flagsConfig, rootHash, maxDBValue)
 }
 
-func attachFileLogger(log logger.Logger, flagsConfig config.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
+func attachFileLogger(log logger.Logger, flagsConfig trieToolsCommon.ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
 	var fileLogging elrondFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
-		fileLogging, err = logging.NewFileLogging(flagsConfig.WorkingDir, defaultLogsPath, logFilePrefix)
+		fileLogging, err = logging.NewFileLogging(logging.ArgsFileLogging{
+			WorkingDir:      flagsConfig.WorkingDir,
+			DefaultLogsPath: defaultLogsPath,
+			LogFilePrefix:   logFilePrefix,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("%w creating a log file", err)
 		}
@@ -179,7 +186,7 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue int) error {
+func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte, maxDBValue int) error {
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
 		return err
@@ -195,7 +202,8 @@ func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue 
 		log.LogIfError(errNotCritical)
 	}()
 
-	ch, err := tr.GetAllLeavesOnChannel(mainRootHash)
+	ch := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
+	err = tr.GetAllLeavesOnChannel(ch, context.Background(), mainRootHash)
 	if err != nil {
 		return err
 	}
@@ -208,7 +216,7 @@ func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue 
 		numAccountsOnMainTrie++
 
 		userAccount := &state.UserAccountData{}
-		errUnmarshal := marshaller.Unmarshal(userAccount, kv.Value())
+		errUnmarshal := trieToolsCommon.Marshaller.Unmarshal(userAccount, kv.Value())
 		if errUnmarshal != nil {
 			// probably a code node
 			numCodeNodes++
@@ -236,7 +244,8 @@ func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue 
 	for address, dataRootHash := range dataTriesRootHashes {
 		log.Debug("iterating data trie", "address", address, "data trie root hash", dataRootHash)
 
-		chDataTrie, errGetAllLeaves := tr.GetAllLeavesOnChannel(dataRootHash)
+		chDataTrie := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
+		errGetAllLeaves := tr.GetAllLeavesOnChannel(chDataTrie, context.Background(), dataRootHash)
 		if errGetAllLeaves != nil {
 			return errGetAllLeaves
 		}
@@ -255,7 +264,7 @@ func checkTrie(flags config.ContextFlagsConfig, mainRootHash []byte, maxDBValue 
 	return nil
 }
 
-func getTrie(flags config.ContextFlagsConfig, maxDBValue int) (common.Trie, error) {
+func getTrie(flags trieToolsCommon.ContextFlagsConfig, maxDBValue int) (common.Trie, error) {
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
@@ -269,6 +278,7 @@ func getTrie(flags config.ContextFlagsConfig, maxDBValue int) (common.Trie, erro
 		PersisterFactory:          factory.NewPersisterFactory(localDbConfig),
 		Notifier:                  notifier.NewManualEpochStartNotifier(),
 		OldDataCleanerProvider:    &testscommon.OldDataCleanerProviderStub{},
+		CustomDatabaseRemover:     disabled.NewDisabledCustomDatabaseRemover(),
 		MaxBatchSize:              45000,
 		NumOfEpochsToKeep:         uint32(maxDBValue) + 1,
 		NumOfActivePersisters:     uint32(maxDBValue) + 1,
@@ -287,5 +297,5 @@ func getTrie(flags config.ContextFlagsConfig, maxDBValue int) (common.Trie, erro
 		return nil, err
 	}
 
-	return trie.NewTrie(tsm, marshaller, hasher, maxTrieLevelInMemory)
+	return trie.NewTrie(tsm, trieToolsCommon.Marshaller, trieToolsCommon.Hasher, maxTrieLevelInMemory)
 }

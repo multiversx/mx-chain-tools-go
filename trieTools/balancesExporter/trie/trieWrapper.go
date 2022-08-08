@@ -1,6 +1,9 @@
 package trie
 
 import (
+	"context"
+
+	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/state"
 )
@@ -25,7 +28,8 @@ func (tw *trieWrapper) IsRootHashAvailable(rootHash []byte) bool {
 }
 
 func (tw *trieWrapper) GetUserAccounts(rootHash []byte, predicate func(*state.UserAccountData) bool) ([]*state.UserAccountData, error) {
-	ch, err := tw.trie.GetAllLeavesOnChannel(rootHash)
+	ch := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
+	err := tw.trie.GetAllLeavesOnChannel(ch, context.Background(), rootHash)
 	if err != nil {
 		return nil, err
 	}
