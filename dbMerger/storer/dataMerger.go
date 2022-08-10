@@ -10,8 +10,17 @@ import (
 
 var log = logger.GetOrCreate("storer")
 
+// dataMerger is able to copy key by key all values from the provided sources persisters into the destination persister
+type dataMerger struct {
+}
+
+// NewDataMerger returns a new instance of a data merger
+func NewDataMerger() *dataMerger {
+	return &dataMerger{}
+}
+
 // MergeDBs will iterate over all provided sources and take all key-value pairs and write them in the destination persister
-func MergeDBs(dest storage.Persister, sources ...storage.Persister) error {
+func (dm *dataMerger) MergeDBs(dest storage.Persister, sources ...storage.Persister) error {
 	err := checkArgs(dest, sources...)
 	if err != nil {
 		return err
@@ -61,4 +70,9 @@ func mergeDB(dest storage.Persister, source storage.Persister) (int, error) {
 	})
 
 	return numKeysCopied, foundErr
+}
+
+// IsInterfaceNil returns true if there is no value under the interface
+func (dm *dataMerger) IsInterfaceNil() bool {
+	return dm == nil
 }
