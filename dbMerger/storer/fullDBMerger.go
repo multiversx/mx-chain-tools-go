@@ -41,7 +41,7 @@ func NewFullDBMerger(args ArgsFullDBMerger) (*fullDBMerger, error) {
 	}, nil
 }
 
-// MergeDBs will merge all data from the source persiste paths into a new storage persister
+// MergeDBs will merge all data from the source persister paths into a new storage persister
 func (fdm *fullDBMerger) MergeDBs(destinationPath string, sourcePaths ...string) (storage.Persister, error) {
 	if len(sourcePaths) < minNumOfPersisters {
 		return nil, fmt.Errorf("%w, provided %d, minimum %d", errInvalidNumberOfPersisters, len(sourcePaths), minNumOfPersisters)
