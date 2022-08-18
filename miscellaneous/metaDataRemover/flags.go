@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/metaDataRemover/config"
+	"github.com/ElrondNetwork/elrond-tools-go/miscellaneous/metaDataRemover/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
 )

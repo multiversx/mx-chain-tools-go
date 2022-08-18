@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -72,4 +73,69 @@ func TestGroupTokensByIntervals(t *testing.T) {
 			},
 		},
 	)
+}
+
+func TestCreateTxData(t *testing.T) {
+	ret := createTxData(
+		map[string][]*interval{
+			"token1": {
+				{
+					start: 0,
+					end:   0,
+				},
+				{
+					start: 1,
+					end:   1,
+				},
+				{
+					start: 2,
+					end:   3,
+				},
+				{
+					start: 4,
+					end:   8,
+				},
+			},
+			"token2": {
+				{
+					start: 1,
+					end:   5,
+				},
+			},
+			"token3": {
+				{
+					start: 0,
+					end:   0,
+				},
+				{
+					start: 1,
+					end:   4,
+				},
+				{
+					start: 5,
+					end:   6,
+				},
+			},
+		})
+
+	fmt.Println(ret)
+}
+
+func TestSplitIntervals(t *testing.T) {
+	ret := splitIntervals("token", []*interval{
+		{
+			start: 1,
+			end:   1,
+		},
+		{
+			start: 3,
+			end:   6,
+		},
+		{
+			start: 8,
+			end:   10,
+		},
+	})
+
+	fmt.Println(ret)
 }
