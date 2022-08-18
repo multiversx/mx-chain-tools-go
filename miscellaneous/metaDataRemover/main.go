@@ -5,11 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/ElrondNetwork/elrond-go-core/data/transaction"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/examples"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
@@ -25,8 +25,18 @@ import (
 
 const (
 	logFilePrefix  = "meta-data-remover"
-	intervalsPerTx = 2
+	intervalsPerTx = 100
+	txsBulkSize    = 100
 )
+
+type proxyProvider interface {
+	interactors.Proxy
+	GetDefaultTransactionArguments(
+		ctx context.Context,
+		address core.AddressHandler,
+		networkConfigs *data.NetworkConfig,
+	) (data.ArgCreateTransaction, error)
+}
 
 func main() {
 	app := cli.NewApp()
@@ -70,15 +80,25 @@ func startProcess(c *cli.Context) error {
 	log.Info("starting processing", "pid", os.Getpid())
 
 	tokens, err := readInput(flagsConfig.Tokens)
-	log.Info("read from input", "file", flagsConfig.Tokens, "num of tokens", len(tokens))
+	if err != nil {
+		return err
+	}
 
-	tokensSorted := sortTokensIDByNonce(tokens)
+	tokensSorted, err := sortTokensIDByNonce(tokens)
+	if err != nil {
+		return err
+	}
 
 	tokensIntervals := groupTokensByIntervals(tokensSorted)
+	txsData, err := createTxsData(tokensIntervals, intervalsPerTx)
+	if err != nil {
+		return err
+	}
 
-	txs, _ := createTxs(tokensIntervals)
-
-	_ = txs
+	err = sendTxs(txsData)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -106,13 +126,18 @@ func readInput(tokensFile string) (map[string]struct{}, error) {
 		return nil, err
 	}
 
+	log.Info("read from input", "file", tokensFile, "num of tokens", len(tokens))
 	return tokens, nil
 }
 
-func sortTokensIDByNonce(tokens map[string]struct{}) map[string][]uint64 {
+func sortTokensIDByNonce(tokens map[string]struct{}) (map[string][]uint64, error) {
 	ret := make(map[string][]uint64)
 	for token := range tokens {
 		splits := strings.Split(token, "-")
+		if len(splits) != 3 {
+			return nil, fmt.Errorf("found invalid format in token = %s; expected [ticker-randSequence-nonce]", token)
+		}
+
 		tokenID := splits[0] + "-" + splits[1] // ticker-randSequence
 		nonceBI := big.NewInt(0)
 		nonceBI.SetString(splits[2], 16)
@@ -127,7 +152,7 @@ func sortTokensIDByNonce(tokens map[string]struct{}) map[string][]uint64 {
 		})
 	}
 
-	return ret
+	return ret, nil
 }
 
 type interval struct {
@@ -175,7 +200,90 @@ func groupTokensByIntervals(tokens map[string][]uint64) map[string][]*interval {
 	return ret
 }
 
-func createTxs(tokens map[string][]*interval) ([]transaction.Transaction, error) {
+func sendTxs(txsData [][]byte) error {
+	privateKey, address, err := getPrivateKeyAndAddress()
+	if err != nil {
+		return err
+	}
+
+	proxy, err := createProxyProvider()
+	if err != nil {
+		return err
+	}
+
+	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
+	if err != nil {
+		return err
+	}
+
+	ti, err := interactors.NewTransactionInteractor(proxy, txBuilder)
+	if err != nil {
+		return err
+	}
+
+	transactionArguments, err := getDefaultTxsArgs(proxy, address)
+	if err != nil {
+		return err
+	}
+
+	bulkSize := 0
+	totalSentTxs := 0
+	for _, txData := range txsData {
+		transactionArguments.Data = txData
+		tx, err := ti.ApplySignatureAndGenerateTx(privateKey, *transactionArguments)
+		if err != nil {
+			return err
+		}
+		ti.AddTransaction(tx)
+		transactionArguments.Nonce++
+
+		log.Info("sending", "tx data", string(tx.Data))
+		bulkSize++
+		if bulkSize < txsBulkSize {
+			continue
+		}
+
+		hashes, err := ti.SendTransactionsAsBunch(context.Background(), txsBulkSize)
+		if err != nil {
+			return err
+		}
+
+		bulkSize = 0
+		totalSentTxs += txsBulkSize
+		log.Info("sent", "num of txs", txsBulkSize, "hashes", hashes)
+	}
+
+	remainingTxs := len(txsData) - totalSentTxs
+	if remainingTxs > 0 {
+		hashes, err := ti.SendTransactionsAsBunch(context.Background(), remainingTxs)
+		if err != nil {
+			return err
+		}
+
+		log.Info("sent", "num of txs", remainingTxs, "hashes", hashes)
+	}
+
+	return nil
+}
+
+func getPrivateKeyAndAddress() ([]byte, core.AddressHandler, error) {
+	w := interactors.NewWallet()
+
+	privateKey, err := w.LoadPrivateKeyFromPemData([]byte(examples.AlicePemContents))
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to load alice.pem; error: %w", err)
+	}
+
+	address, err := w.GetAddressFromPrivateKey(privateKey)
+	if err != nil {
+		return nil, nil, err
+
+	}
+
+	return privateKey, address, nil
+}
+
+func createProxyProvider() (proxyProvider, error) {
 	args := blockchain.ArgsElrondProxy{
 		ProxyURL:            "https://gateway.elrond.com",
 		Client:              nil,
@@ -186,21 +294,10 @@ func createTxs(tokens map[string][]*interval) ([]transaction.Transaction, error)
 		EntityType:          core.Proxy,
 	}
 
-	proxy, _ := blockchain.NewElrondProxy(args)
+	return blockchain.NewElrondProxy(args)
+}
 
-	w := interactors.NewWallet()
-
-	privateKey, err := w.LoadPrivateKeyFromPemData([]byte(examples.AlicePemContents))
-	if err != nil {
-		return nil, fmt.Errorf("unable to load alice.pem; error: %w", err)
-	}
-	// Generate address from private key
-	address, err := w.GetAddressFromPrivateKey(privateKey)
-	if err != nil {
-		return nil, err
-
-	}
-
+func getDefaultTxsArgs(proxy proxyProvider, address core.AddressHandler) (*data.ArgCreateTransaction, error) {
 	netConfigs, err := proxy.GetNetworkConfig(context.Background())
 	if err != nil {
 		return nil, err
@@ -215,108 +312,65 @@ func createTxs(tokens map[string][]*interval) ([]transaction.Transaction, error)
 	transactionArguments.RcvAddr = address.AddressAsBech32String() // send to self
 	transactionArguments.Value = "0"
 
-	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
-	if err != nil {
-		return nil, err
-	}
-
-	ti, err := interactors.NewTransactionInteractor(proxy, txBuilder)
-	if err != nil {
-		return nil, err
-	}
-
-	txsData := createTxData(tokens)
-
-	ctTxs := 0
-	totalSentTxs := 0
-	for _, txData := range txsData {
-		transactionArguments.Data = []byte(txData)
-		tx, err := ti.ApplySignatureAndGenerateTx(privateKey, transactionArguments)
-		if err != nil {
-			return nil, err
-		}
-		ti.AddTransaction(tx)
-
-		transactionArguments.Nonce++
-		ctTxs++
-		if ctTxs < 100 {
-			continue
-		}
-
-		hashes, err := ti.SendTransactionsAsBunch(context.Background(), 100)
-		if err != nil {
-			return nil, err
-		}
-
-		totalSentTxs += 100
-		log.Info("transactions sent", "hashes", hashes)
-	}
-
-	if totalSentTxs < len(txsData) {
-		hashes, err := ti.SendTransactionsAsBunch(context.Background(), len(txsData)-totalSentTxs)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Info("transactions sent", "hashes", hashes)
-	}
-
-	return nil, nil
+	return &transactionArguments, nil
 }
 
-func createTxData(tokens map[string][]*interval) []string {
-	txsData := make([]string, 0)
+func createTxsData(tokens map[string][]*interval, intervalBulkSize int) ([][]byte, error) {
+	txsData := make([][]byte, 0)
 	for token, intervals := range tokens {
-		if len(intervals) > intervalsPerTx {
-			txsData = append(txsData, splitIntervals(token, intervals)...)
-			continue
+		dataIntervals, err := splitDataIntervals(token, intervals, intervalBulkSize)
+		if err != nil {
+			return nil, err
 		}
 
-		tokensOnData, _ := tokensIntervalsAsOnData(token, intervals)
-		txsData = append(txsData, tokensOnData)
-		continue
-
+		txsData = append(txsData, dataIntervals...)
 	}
 
-	return txsData
+	return txsData, nil
 }
 
-func splitIntervals(token string, intervals []*interval) []string {
-	bulks := len(intervals) / intervalsPerTx
-	allData := make([]string, 0)
+func splitDataIntervals(token string, intervals []*interval, intervalBulkSize int) ([][]byte, error) {
+	bulks := len(intervals) / intervalBulkSize
+	allData := make([][]byte, 0)
 
 	start := 0
-	end := intervalsPerTx
+	end := intervalBulkSize
 	for i := 0; i < bulks; i++ {
-		d, _ := tokensIntervalsAsOnData(token, intervals[start:end])
+		d, err := tokensIntervalsAsOnData(token, intervals[start:end])
+		if err != nil {
+			return nil, err
+		}
 
-		start += intervalsPerTx
-		end += intervalsPerTx
+		start += intervalBulkSize
+		end += intervalBulkSize
 		allData = append(allData, d)
 	}
 
-	remaining := len(intervals) % intervalsPerTx
+	remaining := len(intervals) % intervalBulkSize
 	if remaining == 0 {
-		return allData
+		return allData, nil
 	}
 
-	d, _ := tokensIntervalsAsOnData(token, intervals[start:start+remaining])
+	d, err := tokensIntervalsAsOnData(token, intervals[start:start+remaining])
+	if err != nil {
+		return nil, err
+	}
 	allData = append(allData, d)
 
-	return allData
+	return allData, nil
 }
 
-func tokensIntervalsAsOnData(token string, intervals []*interval) (string, error) {
+func tokensIntervalsAsOnData(token string, intervals []*interval) ([]byte, error) {
 	builder := builders.NewTxDataBuilder().
 		Function("ESDTDeleteMetadata").
 		ArgHexString(hex.EncodeToString([]byte(token))).
-		ArgBigInt(big.NewInt(int64(len(intervals))))
+		ArgInt64(int64(len(intervals)))
 
 	for _, interval := range intervals {
 		builder.
-			ArgBigInt(big.NewInt(int64(interval.start))).
-			ArgBigInt(big.NewInt(int64(interval.end)))
+			ArgInt64(int64(interval.start)).
+			ArgInt64(int64(interval.end))
 	}
 
-	return builder.ToDataString()
+	return builder.ToDataBytes()
 }

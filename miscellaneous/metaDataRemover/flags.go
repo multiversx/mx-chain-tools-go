@@ -21,14 +21,11 @@ var (
 
 func getFlags() []cli.Flag {
 	return []cli.Flag{
-		trieToolsCommon.WorkingDirectory,
-		trieToolsCommon.DbDirectory,
 		trieToolsCommon.LogLevel,
 		trieToolsCommon.DisableAnsiColor,
 		trieToolsCommon.LogSaveFile,
 		trieToolsCommon.LogWithLoggerName,
 		trieToolsCommon.ProfileMode,
-		trieToolsCommon.HexRootHash,
 		outfile,
 		tokens,
 	}
@@ -37,13 +34,10 @@ func getFlags() []cli.Flag {
 func getFlagsConfig(ctx *cli.Context) config.ContextFlagsMetaDataRemover {
 	flagsConfig := config.ContextFlagsMetaDataRemover{}
 
-	flagsConfig.WorkingDir = ctx.GlobalString(trieToolsCommon.WorkingDirectory.Name)
-	flagsConfig.DbDir = ctx.GlobalString(trieToolsCommon.DbDirectory.Name)
 	flagsConfig.LogLevel = ctx.GlobalString(trieToolsCommon.LogLevel.Name)
 	flagsConfig.SaveLogFile = ctx.GlobalBool(trieToolsCommon.LogSaveFile.Name)
 	flagsConfig.EnableLogName = ctx.GlobalBool(trieToolsCommon.LogWithLoggerName.Name)
 	flagsConfig.EnablePprof = ctx.GlobalBool(trieToolsCommon.ProfileMode.Name)
-	flagsConfig.HexRootHash = ctx.GlobalString(trieToolsCommon.HexRootHash.Name)
 	flagsConfig.Outfile = ctx.GlobalString(outfile.Name)
 	flagsConfig.Tokens = ctx.GlobalString(tokens.Name)
 
