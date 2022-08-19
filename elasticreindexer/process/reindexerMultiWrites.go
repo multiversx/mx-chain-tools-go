@@ -18,6 +18,7 @@ type reindexerMultiWrite struct {
 	indicesWithTimestamp []string
 	numParallelWrite     int
 	blockChainStartTime  int64
+	endTime              int64
 	enabled              bool
 
 	reindexerClient ReindexerHandler
@@ -31,6 +32,15 @@ func NewReindexerMultiWrite(reindexer ReindexerHandler, cfg config.IndicesConfig
 		return nil, errors.New("blockchainStartTime cannot be less than zero")
 	}
 
+	endTime := cfg.WithTimestamp.EndTime
+	if endTime == 0 {
+		endTime = time.Now().Unix()
+	}
+
+	if endTime < cfg.WithTimestamp.BlockchainStartTime {
+		return nil, errors.New("end-time  cannot be less than blockchain-start-time")
+	}
+
 	return &reindexerMultiWrite{
 		reindexerClient:      reindexer,
 		indicesNoTimestamp:   cfg.Indices,
@@ -38,6 +48,7 @@ func NewReindexerMultiWrite(reindexer ReindexerHandler, cfg config.IndicesConfig
 		numParallelWrite:     cfg.WithTimestamp.NumParallelWrites,
 		blockChainStartTime:  cfg.WithTimestamp.BlockchainStartTime,
 		enabled:              cfg.WithTimestamp.Enabled,
+		endTime:              endTime,
 	}, nil
 }
 
@@ -61,7 +72,7 @@ func (rmw *reindexerMultiWrite) ProcessWithTimestamp(overwrite bool, skipMapping
 		return nil
 	}
 
-	currentTimestampUnix := time.Now().Unix()
+	currentTimestampUnix := rmw.endTime
 	intervals, err := computeIntervals(rmw.blockChainStartTime, currentTimestampUnix, int64(rmw.numParallelWrite))
 	if err != nil {
 		return err
