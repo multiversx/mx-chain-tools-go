@@ -11,7 +11,9 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
+	"github.com/ElrondNetwork/elrond-tools-go/miscellaneous/metaDataRemover/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 	"io/ioutil"
 	"math/big"
@@ -24,24 +26,10 @@ import (
 
 const (
 	logFilePrefix  = "meta-data-remover"
+	tomlFile       = "./config.toml"
 	intervalsPerTx = 100
 	txsBulkSize    = 100
 )
-
-type proxyProvider interface {
-	GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error)
-	GetDefaultTransactionArguments(
-		ctx context.Context,
-		address core.AddressHandler,
-		networkConfigs *data.NetworkConfig,
-	) (data.ArgCreateTransaction, error)
-}
-
-type transactionInteractor interface {
-	ApplySignatureAndGenerateTx(skBytes []byte, arg data.ArgCreateTransaction) (*data.Transaction, error)
-	AddTransaction(tx *data.Transaction)
-	SendTransactionsAsBunch(ctx context.Context, bunchSize int) ([]string, error)
-}
 
 type interval struct {
 	start uint64
@@ -105,12 +93,13 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
+
 	args := blockchain.ArgsElrondProxy{
-		ProxyURL:            "https://gateway.elrond.com",
-		Client:              nil,
-		SameScState:         false,
-		ShouldBeSynced:      false,
-		FinalityCheck:       false,
+		ProxyURL:            cfg.ProxyUrl,
 		CacheExpirationTime: time.Minute,
 		EntityType:          core.Proxy,
 	}
@@ -339,6 +328,86 @@ func sendMultipleTxs(txInteractor transactionInteractor, numTxs int) error {
 	return nil
 }
 
+func createTxsData2(tokens map[string][]*interval, intervalBulkSize int) ([][]byte, error) {
+	txsData := make([][]byte, 0)
+	numTokensInBulk := uint64(0)
+	currTxData := "begin"
+	tokenIntervalsInBulk := make([]*interval, 0, intervalBulkSize)
+	idxToken := 0
+	for token, intervals := range tokens {
+		currTxData += "@" + token
+
+		intervalsCopy := make([]*interval, len(intervals))
+		copy(intervalsCopy, intervals)
+
+		intervalIndex := 0
+		for intervalIndex < len(intervalsCopy) { //intervalIndex, intrv := range intervals {
+			intrv := intervalsCopy[intervalIndex]
+
+			tokensInInterval := intrv.end - intrv.start + 1
+			availableSlots := uint64(intervalBulkSize - int(numTokensInBulk))
+			if availableSlots >= tokensInInterval {
+				tokenIntervalsInBulk = append(tokenIntervalsInBulk, intrv)
+				numTokensInBulk += (intrv.end - intrv.start) + 1
+			} else {
+				newInterval := *intrv
+				newInterval.end = newInterval.start + availableSlots - 1
+
+				intervalsCopy = append(intervalsCopy, &interval{start: newInterval.end + 1, end: intrv.end})
+
+				tokenIntervalsInBulk = append(tokenIntervalsInBulk, &newInterval)
+				numTokensInBulk += availableSlots
+			}
+
+			if int(numTokensInBulk) == intervalBulkSize {
+				currTxData += intervalAsOnData(tokenIntervalsInBulk)
+				txsData = append(txsData, []byte(currTxData))
+				currTxData = "begin" + "@" + token
+
+				if intervalIndex == len(intervalsCopy)-1 {
+					currTxData = "begin"
+				} else {
+
+				}
+
+				tokenIntervalsInBulk = make([]*interval, 0, intervalBulkSize)
+				numTokensInBulk = 0
+			}
+
+			if intervalIndex == len(intervalsCopy)-1 && len(tokenIntervalsInBulk) != 0 {
+				currTxData += intervalAsOnData(tokenIntervalsInBulk)
+				tokenIntervalsInBulk = make([]*interval, 0, intervalBulkSize)
+				//numTokensInBulk += (intrv.end - intrv.start) + 1
+			}
+
+			intervalIndex++
+		}
+
+		idxToken++
+	}
+
+	splits := strings.Split(currTxData, "@")
+	if len(splits) > 2 {
+		txsData = append(txsData, []byte(currTxData))
+	}
+
+	return txsData, nil
+}
+
+func intervalAsOnData(intervals []*interval) string {
+	builder := builders.NewTxDataBuilder().
+		ArgInt64(int64(len(intervals)))
+
+	for _, interval := range intervals {
+		builder.
+			ArgInt64(int64(interval.start)).
+			ArgInt64(int64(interval.end))
+	}
+
+	ret, _ := builder.ToDataString()
+	return ret
+}
+
 func createTxsData(tokens map[string][]*interval, intervalBulkSize int) ([][]byte, error) {
 	txsData := make([][]byte, 0)
 	for token, intervals := range tokens {
@@ -397,4 +466,19 @@ func tokensIntervalsAsOnData(token string, intervals []*interval) ([]byte, error
 	}
 
 	return builder.ToDataBytes()
+}
+
+func loadConfig() (*config.Config, error) {
+	tomlBytes, err := ioutil.ReadFile(tomlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg config.Config
+	err = toml.Unmarshal(tomlBytes, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }
