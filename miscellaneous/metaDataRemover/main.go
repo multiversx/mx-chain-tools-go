@@ -10,7 +10,6 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/examples"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
@@ -30,12 +29,23 @@ const (
 )
 
 type proxyProvider interface {
-	interactors.Proxy
+	GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error)
 	GetDefaultTransactionArguments(
 		ctx context.Context,
 		address core.AddressHandler,
 		networkConfigs *data.NetworkConfig,
 	) (data.ArgCreateTransaction, error)
+}
+
+type transactionInteractor interface {
+	ApplySignatureAndGenerateTx(skBytes []byte, arg data.ArgCreateTransaction) (*data.Transaction, error)
+	AddTransaction(tx *data.Transaction)
+	SendTransactionsAsBunch(ctx context.Context, bunchSize int) ([]string, error)
+}
+
+type interval struct {
+	start uint64
+	end   uint64
 }
 
 func main() {
@@ -95,7 +105,32 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	err = sendTxs(txsData)
+	args := blockchain.ArgsElrondProxy{
+		ProxyURL:            "https://gateway.elrond.com",
+		Client:              nil,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       false,
+		CacheExpirationTime: time.Minute,
+		EntityType:          core.Proxy,
+	}
+
+	proxy, err := blockchain.NewElrondProxy(args)
+	if err != nil {
+		return err
+	}
+
+	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
+	if err != nil {
+		return err
+	}
+
+	ti, err := interactors.NewTransactionInteractor(proxy, txBuilder)
+	if err != nil {
+		return err
+	}
+
+	err = sendTxs(flagsConfig.Pem, proxy, ti, txsData, txsBulkSize)
 	if err != nil {
 		return err
 	}
@@ -155,11 +190,6 @@ func sortTokensIDByNonce(tokens map[string]struct{}) (map[string][]uint64, error
 	return ret, nil
 }
 
-type interval struct {
-	start uint64
-	end   uint64
-}
-
 func groupTokensByIntervals(tokens map[string][]uint64) map[string][]*interval {
 	ret := make(map[string][]*interval)
 
@@ -200,23 +230,14 @@ func groupTokensByIntervals(tokens map[string][]uint64) map[string][]*interval {
 	return ret
 }
 
-func sendTxs(txsData [][]byte) error {
-	privateKey, address, err := getPrivateKeyAndAddress()
-	if err != nil {
-		return err
-	}
-
-	proxy, err := createProxyProvider()
-	if err != nil {
-		return err
-	}
-
-	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
-	if err != nil {
-		return err
-	}
-
-	ti, err := interactors.NewTransactionInteractor(proxy, txBuilder)
+func sendTxs(
+	pemFile string,
+	proxy proxyProvider,
+	txInteractor transactionInteractor,
+	txsData [][]byte,
+	bulkSize int,
+) error {
+	privateKey, address, err := getPrivateKeyAndAddress(pemFile)
 	if err != nil {
 		return err
 	}
@@ -226,52 +247,55 @@ func sendTxs(txsData [][]byte) error {
 		return err
 	}
 
-	bulkSize := 0
+	log.Info("starting to send", "num of txs", len(txsData))
+	currBulkSize := 0
 	totalSentTxs := 0
 	for _, txData := range txsData {
+		transactionArguments.Nonce++
 		transactionArguments.Data = txData
-		tx, err := ti.ApplySignatureAndGenerateTx(privateKey, *transactionArguments)
+		tx, err := txInteractor.ApplySignatureAndGenerateTx(privateKey, *transactionArguments)
 		if err != nil {
 			return err
 		}
-		ti.AddTransaction(tx)
-		transactionArguments.Nonce++
-
-		log.Info("sending", "tx data", string(tx.Data))
-		bulkSize++
-		if bulkSize < txsBulkSize {
+		txInteractor.AddTransaction(tx)
+		//log.Info("sending", "tx data", string(tx.Data))
+		currBulkSize++
+		if currBulkSize < bulkSize {
 			continue
 		}
 
-		hashes, err := ti.SendTransactionsAsBunch(context.Background(), txsBulkSize)
+		err = sendMultipleTxs(txInteractor, currBulkSize)
 		if err != nil {
 			return err
 		}
 
-		bulkSize = 0
-		totalSentTxs += txsBulkSize
-		log.Info("sent", "num of txs", txsBulkSize, "hashes", hashes)
+		currBulkSize = 0
+		totalSentTxs += bulkSize
 	}
 
 	remainingTxs := len(txsData) - totalSentTxs
 	if remainingTxs > 0 {
-		hashes, err := ti.SendTransactionsAsBunch(context.Background(), remainingTxs)
+		err = sendMultipleTxs(txInteractor, remainingTxs)
 		if err != nil {
 			return err
 		}
 
-		log.Info("sent", "num of txs", remainingTxs, "hashes", hashes)
+		totalSentTxs += remainingTxs
 	}
 
+	if totalSentTxs != len(txsData) {
+		return fmt.Errorf("did not send all txs; sent %d, should have sent %d", totalSentTxs, len(txsData))
+	}
+
+	log.Info("sent all txs")
 	return nil
 }
 
-func getPrivateKeyAndAddress() ([]byte, core.AddressHandler, error) {
+func getPrivateKeyAndAddress(pemFile string) ([]byte, core.AddressHandler, error) {
 	w := interactors.NewWallet()
-
-	privateKey, err := w.LoadPrivateKeyFromPemData([]byte(examples.AlicePemContents))
+	privateKey, err := w.LoadPrivateKeyFromPemFile(pemFile)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to load alice.pem; error: %w", err)
+		return nil, nil, err
 	}
 
 	address, err := w.GetAddressFromPrivateKey(privateKey)
@@ -281,20 +305,6 @@ func getPrivateKeyAndAddress() ([]byte, core.AddressHandler, error) {
 	}
 
 	return privateKey, address, nil
-}
-
-func createProxyProvider() (proxyProvider, error) {
-	args := blockchain.ArgsElrondProxy{
-		ProxyURL:            "https://gateway.elrond.com",
-		Client:              nil,
-		SameScState:         false,
-		ShouldBeSynced:      false,
-		FinalityCheck:       false,
-		CacheExpirationTime: time.Minute,
-		EntityType:          core.Proxy,
-	}
-
-	return blockchain.NewElrondProxy(args)
 }
 
 func getDefaultTxsArgs(proxy proxyProvider, address core.AddressHandler) (*data.ArgCreateTransaction, error) {
@@ -313,6 +323,20 @@ func getDefaultTxsArgs(proxy proxyProvider, address core.AddressHandler) (*data.
 	transactionArguments.Value = "0"
 
 	return &transactionArguments, nil
+}
+
+func sendMultipleTxs(txInteractor transactionInteractor, numTxs int) error {
+	hashes, err := txInteractor.SendTransactionsAsBunch(context.Background(), numTxs)
+	if err != nil {
+		return err
+	}
+
+	if len(hashes) != numTxs {
+		return fmt.Errorf("failed to send all txs; sent: %d, should have sent: %d, sent tx hashes:%v ", len(hashes), numTxs, hashes)
+	}
+
+	log.Info("sent", "num of txs", numTxs, "hashes", hashes)
+	return nil
 }
 
 func createTxsData(tokens map[string][]*interval, intervalBulkSize int) ([][]byte, error) {

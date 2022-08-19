@@ -17,6 +17,11 @@ var (
 		Usage: "This flag specifies the input file; it expects the input to be a map<tokens>",
 		Value: "tokens.json",
 	}
+	pem = cli.StringFlag{
+		Name:  "pem",
+		Usage: "This flag specifies pem file which should be used to sign and send txs",
+		Value: "alice.pem",
+	}
 )
 
 func getFlags() []cli.Flag {
@@ -28,6 +33,7 @@ func getFlags() []cli.Flag {
 		trieToolsCommon.ProfileMode,
 		outfile,
 		tokens,
+		pem,
 	}
 }
 
@@ -40,6 +46,7 @@ func getFlagsConfig(ctx *cli.Context) config.ContextFlagsMetaDataRemover {
 	flagsConfig.EnablePprof = ctx.GlobalBool(trieToolsCommon.ProfileMode.Name)
 	flagsConfig.Outfile = ctx.GlobalString(outfile.Name)
 	flagsConfig.Tokens = ctx.GlobalString(tokens.Name)
+	flagsConfig.Pem = ctx.GlobalString(pem.Name)
 
 	return flagsConfig
 }

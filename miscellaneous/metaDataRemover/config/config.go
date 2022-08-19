@@ -7,4 +7,5 @@ type ContextFlagsMetaDataRemover struct {
 	trieToolsCommon.ContextFlagsConfig
 	Outfile string
 	Tokens  string
+	Pem     string
 }
