@@ -9,3 +9,7 @@ type ContextFlagsMetaDataRemover struct {
 	Tokens  string
 	Pem     string
 }
+
+type Config struct {
+	ProxyUrl string `toml:"ProxyUrl"`
+}

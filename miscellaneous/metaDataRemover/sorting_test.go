@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-tools-go/miscellaneous/metaDataRemover/mocks"
@@ -250,4 +251,63 @@ func TestSendTxs(t *testing.T) {
 	err := sendTxs("alice.pem", proxy, txInteractor, expectedTxsData, bulkSize)
 	require.Nil(t, err)
 	require.Equal(t, len(expectedTxsData), txIndex)
+}
+
+func TestCreateTxData2(t *testing.T) {
+	tokensIntervals := map[string][]*interval{
+		"token1": {
+			{
+				start: 0,
+				end:   0,
+			},
+			{
+				start: 1,
+				end:   1,
+			},
+			{
+				start: 2,
+				end:   3,
+			},
+			{
+				start: 4,
+				end:   8,
+			},
+		},
+		"token2": {
+			{
+				start: 1,
+				end:   5,
+			},
+		},
+		"token3": {
+			{
+				start: 0,
+				end:   0,
+			},
+			{
+				start: 1,
+				end:   4,
+			},
+			{
+				start: 6,
+				end:   7,
+			},
+		},
+	}
+
+	txsData, err := createTxsData2(tokensIntervals, 3)
+	require.Nil(t, err)
+
+	for _, txData := range txsData {
+		fmt.Println(string(txData))
+	}
+
+	//expectedTxsData := [][]byte{
+	//	[]byte("ESDTDeleteMetadata@746f6b656e31@02@00@00@01@01"), // token1: 2 intervals: [0,0];[1,1]
+	//	[]byte("ESDTDeleteMetadata@746f6b656e31@02@02@03@04@08"), // token1: 2 intervals: [2,3];[4,8]
+	//	[]byte("ESDTDeleteMetadata@746f6b656e32@01@01@05"),       // token2: 1 interval:  [1,5]
+	//	[]byte("ESDTDeleteMetadata@746f6b656e33@02@00@00@01@04"), // token3: 2 intervals: [0,0];[1,4]
+	//	[]byte("ESDTDeleteMetadata@746f6b656e33@01@05@06"),       // token3: 1 interval:  [5,6]
+	//}
+	//requireSameSliceDifferentOrder(t, txsData, expectedTxsData)
 }
