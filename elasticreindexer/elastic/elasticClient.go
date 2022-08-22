@@ -60,6 +60,7 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 	}, nil
 }
 
+// GetMultiple queries a multi search and returns the responses
 func (esc *esClient) GetMultiple(index string, requests []string) ([]byte, error) {
 	var query string
 	for _, request := range requests {
