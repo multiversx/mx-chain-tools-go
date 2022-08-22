@@ -1,7 +1,7 @@
 [config]
     [config.elasticIndexerConfig]
-        url = "https://elastic-do-nvme-ams-k8s-gateway.elrond.ro/"
-        username = "read_user"
+        url = ""
+        username = ""
         password = ""
 
     [config.gateway]
