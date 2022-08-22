@@ -60,6 +60,24 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 	}, nil
 }
 
+// GetMultiple queries a multi search and returns the responses
+func (esc *esClient) GetMultiple(index string, requests []string) ([]byte, error) {
+	var query string
+	for _, request := range requests {
+		query += "{}\n" + request + "\n"
+	}
+
+	res, err := esc.client.Msearch(
+		bytes.NewBuffer([]byte(query)),
+		esc.client.Msearch.WithIndex(index),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return getBytesFromResponse(res)
+}
+
 // GetCount returns the total number of documents available in the provided index
 func (esc *esClient) GetCount(index string) (uint64, error) {
 	res, err := esc.client.Count(
