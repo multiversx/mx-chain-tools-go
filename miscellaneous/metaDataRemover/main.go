@@ -25,15 +25,21 @@ import (
 )
 
 const (
-	logFilePrefix  = "meta-data-remover"
-	tomlFile       = "./config.toml"
-	intervalsPerTx = 100
-	txsBulkSize    = 100
+	ESDTDeleteMetadataPrefix = "ESDTDeleteMetadata"
+	logFilePrefix            = "meta-data-remover"
+	tomlFile                 = "./config.toml"
+	intervalsPerTx           = 100
+	txsBulkSize              = 100
 )
 
 type interval struct {
 	start uint64
 	end   uint64
+}
+
+type tokenData struct {
+	tokenID   string
+	intervals []*interval
 }
 
 func main() {
@@ -328,17 +334,36 @@ func sendMultipleTxs(txInteractor transactionInteractor, numTxs int) error {
 	return nil
 }
 
+func tokensMapToOrderedArray(tokens map[string][]*interval) []*tokenData {
+	ret := make([]*tokenData, 0, len(tokens))
+
+	for token, intervals := range tokens {
+		ret = append(ret, &tokenData{
+			tokenID:   token,
+			intervals: intervals,
+		})
+	}
+
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].tokenID < ret[j].tokenID
+	})
+
+	return ret
+}
+
 func createTxsData2(tokens map[string][]*interval, intervalBulkSize int) ([][]byte, error) {
+	tokensData := tokensMapToOrderedArray(tokens)
+
 	txsData := make([][]byte, 0)
 	numTokensInBulk := uint64(0)
-	currTxData := "begin"
+	currTxData := ESDTDeleteMetadataPrefix
 	tokenIntervalsInBulk := make([]*interval, 0, intervalBulkSize)
 	idxToken := 0
-	for token, intervals := range tokens {
-		currTxData += "@" + token
+	for _, tkData := range tokensData {
+		currTxData += "@" + tkData.tokenID
 
-		intervalsCopy := make([]*interval, len(intervals))
-		copy(intervalsCopy, intervals)
+		intervalsCopy := make([]*interval, len(tkData.intervals))
+		copy(intervalsCopy, tkData.intervals)
 
 		intervalIndex := 0
 		for intervalIndex < len(intervalsCopy) { //intervalIndex, intrv := range intervals {
@@ -362,12 +387,10 @@ func createTxsData2(tokens map[string][]*interval, intervalBulkSize int) ([][]by
 			if int(numTokensInBulk) == intervalBulkSize {
 				currTxData += intervalAsOnData(tokenIntervalsInBulk)
 				txsData = append(txsData, []byte(currTxData))
-				currTxData = "begin" + "@" + token
+				currTxData = ESDTDeleteMetadataPrefix + "@" + tkData.tokenID
 
 				if intervalIndex == len(intervalsCopy)-1 {
-					currTxData = "begin"
-				} else {
-
+					currTxData = ESDTDeleteMetadataPrefix
 				}
 
 				tokenIntervalsInBulk = make([]*interval, 0, intervalBulkSize)
