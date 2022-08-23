@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -28,7 +29,6 @@ const (
 	ESDTDeleteMetadataPrefix = "ESDTDeleteMetadata"
 	logFilePrefix            = "meta-data-remover"
 	tomlFile                 = "./config.toml"
-	intervalsPerTx           = 100
 	txsBulkSize              = 100
 )
 
@@ -93,13 +93,13 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	tokensIntervals := groupTokensByIntervals(tokensSorted)
-	txsData, err := createTxsData(tokensIntervals, intervalsPerTx)
+	cfg, err := loadConfig()
 	if err != nil {
 		return err
 	}
 
-	cfg, err := loadConfig()
+	tokensIntervals := groupTokensByIntervals(tokensSorted)
+	txsData, err := createTxsData(tokensIntervals, cfg.TokensToDeletePerTransaction)
 	if err != nil {
 		return err
 	}
@@ -351,75 +351,91 @@ func tokensMapToOrderedArray(tokens map[string][]*interval) []*tokenData {
 	return ret
 }
 
-func createTxsData2(tokens map[string][]*interval, intervalBulkSize int) ([][]byte, error) {
+func createTxsData(tokens map[string][]*interval, intervalBulkSize uint64) ([][]byte, error) {
 	tokensData := tokensMapToOrderedArray(tokens)
 
 	txsData := make([][]byte, 0)
 	numTokensInBulk := uint64(0)
-	currTxData := ESDTDeleteMetadataPrefix
-	tokenIntervalsInBulk := make([]*interval, 0, intervalBulkSize)
-	idxToken := 0
+	txDataBuilder := builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix)
+	intervalsInBulk := make([]*interval, 0, intervalBulkSize)
 	for _, tkData := range tokensData {
-		currTxData += "@" + tkData.tokenID
+		tokenIDHex := hex.EncodeToString([]byte(tkData.tokenID))
+		txDataBuilder.ArgHexString(tokenIDHex)
 
 		intervalsCopy := make([]*interval, len(tkData.intervals))
 		copy(intervalsCopy, tkData.intervals)
 
 		intervalIndex := 0
-		for intervalIndex < len(intervalsCopy) { //intervalIndex, intrv := range intervals {
-			intrv := intervalsCopy[intervalIndex]
+		for intervalIndex < len(intervalsCopy) {
+			currInterval := intervalsCopy[intervalIndex]
 
-			tokensInInterval := intrv.end - intrv.start + 1
-			availableSlots := uint64(intervalBulkSize - int(numTokensInBulk))
+			tokensInInterval := currInterval.end - currInterval.start + 1
+			availableSlots := uint64(int(intervalBulkSize) - int(numTokensInBulk))
 			if availableSlots >= tokensInInterval {
-				tokenIntervalsInBulk = append(tokenIntervalsInBulk, intrv)
-				numTokensInBulk += (intrv.end - intrv.start) + 1
+				intervalsInBulk = append(intervalsInBulk, currInterval)
+				numTokensInBulk += tokensInInterval
 			} else {
-				newInterval := *intrv
-				newInterval.end = newInterval.start + availableSlots - 1
+				first, second := splitInterval(currInterval, availableSlots)
 
-				intervalsCopy = append(intervalsCopy, &interval{start: newInterval.end + 1, end: intrv.end})
-
-				tokenIntervalsInBulk = append(tokenIntervalsInBulk, &newInterval)
+				intervalsCopy = append(intervalsCopy, second)
+				intervalsInBulk = append(intervalsInBulk, first)
 				numTokensInBulk += availableSlots
 			}
 
-			if int(numTokensInBulk) == intervalBulkSize {
-				currTxData += intervalAsOnData(tokenIntervalsInBulk)
-				txsData = append(txsData, []byte(currTxData))
-				currTxData = ESDTDeleteMetadataPrefix + "@" + tkData.tokenID
-
-				if intervalIndex == len(intervalsCopy)-1 {
-					currTxData = ESDTDeleteMetadataPrefix
-				}
-
-				tokenIntervalsInBulk = make([]*interval, 0, intervalBulkSize)
-				numTokensInBulk = 0
+			bulkFull := numTokensInBulk == intervalBulkSize
+			lastInterval := intervalIndex == len(intervalsCopy)-1
+			shouldEmptyBulk := lastInterval && numTokensInBulk != 0
+			if bulkFull || shouldEmptyBulk {
+				addIntervalAsOnData(txDataBuilder, intervalsInBulk)
+				intervalsInBulk = make([]*interval, 0, intervalBulkSize)
 			}
 
-			if intervalIndex == len(intervalsCopy)-1 && len(tokenIntervalsInBulk) != 0 {
-				currTxData += intervalAsOnData(tokenIntervalsInBulk)
-				tokenIntervalsInBulk = make([]*interval, 0, intervalBulkSize)
-				//numTokensInBulk += (intrv.end - intrv.start) + 1
+			if bulkFull {
+				currTxData, err := txDataBuilder.ToDataBytes()
+				if err != nil {
+					return nil, err
+				}
+
+				numTokensInBulk = 0
+				txsData = append(txsData, currTxData)
+				txDataBuilder = builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix).ArgHexString(tokenIDHex)
+
+				if lastInterval {
+					txDataBuilder = builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix)
+				}
 			}
 
 			intervalIndex++
 		}
-
-		idxToken++
 	}
-
-	splits := strings.Split(currTxData, "@")
+	currTxData, err := txDataBuilder.ToDataBytes()
+	if err != nil {
+		return nil, err
+	}
+	splits := bytes.Split(currTxData, []byte("@"))
 	if len(splits) > 2 {
-		txsData = append(txsData, []byte(currTxData))
+		txsData = append(txsData, currTxData)
 	}
 
 	return txsData, nil
 }
 
-func intervalAsOnData(intervals []*interval) string {
-	builder := builders.NewTxDataBuilder().
-		ArgInt64(int64(len(intervals)))
+func splitInterval(currInterval *interval, index uint64) (*interval, *interval) {
+	first := &interval{
+		start: currInterval.start,
+		end:   currInterval.start + index - 1,
+	}
+
+	second := &interval{
+		start: first.end + 1,
+		end:   currInterval.end,
+	}
+
+	return first, second
+}
+
+func addIntervalAsOnData(builder builders.TxDataBuilder, intervals []*interval) string {
+	builder.ArgInt64(int64(len(intervals)))
 
 	for _, interval := range intervals {
 		builder.
@@ -429,66 +445,6 @@ func intervalAsOnData(intervals []*interval) string {
 
 	ret, _ := builder.ToDataString()
 	return ret
-}
-
-func createTxsData(tokens map[string][]*interval, intervalBulkSize int) ([][]byte, error) {
-	txsData := make([][]byte, 0)
-	for token, intervals := range tokens {
-		dataIntervals, err := splitDataIntervals(token, intervals, intervalBulkSize)
-		if err != nil {
-			return nil, err
-		}
-
-		txsData = append(txsData, dataIntervals...)
-	}
-
-	return txsData, nil
-}
-
-func splitDataIntervals(token string, intervals []*interval, intervalBulkSize int) ([][]byte, error) {
-	bulks := len(intervals) / intervalBulkSize
-	allData := make([][]byte, 0)
-
-	start := 0
-	end := intervalBulkSize
-	for i := 0; i < bulks; i++ {
-		d, err := tokensIntervalsAsOnData(token, intervals[start:end])
-		if err != nil {
-			return nil, err
-		}
-
-		start += intervalBulkSize
-		end += intervalBulkSize
-		allData = append(allData, d)
-	}
-
-	remaining := len(intervals) % intervalBulkSize
-	if remaining == 0 {
-		return allData, nil
-	}
-
-	d, err := tokensIntervalsAsOnData(token, intervals[start:start+remaining])
-	if err != nil {
-		return nil, err
-	}
-	allData = append(allData, d)
-
-	return allData, nil
-}
-
-func tokensIntervalsAsOnData(token string, intervals []*interval) ([]byte, error) {
-	builder := builders.NewTxDataBuilder().
-		Function("ESDTDeleteMetadata").
-		ArgHexString(hex.EncodeToString([]byte(token))).
-		ArgInt64(int64(len(intervals)))
-
-	for _, interval := range intervals {
-		builder.
-			ArgInt64(int64(interval.start)).
-			ArgInt64(int64(interval.end))
-	}
-
-	return builder.ToDataBytes()
 }
 
 func loadConfig() (*config.Config, error) {

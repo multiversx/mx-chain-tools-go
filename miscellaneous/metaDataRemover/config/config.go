@@ -11,5 +11,6 @@ type ContextFlagsMetaDataRemover struct {
 }
 
 type Config struct {
-	ProxyUrl string `toml:"ProxyUrl"`
+	ProxyUrl                     string `toml:"ProxyUrl"`
+	TokensToDeletePerTransaction uint64 `toml:"TokensToDeletePerTransaction"`
 }

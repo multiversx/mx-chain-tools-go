@@ -9,14 +9,6 @@ import (
 	"testing"
 )
 
-func requireSameSliceDifferentOrder(t *testing.T, s1, s2 [][]byte) {
-	require.Equal(t, len(s1), len(s2))
-
-	for _, elemInS1 := range s1 {
-		require.Contains(t, s2, elemInS1)
-	}
-}
-
 func TestSortTokensIDByNonce(t *testing.T) {
 	tokens := map[string]struct{}{
 		"token1-rand1-0f": {},
@@ -108,7 +100,7 @@ func TestGroupTokensByIntervals(t *testing.T) {
 	)
 }
 
-func TestCreateTxData(t *testing.T) {
+func TestCreateTxsData(t *testing.T) {
 	tokensIntervals := map[string][]*interval{
 		"token1": {
 			{
@@ -144,23 +136,146 @@ func TestCreateTxData(t *testing.T) {
 				end:   4,
 			},
 			{
-				start: 5,
-				end:   6,
+				start: 6,
+				end:   7,
 			},
 		},
 	}
 
-	txsData, err := createTxsData(tokensIntervals, 2)
+	// Tokens/tx = 1
+	txsData, err := createTxsData(tokensIntervals, 1)
 	require.Nil(t, err)
-
 	expectedTxsData := [][]byte{
-		[]byte("ESDTDeleteMetadata@746f6b656e31@02@00@00@01@01"), // token1: 2 intervals: [0,0];[1,1]
-		[]byte("ESDTDeleteMetadata@746f6b656e31@02@02@03@04@08"), // token1: 2 intervals: [2,3];[4,8]
-		[]byte("ESDTDeleteMetadata@746f6b656e32@01@01@05"),       // token2: 1 interval:  [1,5]
-		[]byte("ESDTDeleteMetadata@746f6b656e33@02@00@00@01@04"), // token3: 2 intervals: [0,0];[1,4]
-		[]byte("ESDTDeleteMetadata@746f6b656e33@01@05@06"),       // token3: 1 interval:  [5,6]
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@00@00"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@02@02"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@04@04"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@03@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@05@05"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@06@06"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@07@07"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@08@08"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@02@02"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@03@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@04@04"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@05@05"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@00@00"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@06@06"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@02@02"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@07@07"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@03@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@04@04"),
 	}
-	requireSameSliceDifferentOrder(t, txsData, expectedTxsData)
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx = 2
+	txsData, err = createTxsData(tokensIntervals, 2)
+	require.Nil(t, err)
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@02@00@00@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@02@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@04@05"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@06@07"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@08@08@746f6b656e32@01@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@02@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@04@05"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@02@00@00@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@06@07"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@02@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@04@04"),
+	}
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx = 3
+	txsData, err = createTxsData(tokensIntervals, 3)
+	require.Nil(t, err)
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@03@00@00@01@01@02@02"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@04@06"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@02@03@03@07@08"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@01@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@04@05@746f6b656e33@01@00@00"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@01@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@02@06@07@04@04"),
+	}
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx = 4
+	txsData, err = createTxsData(tokensIntervals, 4)
+	require.Nil(t, err)
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@03@00@00@01@01@02@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@04@07"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@08@08@746f6b656e32@01@01@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@04@05@746f6b656e33@02@00@00@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@02@06@07@02@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@04@04"),
+	}
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx = 5
+	txsData, err = createTxsData(tokensIntervals, 5)
+	require.Nil(t, err)
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@04@00@00@01@01@02@03@04@04"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@05@08@746f6b656e32@01@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@02@05@746f6b656e33@01@00@00"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@02@01@04@06@06"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@07@07"),
+	}
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx = 6
+	txsData, err = createTxsData(tokensIntervals, 6)
+	require.Nil(t, err)
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@04@00@00@01@01@02@03@04@05"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@06@08@746f6b656e32@01@01@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e32@01@04@05@746f6b656e33@02@00@00@01@03"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@02@06@07@04@04"),
+	}
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx = 7
+	txsData, err = createTxsData(tokensIntervals, 7)
+	require.Nil(t, err)
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@04@00@00@01@01@02@03@04@06"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@07@08@746f6b656e32@01@01@05"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@03@00@00@01@04@06@07"),
+	}
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx = 8
+	txsData, err = createTxsData(tokensIntervals, 8)
+	require.Nil(t, err)
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@04@00@00@01@01@02@03@04@07"),
+		[]byte("ESDTDeleteMetadata@746f6b656e31@01@08@08@746f6b656e32@01@01@05@746f6b656e33@02@00@00@01@01"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@02@06@07@02@04"),
+	}
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx = 20
+	txsData, err = createTxsData(tokensIntervals, 20)
+	require.Nil(t, err)
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@04@00@00@01@01@02@03@04@08@746f6b656e32@01@01@05@746f6b656e33@03@00@00@01@04@06@06"),
+		[]byte("ESDTDeleteMetadata@746f6b656e33@01@07@07"),
+	}
+	require.Equal(t, expectedTxsData, txsData)
+
+	// Tokens/tx >= 21
+	expectedTxsData = [][]byte{
+		[]byte("ESDTDeleteMetadata@746f6b656e31@04@00@00@01@01@02@03@04@08@746f6b656e32@01@01@05@746f6b656e33@03@00@00@01@04@06@07"),
+	}
+	for i := uint64(21); i < 100; i++ {
+		txsData, err = createTxsData(tokensIntervals, i)
+		require.Nil(t, err)
+		require.Equal(t, expectedTxsData, txsData)
+	}
 }
 
 func TestSendTxs(t *testing.T) {
@@ -250,182 +365,4 @@ func TestSendTxs(t *testing.T) {
 	err := sendTxs("alice.pem", proxy, txInteractor, expectedTxsData, bulkSize)
 	require.Nil(t, err)
 	require.Equal(t, len(expectedTxsData), txIndex)
-}
-
-func TestCreateTxData2(t *testing.T) {
-	tokensIntervals := map[string][]*interval{
-		"token1": {
-			{
-				start: 0,
-				end:   0,
-			},
-			{
-				start: 1,
-				end:   1,
-			},
-			{
-				start: 2,
-				end:   3,
-			},
-			{
-				start: 4,
-				end:   8,
-			},
-		},
-		"token2": {
-			{
-				start: 1,
-				end:   5,
-			},
-		},
-		"token3": {
-			{
-				start: 0,
-				end:   0,
-			},
-			{
-				start: 1,
-				end:   4,
-			},
-			{
-				start: 6,
-				end:   7,
-			},
-		},
-	}
-
-	// Tokens/tx = 1
-	txsData, err := createTxsData2(tokensIntervals, 1)
-	require.Nil(t, err)
-	expectedTxsData := [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@01@00@00"),
-		[]byte("ESDTDeleteMetadata@token1@01@01@01"),
-		[]byte("ESDTDeleteMetadata@token1@01@02@02"),
-		[]byte("ESDTDeleteMetadata@token1@01@04@04"),
-		[]byte("ESDTDeleteMetadata@token1@01@03@03"),
-		[]byte("ESDTDeleteMetadata@token1@01@05@05"),
-		[]byte("ESDTDeleteMetadata@token1@01@06@06"),
-		[]byte("ESDTDeleteMetadata@token1@01@07@07"),
-		[]byte("ESDTDeleteMetadata@token1@01@08@08"),
-		[]byte("ESDTDeleteMetadata@token2@01@01@01"),
-		[]byte("ESDTDeleteMetadata@token2@01@02@02"),
-		[]byte("ESDTDeleteMetadata@token2@01@03@03"),
-		[]byte("ESDTDeleteMetadata@token2@01@04@04"),
-		[]byte("ESDTDeleteMetadata@token2@01@05@05"),
-		[]byte("ESDTDeleteMetadata@token3@01@00@00"),
-		[]byte("ESDTDeleteMetadata@token3@01@01@01"),
-		[]byte("ESDTDeleteMetadata@token3@01@06@06"),
-		[]byte("ESDTDeleteMetadata@token3@01@02@02"),
-		[]byte("ESDTDeleteMetadata@token3@01@07@07"),
-		[]byte("ESDTDeleteMetadata@token3@01@03@03"),
-		[]byte("ESDTDeleteMetadata@token3@01@04@04"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx = 2
-	txsData, err = createTxsData2(tokensIntervals, 2)
-	require.Nil(t, err)
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@02@00@00@01@01"),
-		[]byte("ESDTDeleteMetadata@token1@01@02@03"),
-		[]byte("ESDTDeleteMetadata@token1@01@04@05"),
-		[]byte("ESDTDeleteMetadata@token1@01@06@07"),
-		[]byte("ESDTDeleteMetadata@token1@01@08@08@token2@01@01@01"),
-		[]byte("ESDTDeleteMetadata@token2@01@02@03"),
-		[]byte("ESDTDeleteMetadata@token2@01@04@05"),
-		[]byte("ESDTDeleteMetadata@token3@02@00@00@01@01"),
-		[]byte("ESDTDeleteMetadata@token3@01@06@07"),
-		[]byte("ESDTDeleteMetadata@token3@01@02@03"),
-		[]byte("ESDTDeleteMetadata@token3@01@04@04"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx = 3
-	txsData, err = createTxsData2(tokensIntervals, 3)
-	require.Nil(t, err)
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@03@00@00@01@01@02@02"),
-		[]byte("ESDTDeleteMetadata@token1@01@04@06"),
-		[]byte("ESDTDeleteMetadata@token1@02@03@03@07@08"),
-		[]byte("ESDTDeleteMetadata@token2@01@01@03"),
-		[]byte("ESDTDeleteMetadata@token2@01@04@05@token3@01@00@00"),
-		[]byte("ESDTDeleteMetadata@token3@01@01@03"),
-		[]byte("ESDTDeleteMetadata@token3@02@06@07@04@04"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx = 4
-	txsData, err = createTxsData2(tokensIntervals, 4)
-	require.Nil(t, err)
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@03@00@00@01@01@02@03"),
-		[]byte("ESDTDeleteMetadata@token1@01@04@07"),
-		[]byte("ESDTDeleteMetadata@token1@01@08@08@token2@01@01@03"),
-		[]byte("ESDTDeleteMetadata@token2@01@04@05@token3@02@00@00@01@01"),
-		[]byte("ESDTDeleteMetadata@token3@02@06@07@02@03"),
-		[]byte("ESDTDeleteMetadata@token3@01@04@04"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx = 5
-	txsData, err = createTxsData2(tokensIntervals, 5)
-	require.Nil(t, err)
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@04@00@00@01@01@02@03@04@04"),
-		[]byte("ESDTDeleteMetadata@token1@01@05@08@token2@01@01@01"),
-		[]byte("ESDTDeleteMetadata@token2@01@02@05@token3@01@00@00"),
-		[]byte("ESDTDeleteMetadata@token3@02@01@04@06@06"),
-		[]byte("ESDTDeleteMetadata@token3@01@07@07"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx = 6
-	txsData, err = createTxsData2(tokensIntervals, 6)
-	require.Nil(t, err)
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@04@00@00@01@01@02@03@04@05"),
-		[]byte("ESDTDeleteMetadata@token1@01@06@08@token2@01@01@03"),
-		[]byte("ESDTDeleteMetadata@token2@01@04@05@token3@02@00@00@01@03"),
-		[]byte("ESDTDeleteMetadata@token3@02@06@07@04@04"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx = 7
-	txsData, err = createTxsData2(tokensIntervals, 7)
-	require.Nil(t, err)
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@04@00@00@01@01@02@03@04@06"),
-		[]byte("ESDTDeleteMetadata@token1@01@07@08@token2@01@01@05"),
-		[]byte("ESDTDeleteMetadata@token3@03@00@00@01@04@06@07"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx = 8
-	txsData, err = createTxsData2(tokensIntervals, 8)
-	require.Nil(t, err)
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@04@00@00@01@01@02@03@04@07"),
-		[]byte("ESDTDeleteMetadata@token1@01@08@08@token2@01@01@05@token3@02@00@00@01@01"),
-		[]byte("ESDTDeleteMetadata@token3@02@06@07@02@04"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx = 20
-	txsData, err = createTxsData2(tokensIntervals, 20)
-	require.Nil(t, err)
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@04@00@00@01@01@02@03@04@08@token2@01@01@05@token3@03@00@00@01@04@06@06"),
-		[]byte("ESDTDeleteMetadata@token3@01@07@07"),
-	}
-	require.Equal(t, expectedTxsData, txsData)
-
-	// Tokens/tx >= 21
-	expectedTxsData = [][]byte{
-		[]byte("ESDTDeleteMetadata@token1@04@00@00@01@01@02@03@04@08@token2@01@01@05@token3@03@00@00@01@04@06@07"),
-	}
-	for i := 21; i < 100; i++ {
-		txsData, err = createTxsData2(tokensIntervals, i)
-		require.Nil(t, err)
-		require.Equal(t, expectedTxsData, txsData)
-	}
 }

@@ -1,1 +1,3 @@
 ProxyUrl = "https://gateway.elrond.com"
+
+TokensToDeletePerTransaction = 500

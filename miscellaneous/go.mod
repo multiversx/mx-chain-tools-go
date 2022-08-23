@@ -3,10 +3,10 @@ module github.com/ElrondNetwork/elrond-tools-go/miscellaneous
 go 1.17
 
 require (
-	github.com/ElrondNetwork/elrond-go-core v1.1.18
 	github.com/ElrondNetwork/elrond-go-logger v1.0.7
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5
 	github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220804091347-e9375a5608b4
+	github.com/pelletier/go-toml v1.9.3
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli v1.22.9
 )
@@ -14,6 +14,7 @@ require (
 require (
 	github.com/ElrondNetwork/concurrent-map v0.1.3 // indirect
 	github.com/ElrondNetwork/elrond-go v1.3.35 // indirect
+	github.com/ElrondNetwork/elrond-go-core v1.1.18 // indirect
 	github.com/ElrondNetwork/elrond-go-crypto v1.0.1 // indirect
 	github.com/ElrondNetwork/elrond-vm-common v1.3.12 // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
@@ -27,7 +28,6 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
-	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
