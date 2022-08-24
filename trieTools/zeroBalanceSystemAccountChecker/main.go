@@ -10,6 +10,7 @@ import (
 	sysAccConfig "github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/config"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
+	"strconv"
 
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
@@ -72,12 +73,12 @@ func startProcess(c *cli.Context) error {
 
 	log.Info("starting processing trie", "pid", os.Getpid())
 
-	addressTokensMap, err := readInputs(flagsConfig.TokensDirectory)
+	shardAddressTokensMap, err := readInputs(flagsConfig.TokensDirectory)
 	if err != nil {
 		return err
 	}
 
-	extraTokens, err := exportSystemAccZeroTokensBalances(addressTokensMap)
+	extraTokens, err := exportSystemAccZeroTokensBalances(shardAddressTokensMap)
 	if err != nil {
 		return err
 	}
@@ -97,7 +98,7 @@ func startProcess(c *cli.Context) error {
 	return nil
 }
 
-func readInputs(tokensDir string) (map[string]map[string]struct{}, error) {
+func readInputs(tokensDir string) (map[uint32]map[string]map[string]struct{}, error) {
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -109,10 +110,16 @@ func readInputs(tokensDir string) (map[string]map[string]struct{}, error) {
 		return nil, err
 	}
 
-	allAddressesTokensMap := make(map[string]map[string]struct{})
+	shardAddressTokensMap := make(map[uint32]map[string]map[string]struct{})
+	totalNumAddresses := 0
 	for _, file := range contents {
 		if file.IsDir() {
 			continue
+		}
+
+		shardID, err := getShardID(file.Name())
+		if err != nil {
+			return nil, err
 		}
 
 		addressTokensMapInCurrFile, err := getFileContent(filepath.Join(fullPath, file.Name()))
@@ -120,14 +127,29 @@ func readInputs(tokensDir string) (map[string]map[string]struct{}, error) {
 			return nil, err
 		}
 
-		merge(allAddressesTokensMap, addressTokensMapInCurrFile)
+		shardAddressTokensMap[shardID] = addressTokensMapInCurrFile
+
+		numAddressesInShard := len(addressTokensMapInCurrFile)
+		totalNumAddresses += numAddressesInShard
 		log.Info("read data from",
 			"file", file.Name(),
-			"num addresses in current file", len(addressTokensMapInCurrFile),
-			"num addresses in total, after merge", len(allAddressesTokensMap))
+			"num addresses in current file", numAddressesInShard,
+			"shard", shardID,
+			"total num addresses in all shards", totalNumAddresses)
 	}
 
-	return allAddressesTokensMap, nil
+	return shardAddressTokensMap, nil
+}
+
+func getShardID(file string) (uint32, error) {
+	shardIDStr := strings.TrimPrefix(file, "shard")
+	shardIDStr = strings.TrimSuffix(shardIDStr, ".json")
+	shardID, err := strconv.Atoi(shardIDStr)
+	if err != nil {
+		return 0, fmt.Errorf("invalid file input name; expected tokens shard file name to be <shardX.json>, where X = number(e.g. shard0.json)")
+	}
+
+	return uint32(shardID), nil
 }
 
 func getFileContent(file string) (map[string]map[string]struct{}, error) {
@@ -150,42 +172,26 @@ func getFileContent(file string) (map[string]map[string]struct{}, error) {
 	return addressTokensMapInCurrFile, nil
 }
 
-func merge(dest, src map[string]map[string]struct{}) {
-	for addressSrc, tokensSrc := range src {
-		_, existsInDest := dest[addressSrc]
-		if !existsInDest {
-			dest[addressSrc] = tokensSrc
-		} else {
-			log.Debug("same address found in multiple files", "address", addressSrc)
-			addTokensInDestAddress(tokensSrc, dest, addressSrc)
-		}
-	}
-}
-
-func addTokensInDestAddress(tokens map[string]struct{}, dest map[string]map[string]struct{}, address string) {
-	for token := range tokens {
-		dest[address][token] = struct{}{}
-	}
-}
-
-func exportSystemAccZeroTokensBalances(allAddressesTokensMap map[string]map[string]struct{}) (map[string]struct{}, error) {
+func exportSystemAccZeroTokensBalances(shardAddressTokenMap map[uint32]map[string]map[string]struct{}) (map[uint32]map[string]struct{}, error) {
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
 		return nil, err
 	}
 
+	ret := make(map[uint32]map[string]struct{})
 	systemSCAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
-	allTokensInSystemSCAddress, foundSystemSCAddress := allAddressesTokensMap[systemSCAddress]
-	if !foundSystemSCAddress {
-		return nil, fmt.Errorf("no system account address(%s) found", systemSCAddress)
+	for shardID, addressTokensMap := range shardAddressTokenMap {
+		tokensInSystemAccAddress, found := addressTokensMap[systemSCAddress]
+		if !found {
+			return nil, fmt.Errorf("no system account address(%s) found in shard = %v", systemSCAddress, shardID)
+		}
+
+		allTokensWithoutSysAccount := getAllTokensWithoutSystemAccount(addressTokensMap, systemSCAddress)
+		extraTokens := getExtraTokens(allTokensWithoutSysAccount, tokensInSystemAccAddress)
+		ret[shardID] = extraTokens
 	}
 
-	allTokens := getAllTokensWithoutSystemAccount(allAddressesTokensMap, systemSCAddress)
-	log.Info("found",
-		"total num of tokens in all addresses", len(allTokens),
-		"total num of tokens in system sc address", len(allTokensInSystemSCAddress))
-
-	return getExtraTokens(allTokens, allTokensInSystemSCAddress), nil
+	return ret, nil
 }
 
 func getAllTokensWithoutSystemAccount(allAddressesTokensMap map[string]map[string]struct{}, systemSCAddress string) map[string]struct{} {
@@ -229,7 +235,7 @@ func hasNonce(token string) bool {
 	return strings.Count(token, "-") == 2
 }
 
-func saveResult(tokens map[string]struct{}, outfile string) error {
+func saveResult(tokens map[uint32]map[string]struct{}, outfile string) error {
 	jsonBytes, err := json.MarshalIndent(tokens, "", " ")
 	if err != nil {
 		return err
@@ -245,7 +251,7 @@ func saveResult(tokens map[string]struct{}, outfile string) error {
 	return nil
 }
 
-func crossCheckExtraTokens(extraTokens map[string]struct{}) error {
+func crossCheckExtraTokens(extraTokens map[uint32]map[string]struct{}) error {
 	cfg, err := loadConfig()
 	if err != nil {
 		return err
@@ -266,12 +272,16 @@ func crossCheckExtraTokens(extraTokens map[string]struct{}) error {
 		return err
 	}
 
-	tokensThatStillExist, err := tokensChecker.crossCheckExtraTokens(extraTokens)
-	if err != nil {
-		return err
+	for shardID, extraTokensInShard := range extraTokens {
+		log.Info("cross checking extra tokens", "shardID", shardID, "num of tokens", len(extraTokensInShard))
+		tokensThatStillExist, err := tokensChecker.crossCheckExtraTokens(extraTokensInShard)
+		if err != nil {
+			return err
+		}
+
+		removeTokensThatStillExist(tokensThatStillExist, extraTokensInShard)
 	}
 
-	removeTokensThatStillExist(tokensThatStillExist, extraTokens)
 	return nil
 }
 
