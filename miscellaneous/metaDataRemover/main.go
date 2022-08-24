@@ -75,12 +75,7 @@ func startProcess(c *cli.Context) error {
 
 	log.Info("starting processing", "pid", os.Getpid())
 
-	tokens, err := readInput(flagsConfig.Tokens)
-	if err != nil {
-		return err
-	}
-
-	tokensSorted, err := sortTokensIDByNonce(tokens)
+	shardTokensMap, err := readInput(flagsConfig.Tokens)
 	if err != nil {
 		return err
 	}
@@ -90,10 +85,20 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	tokensIntervals := groupTokensByIntervals(tokensSorted)
-	txsData, err := createTxsData(tokensIntervals, cfg.TokensToDeletePerTransaction)
-	if err != nil {
-		return err
+	shardTxsDataMap := make(map[uint32][][]byte)
+	for shardID, tokens := range shardTokensMap {
+		log.Info("creating txs data", "shardID", shardID, "num tokens", len(tokens))
+		tokensSorted, err := sortTokensIDByNonce(tokens)
+		if err != nil {
+			return err
+		}
+
+		tokensIntervals := groupTokensByIntervals(tokensSorted)
+		txsData, err := createTxsData(tokensIntervals, cfg.TokensToDeletePerTransaction)
+		if err != nil {
+			return err
+		}
+		shardTxsDataMap[shardID] = txsData
 	}
 
 	args := blockchain.ArgsElrondProxy{
@@ -117,15 +122,15 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	err = sendTxs(flagsConfig.Pem, proxy, ti, txsData, txsBulkSize)
-	if err != nil {
-		return err
-	}
-
+	//err = sendTxs(flagsConfig.Pem, proxy, ti, txsData, txsBulkSize)
+	//if err != nil {
+	//	return err
+	//}
+	_ = ti
 	return nil
 }
 
-func readInput(tokensFile string) (map[string]struct{}, error) {
+func readInput(tokensFile string) (map[uint32]map[string]struct{}, error) {
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -142,7 +147,7 @@ func readInput(tokensFile string) (map[string]struct{}, error) {
 		return nil, err
 	}
 
-	tokens := make(map[string]struct{})
+	tokens := make(map[uint32]map[string]struct{})
 	err = json.Unmarshal(bytesFromJson, &tokens)
 	if err != nil {
 		return nil, err
