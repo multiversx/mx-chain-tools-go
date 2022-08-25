@@ -130,17 +130,11 @@ func readInputs(tokensDir string) (map[string]map[string]struct{}, map[uint32]ma
 
 		shardAddressTokensMap[shardID] = copyMap(addressTokensMapInCurrFile)
 		merge(globalAddressTokensMap, addressTokensMapInCurrFile)
-		numTokensInShard := 0
-		for _, tokens := range shardAddressTokensMap[shardID] {
-			for range tokens {
-				numTokensInShard++
-			}
-		}
 
 		log.Info("read data from",
 			"file", file.Name(),
 			"shard", shardID,
-			"num tokens in shard", numTokensInShard,
+			"num tokens in shard", getNumTokens(shardAddressTokensMap[shardID]),
 			"num addresses in current file", len(shardAddressTokensMap[shardID]),
 			"total num addresses in all shards", len(globalAddressTokensMap))
 	}
@@ -157,37 +151,6 @@ func getShardID(file string) (uint32, error) {
 	}
 
 	return uint32(shardID), nil
-}
-
-func merge(dest, src map[string]map[string]struct{}) {
-	for addressSrc, tokensSrc := range src {
-		_, existsInDest := dest[addressSrc]
-		if !existsInDest {
-			dest[addressSrc] = tokensSrc
-		} else {
-			log.Debug("same address found in multiple files", "address", addressSrc)
-			addTokensInDestAddress(tokensSrc, dest, addressSrc)
-		}
-	}
-}
-
-func copyMap(addressTokensMap map[string]map[string]struct{}) map[string]map[string]struct{} {
-	addressTokensMapCopy := make(map[string]map[string]struct{})
-
-	for address, tokens := range addressTokensMap {
-		addressTokensMapCopy[address] = make(map[string]struct{})
-		for token := range tokens {
-			addressTokensMapCopy[address][token] = struct{}{}
-		}
-	}
-
-	return addressTokensMapCopy
-}
-
-func addTokensInDestAddress(tokens map[string]struct{}, dest map[string]map[string]struct{}, address string) {
-	for token := range tokens {
-		dest[address][token] = struct{}{}
-	}
 }
 
 func getFileContent(file string) (map[string]map[string]struct{}, error) {
@@ -207,24 +170,73 @@ func getFileContent(file string) (map[string]map[string]struct{}, error) {
 		return nil, err
 	}
 
-	return addressTokensMapInCurrFile, nil
-}
-
-func getGlobalExtraTokens(allAddressesTokensMap map[string]map[string]struct{}, systemSCAddress string) (map[string]struct{}, error) {
-	allTokensInSystemSCAddress, foundSystemSCAddress := allAddressesTokensMap[systemSCAddress]
-	if !foundSystemSCAddress {
-		return nil, fmt.Errorf("no system account address(%s) found", systemSCAddress)
+	ret := make(map[string]map[string]struct{})
+	for address, tokens := range addressTokensMapInCurrFile {
+		ret[address] = make(map[string]struct{})
+		for token := range tokens {
+			addTokenInMapIfHasNonce(token, ret[address])
+		}
 	}
 
-	allTokens := getAllTokensWithoutSystemAccount(allAddressesTokensMap, systemSCAddress)
-	log.Info("found",
-		"global num of tokens in all addresses", len(allTokens),
-		"global num of tokens in system sc address", len(allTokensInSystemSCAddress))
-
-	return getExtraTokens(allTokens, allTokensInSystemSCAddress), nil
+	return ret, nil
 }
 
-func exportSystemAccZeroTokensBalances(globalAddressTokensMap map[string]map[string]struct{}, shardAddressTokenMap map[uint32]map[string]map[string]struct{}) (map[string]struct{}, map[uint32]map[string]struct{}, error) {
+func addTokenInMapIfHasNonce(token string, tokens map[string]struct{}) {
+	if hasNonce(token) {
+		tokens[token] = struct{}{}
+	}
+}
+
+func hasNonce(token string) bool {
+	return strings.Count(token, "-") == 2
+}
+
+func copyMap(addressTokensMap map[string]map[string]struct{}) map[string]map[string]struct{} {
+	addressTokensMapCopy := make(map[string]map[string]struct{})
+
+	for address, tokens := range addressTokensMap {
+		addressTokensMapCopy[address] = make(map[string]struct{})
+		for token := range tokens {
+			addressTokensMapCopy[address][token] = struct{}{}
+		}
+	}
+
+	return addressTokensMapCopy
+}
+
+func getNumTokens(addressTokensMap map[string]map[string]struct{}) int {
+	numTokensInShard := 0
+	for _, tokens := range addressTokensMap {
+		for range tokens {
+			numTokensInShard++
+		}
+	}
+
+	return numTokensInShard
+}
+
+func merge(dest, src map[string]map[string]struct{}) {
+	for addressSrc, tokensSrc := range src {
+		_, existsInDest := dest[addressSrc]
+		if !existsInDest {
+			dest[addressSrc] = tokensSrc
+		} else {
+			log.Debug("same address found in multiple files", "address", addressSrc)
+			addTokensInDestAddress(tokensSrc, dest, addressSrc)
+		}
+	}
+}
+
+func addTokensInDestAddress(tokens map[string]struct{}, dest map[string]map[string]struct{}, address string) {
+	for token := range tokens {
+		dest[address][token] = struct{}{}
+	}
+}
+
+func exportSystemAccZeroTokensBalances(
+	globalAddressTokensMap map[string]map[string]struct{},
+	shardAddressTokenMap map[uint32]map[string]map[string]struct{},
+) (map[string]struct{}, map[uint32]map[string]struct{}, error) {
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
 		return nil, nil, err
@@ -237,7 +249,7 @@ func exportSystemAccZeroTokensBalances(globalAddressTokensMap map[string]map[str
 	}
 	log.Info("found", "global num of extra tokens", len(globalExtraTokens))
 
-	ret := make(map[uint32]map[string]struct{})
+	shardExtraTokens := make(map[uint32]map[string]struct{})
 	for shardID, addressTokensMap := range shardAddressTokenMap {
 		shardTokensInSystemAccAddress, found := addressTokensMap[systemSCAddress]
 		if !found {
@@ -246,13 +258,66 @@ func exportSystemAccZeroTokensBalances(globalAddressTokensMap map[string]map[str
 
 		extraTokensInShard := intersection(globalExtraTokens, shardTokensInSystemAccAddress)
 		log.Info("found", "shard", shardID, "num tokens in system account", len(shardTokensInSystemAccAddress), "num extra tokens", len(extraTokensInShard))
-		ret[shardID] = extraTokensInShard
+		shardExtraTokens[shardID] = extraTokensInShard
 	}
-	if !sanityCheckExtraTokens(ret, globalExtraTokens) {
+	if !sanityCheckExtraTokens(shardExtraTokens, globalExtraTokens) {
 		return nil, nil, errors.New("sanity check for exported tokens failed")
 	}
 
-	return globalExtraTokens, ret, nil
+	return globalExtraTokens, shardExtraTokens, nil
+}
+
+func getGlobalExtraTokens(allAddressesTokensMap map[string]map[string]struct{}, systemSCAddress string) (map[string]struct{}, error) {
+	allTokensInSystemSCAddress, foundSystemSCAddress := allAddressesTokensMap[systemSCAddress]
+	if !foundSystemSCAddress {
+		return nil, fmt.Errorf("no system account address(%s) found", systemSCAddress)
+	}
+
+	allTokens := getAllTokensWithoutSystemAccount(allAddressesTokensMap, systemSCAddress)
+	log.Info("found",
+		"global num of tokens in all addresses without system account", len(allTokens),
+		"global num of tokens in system sc address", len(allTokensInSystemSCAddress))
+
+	return getExtraTokens(allTokens, allTokensInSystemSCAddress), nil
+}
+
+func getAllTokensWithoutSystemAccount(allAddressesTokensMap map[string]map[string]struct{}, systemSCAddress string) map[string]struct{} {
+	allAddressTokensMapCopy := copyMap(allAddressesTokensMap)
+	delete(allAddressTokensMapCopy, systemSCAddress)
+
+	allTokens := make(map[string]struct{})
+	for _, tokens := range allAddressTokensMapCopy {
+		for token := range tokens {
+			allTokens[token] = struct{}{}
+		}
+	}
+
+	return allTokens
+}
+
+func getExtraTokens(allTokens, allTokensInSystemSCAddress map[string]struct{}) map[string]struct{} {
+	extraTokens := make(map[string]struct{})
+	for tokenInSystemSC := range allTokensInSystemSCAddress {
+		_, exists := allTokens[tokenInSystemSC]
+		if !exists {
+			extraTokens[tokenInSystemSC] = struct{}{}
+		}
+	}
+
+	log.Info("found", "num of sfts/nfts/metaesdts metadata only found in system sc address", len(extraTokens))
+	return extraTokens
+}
+
+func intersection(globalTokens, shardTokens map[string]struct{}) map[string]struct{} {
+	ret := make(map[string]struct{})
+	for token := range shardTokens {
+		_, found := globalTokens[token]
+		if found {
+			ret[token] = struct{}{}
+		}
+	}
+
+	return ret
 }
 
 func sanityCheckExtraTokens(shardExtraTokensMap map[uint32]map[string]struct{}, globalExtraTokens map[string]struct{}) bool {
@@ -279,60 +344,6 @@ func checkSameMap(map1, map2 map[string]struct{}) bool {
 	}
 
 	return true
-}
-
-func intersection(allTokens, tokens map[string]struct{}) map[string]struct{} {
-	ret := make(map[string]struct{})
-	for token := range tokens {
-		_, found := allTokens[token]
-		if found {
-			ret[token] = struct{}{}
-		}
-	}
-
-	return ret
-}
-
-func getAllTokensWithoutSystemAccount(allAddressesTokensMap map[string]map[string]struct{}, systemSCAddress string) map[string]struct{} {
-	allAddressTokensMapCopy := copyMap(allAddressesTokensMap)
-	delete(allAddressTokensMapCopy, systemSCAddress)
-
-	allTokens := make(map[string]struct{})
-	for _, tokens := range allAddressTokensMapCopy {
-		for token := range tokens {
-			allTokens[token] = struct{}{}
-		}
-	}
-
-	return allTokens
-}
-
-func getExtraTokens(allTokens, allTokensInSystemSCAddress map[string]struct{}) map[string]struct{} {
-	ctTokensOnlyInSystemAcc := 0
-	extraTokens := make(map[string]struct{})
-	for tokenInSystemSC := range allTokensInSystemSCAddress {
-		_, exists := allTokens[tokenInSystemSC]
-		if !exists {
-			ctTokensOnlyInSystemAcc++
-			addTokenInMapIfHasNonce(tokenInSystemSC, extraTokens)
-		}
-	}
-
-	log.Info("found",
-		"num tokens in system account, but not in any other address", ctTokensOnlyInSystemAcc,
-		"num of sfts/nfts/metaesdts metadata only found in system sc address", len(extraTokens))
-
-	return extraTokens
-}
-
-func addTokenInMapIfHasNonce(token string, tokens map[string]struct{}) {
-	if hasNonce(token) {
-		tokens[token] = struct{}{}
-	}
-}
-
-func hasNonce(token string) bool {
-	return strings.Count(token, "-") == 2
 }
 
 func saveResult(tokens map[uint32]map[string]struct{}, outfile string) error {
@@ -377,6 +388,13 @@ func crossCheckExtraTokens(globalExtraTokens map[string]struct{}, extraTokensPer
 		return err
 	}
 
+	if len(tokensThatStillExist) == 0 {
+		log.Info("all cross-checks were successful; exported tokens are only stored in system account")
+		return nil
+	}
+
+	log.Error("found tokens with balances that still exist in other accounts; probably found in pending mbs during snapshot; will remove them from exported tokens",
+		"tokens", tokensThatStillExist)
 	for _, extraTokensInShard := range extraTokensPerShard {
 		removeTokensThatStillExist(tokensThatStillExist, extraTokensInShard)
 	}
@@ -400,14 +418,6 @@ func loadConfig() (*sysAccConfig.GeneralConfig, error) {
 }
 
 func removeTokensThatStillExist(tokensThatStillExist []string, tokens map[string]struct{}) {
-	if len(tokensThatStillExist) == 0 {
-		log.Info("all cross-checks were successful; exported tokens are only stored in system account")
-		return
-	}
-
-	log.Error("found tokens with balances that still exist in other accounts; probably found in pending mbs during snapshot; will remove them from exported tokens",
-		"tokens", tokensThatStillExist)
-
 	for _, token := range tokensThatStillExist {
 		delete(tokens, token)
 	}

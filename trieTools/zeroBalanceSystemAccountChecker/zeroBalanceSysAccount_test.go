@@ -8,9 +8,10 @@ import (
 )
 
 func TestExportSystemAccZeroTokensBalances(t *testing.T) {
-	addressConverter, _ := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
-	systemSCAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	require.Nil(t, err)
 
+	systemSCAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
 	globalTokens := make(map[string]map[string]struct{})
 	globalTokens["adr1"] = map[string]struct{}{
 		"token1-r-0": {},
@@ -29,6 +30,7 @@ func TestExportSystemAccZeroTokensBalances(t *testing.T) {
 
 	shardAddressTokenMap := make(map[uint32]map[string]map[string]struct{})
 
+	// Shard 0
 	shardAddressTokenMap[0] = make(map[string]map[string]struct{})
 	shardAddressTokenMap[0][systemSCAddress] = map[string]struct{}{
 		"token1-r-0": {},
@@ -40,6 +42,7 @@ func TestExportSystemAccZeroTokensBalances(t *testing.T) {
 		"token2-r-0": {},
 	}
 
+	// Shard 1
 	shardAddressTokenMap[1] = make(map[string]map[string]struct{})
 	shardAddressTokenMap[1][systemSCAddress] = map[string]struct{}{
 		"token3-r-0": {},
