@@ -1,3 +1,5 @@
 ProxyUrl = "https://gateway.elrond.com"
 
 TokensToDeletePerTransaction = 500
+
+GasLimit = 200000000

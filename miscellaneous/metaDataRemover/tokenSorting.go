@@ -65,10 +65,54 @@ func groupTokensByIntervals(tokens map[string][]uint64) map[string][]*interval {
 		}
 	}
 
-	for token, intervals := range ret {
-		log.Info("found", "tokenID", token, "num of nonces", len(tokens[token]), "num of intervals", len(intervals))
+	//for token, intervals := range ret {
+	//	log.Info("found", "tokenID", token, "num of nonces", len(tokens[token]), "num of intervals", len(intervals))
+	//}
+
+	return ret
+}
+
+type tokenWithInterval struct {
+	tokenID  string
+	interval *interval
+}
+
+func sortTokensByMaxConsecutiveNonces(tokens map[string][]*interval) []*tokenWithInterval {
+	ret := make([]*tokenWithInterval, 0)
+	for token, intervals := range tokens {
+		for _, currInterval := range intervals {
+			ret = append(ret, &tokenWithInterval{
+				tokenID:  token,
+				interval: currInterval,
+			})
+
+		}
 	}
 
+	sort.SliceStable(ret, func(i, j int) bool {
+		consecutiveNonces1 := ret[i].interval.end - ret[i].interval.start + 1
+		consecutiveNonces2 := ret[j].interval.end - ret[j].interval.start + 1
+		return consecutiveNonces1 > consecutiveNonces2
+	})
+
+	consecutiveNoncesOverThreshold := uint64(0)
+	consecutiveNoncesUnderThreshold := uint64(0)
+	for _, r := range ret {
+		if r.interval.end-r.interval.start+1 >= 50 {
+			consecutiveNoncesOverThreshold += r.interval.end - r.interval.start + 1
+		} else {
+			consecutiveNoncesUnderThreshold += r.interval.end - r.interval.start + 1
+		}
+	}
+	totalNonces := consecutiveNoncesOverThreshold + consecutiveNoncesUnderThreshold
+	//for _, r := range ret {
+	//	log.Info("found", "tokenID", r.tokenID, "consecutive nonces", r.interval.end - r.interval.start + 1)
+	//}
+
+	log.Info("found",
+		"consecutiveNoncesOverThreshold", consecutiveNoncesOverThreshold,
+		"consecutiveNoncesUnderThreshold", consecutiveNoncesUnderThreshold,
+		"% * consecutiveNoncesOverThreshold of total nonces", (100*consecutiveNoncesOverThreshold)/totalNonces)
 	return ret
 }
 

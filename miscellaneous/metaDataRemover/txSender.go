@@ -8,6 +8,37 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 )
 
+type pkAddress struct {
+	privateKey []byte
+	address    core.AddressHandler
+}
+
+func createTxs(
+	pemData *pkAddress,
+	proxy proxyProvider,
+	txInteractor transactionInteractor,
+	txsData [][]byte,
+	gasLimit uint64,
+) ([]*data.Transaction, error) {
+	transactionArguments, err := getDefaultTxsArgs(proxy, pemData.address, gasLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	txs := make([]*data.Transaction, 0, len(txsData))
+	for _, txData := range txsData {
+		transactionArguments.Nonce++
+		transactionArguments.Data = txData
+		tx, err := txInteractor.ApplySignatureAndGenerateTx(pemData.privateKey, *transactionArguments)
+		if err != nil {
+			return nil, err
+		}
+		txs = append(txs, tx)
+	}
+
+	return txs, nil
+}
+
 func sendTxs(
 	pemFile string,
 	proxy proxyProvider,
@@ -15,12 +46,13 @@ func sendTxs(
 	txsData [][]byte,
 	bulkSize int,
 ) error {
-	privateKey, address, err := getPrivateKeyAndAddress(pemFile)
-	if err != nil {
-		return err
-	}
-
-	transactionArguments, err := getDefaultTxsArgs(proxy, address)
+	//privateKey, address, err := getPrivateKeyAndAddress(pemFile)
+	//if err != nil {
+	//	return err
+	//}
+	address := data.NewAddressFromBytes([]byte{})
+	privateKey := []byte{}
+	transactionArguments, err := getDefaultTxsArgs(proxy, address, 321)
 	if err != nil {
 		return err
 	}
@@ -69,23 +101,26 @@ func sendTxs(
 	return nil
 }
 
-func getPrivateKeyAndAddress(pemFile string) ([]byte, core.AddressHandler, error) {
+func getPrivateKeyAndAddress(pemFile string) (*pkAddress, error) {
 	w := interactors.NewWallet()
 	privateKey, err := w.LoadPrivateKeyFromPemFile(pemFile)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	address, err := w.GetAddressFromPrivateKey(privateKey)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 
 	}
 
-	return privateKey, address, nil
+	return &pkAddress{
+		privateKey: privateKey,
+		address:    address,
+	}, nil
 }
 
-func getDefaultTxsArgs(proxy proxyProvider, address core.AddressHandler) (*data.ArgCreateTransaction, error) {
+func getDefaultTxsArgs(proxy proxyProvider, address core.AddressHandler, gasLimit uint64) (*data.ArgCreateTransaction, error) {
 	netConfigs, err := proxy.GetNetworkConfig(context.Background())
 	if err != nil {
 		return nil, err
@@ -99,6 +134,7 @@ func getDefaultTxsArgs(proxy proxyProvider, address core.AddressHandler) (*data.
 
 	transactionArguments.RcvAddr = address.AddressAsBech32String() // send to self
 	transactionArguments.Value = "0"
+	transactionArguments.GasLimit = gasLimit
 
 	return &transactionArguments, nil
 }

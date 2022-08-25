@@ -7,10 +7,11 @@ type ContextFlagsMetaDataRemover struct {
 	trieToolsCommon.ContextFlagsConfig
 	Outfile string
 	Tokens  string
-	Pem     string
+	Pems    string
 }
 
 type Config struct {
 	ProxyUrl                     string `toml:"ProxyUrl"`
 	TokensToDeletePerTransaction uint64 `toml:"TokensToDeletePerTransaction"`
+	GasLimit                     uint64 `toml:"GasLimit"`
 }
