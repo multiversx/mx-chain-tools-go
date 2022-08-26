@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/tidwall/gjson"
 )
