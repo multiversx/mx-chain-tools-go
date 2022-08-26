@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/urfave/cli"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -21,6 +20,7 @@ import (
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/tokensExporter/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
+	"github.com/urfave/cli"
 )
 
 const (
