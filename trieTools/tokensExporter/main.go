@@ -6,6 +6,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
@@ -16,10 +21,6 @@ import (
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
 	"github.com/urfave/cli"
-	"io/fs"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 )
 
 const (
@@ -133,7 +134,7 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 			return errGetAccount
 		}
 
-		esdtTokens, errGetESDT := getAllESDTTokens(account)
+		esdtTokens, errGetESDT := getAllESDTTokens(account, addressConverter)
 		if errGetESDT != nil {
 			return errGetESDT
 		}
@@ -148,6 +149,7 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 	log.Info("parsed main trie",
 		"num accounts", numAccountsOnMainTrie,
 		"num accounts with tokens", len(addressTokensMap),
+		"num tokens in all accounts", trieToolsCommon.GetNumTokens(addressTokensMap),
 		"num tokens in system account address", len(addressTokensMap[encodedSysAccAddress]))
 
 	_, found := addressTokensMap[encodedSysAccAddress]
@@ -188,11 +190,11 @@ func saveResult(addressTokensMap map[string]map[string]struct{}, outfile string)
 	return nil
 }
 
-func getAllESDTTokens(account vmcommon.AccountHandler) (map[string]struct{}, error) {
+func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.PubkeyConverter) (map[string]struct{}, error) {
 	userAccount, ok := account.(state.UserAccountHandler)
 	if !ok {
 		return nil, fmt.Errorf("could not convert account to user account, address = %s",
-			hex.EncodeToString(account.AddressBytes()))
+			pubKeyConverter.Encode(account.AddressBytes()))
 	}
 
 	allESDTs := make(map[string]struct{})
@@ -217,6 +219,7 @@ func getAllESDTTokens(account vmcommon.AccountHandler) (map[string]struct{}, err
 			continue
 		}
 
+		// TODO: Try to unmarshal it when the new meta data storage model will be live
 		tokenKey := leaf.Key()
 		lenESDTPrefix := len(esdtPrefix)
 		tokenName := getPrettyTokenName(tokenKey[lenESDTPrefix:])
