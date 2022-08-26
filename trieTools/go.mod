@@ -6,13 +6,13 @@ require (
 	github.com/ElrondNetwork/elrond-go v1.3.35
 	github.com/ElrondNetwork/elrond-go-core v1.1.16-0.20220622092812-cc07c736c3b8
 	github.com/ElrondNetwork/elrond-go-logger v1.0.7
+	github.com/ElrondNetwork/elrond-vm-common v1.3.12
 	github.com/urfave/cli v1.22.9
 )
 
 require (
 	github.com/ElrondNetwork/concurrent-map v0.1.3 // indirect
 	github.com/ElrondNetwork/elrond-go-crypto v1.0.1 // indirect
-	github.com/ElrondNetwork/elrond-vm-common v1.3.12 // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
