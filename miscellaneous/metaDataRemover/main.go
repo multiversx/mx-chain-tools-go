@@ -142,7 +142,6 @@ func startProcess(c *cli.Context) error {
 			len(shardPemsDataMap), len(shardTxsDataMap))
 	}
 
-	shardTxsMap := make(map[uint32][]*data.Transaction)
 	for shardID, txsData := range shardTxsDataMap {
 		pemData, found := shardPemsDataMap[shardID]
 		if !found {
@@ -154,8 +153,6 @@ func startProcess(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-
-		shardTxsMap[shardID] = txsInShard
 
 		file := "txsShard" + strconv.Itoa(int(shardID)) + ".json"
 		log.Info("saving txs", "shardID", shardID, "file", file)

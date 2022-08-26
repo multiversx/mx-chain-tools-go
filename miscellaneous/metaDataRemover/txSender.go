@@ -27,13 +27,13 @@ func createTxs(
 
 	txs := make([]*data.Transaction, 0, len(txsData))
 	for _, txData := range txsData {
-		transactionArguments.Nonce++
 		transactionArguments.Data = txData
 		tx, err := txInteractor.ApplySignatureAndGenerateTx(pemData.privateKey, *transactionArguments)
 		if err != nil {
 			return nil, err
 		}
 		txs = append(txs, tx)
+		transactionArguments.Nonce++
 	}
 
 	return txs, nil
