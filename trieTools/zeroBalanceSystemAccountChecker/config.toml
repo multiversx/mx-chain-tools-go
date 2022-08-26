@@ -5,4 +5,4 @@
         password = ""
 
     [config.gateway]
-        url = "https://gateway.elrond.com"
+        url = ""

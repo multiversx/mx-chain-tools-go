@@ -4,22 +4,22 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/elastic"
-	sysAccConfig "github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/config"
-	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
-	"github.com/pelletier/go-toml"
-	"github.com/urfave/cli"
-	"strconv"
-
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
+	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
+	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/elastic"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	sysAccConfig "github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/config"
+	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
+	"github.com/pelletier/go-toml"
+	"github.com/urfave/cli"
 )
 
 const (
@@ -65,14 +65,10 @@ func startProcess(c *cli.Context) error {
 		return errLogger
 	}
 
-	log.Info("sanity checks...")
-
 	err := logger.SetLogLevel(flagsConfig.LogLevel)
 	if err != nil {
 		return err
 	}
-
-	log.Info("starting processing trie", "pid", os.Getpid())
 
 	globalAddressTokensMap, shardAddressTokensMap, err := readInputs(flagsConfig.TokensDirectory)
 	if err != nil {
@@ -357,7 +353,7 @@ func crossCheckExtraTokens(globalExtraTokens map[string]struct{}, extraTokensPer
 		return err
 	}
 
-	nftGetter := newNFTBalanceGetter(cfg.Config.Gateway.URL)
+	nftGetter := newTokenBalanceGetter(cfg.Config.Gateway.URL)
 	elasticClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
 		URL:      cfg.Config.ElasticIndexerConfig.URL,
 		Username: cfg.Config.ElasticIndexerConfig.Username,

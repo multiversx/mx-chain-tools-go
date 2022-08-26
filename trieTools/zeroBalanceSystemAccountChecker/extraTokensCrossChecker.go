@@ -11,7 +11,7 @@ const (
 	multipleSearchBulk = 10000
 )
 
-type nftBalancesGetter interface {
+type tokenBalancesGetter interface {
 	getBalance(address, token string) (string, error)
 }
 
@@ -20,11 +20,11 @@ type elasticMultiSearchClient interface {
 }
 
 type extraTokensChecker struct {
-	nftBalancesGetter nftBalancesGetter
+	nftBalancesGetter tokenBalancesGetter
 	elasticClient     elasticMultiSearchClient
 }
 
-func newExtraTokensCrossChecker(client elasticMultiSearchClient, nftBalancesGetter nftBalancesGetter) (crossTokenChecker, error) {
+func newExtraTokensCrossChecker(client elasticMultiSearchClient, nftBalancesGetter tokenBalancesGetter) (crossTokenChecker, error) {
 	if client == nil {
 		return nil, errors.New("nil elastic client provided")
 	}
