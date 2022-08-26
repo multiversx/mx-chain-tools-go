@@ -67,6 +67,11 @@ func (fdm *fullDBMerger) MergeDBs(destinationPath string, sourcePaths ...string)
 		return nil, err
 	}
 
+	err = fdm.closeSourcePersisters(sourcePersisters)
+	if err != nil {
+		return nil, err
+	}
+
 	return destPersister, nil
 }
 
@@ -82,6 +87,19 @@ func (fdm *fullDBMerger) createSourcePersisters(sourcePaths ...string) ([]storag
 	}
 
 	return sourcePersisters, nil
+}
+
+func (fdm *fullDBMerger) closeSourcePersisters(sourcePersisters []storage.Persister) error {
+	var lastErrFound error
+
+	for _, persister := range sourcePersisters {
+		err := persister.Close()
+		if err != nil {
+			lastErrFound = err
+		}
+	}
+
+	return lastErrFound
 }
 
 // IsInterfaceNil returns true if there is no value under the interface

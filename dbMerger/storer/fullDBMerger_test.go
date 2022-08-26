@@ -167,6 +167,7 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
+		numClosedPersisters := 0
 		copyCalled := false
 		numPersistersCreated := 0
 		mergeDBCalled := false
@@ -181,7 +182,13 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 		args.PersisterCreator = &mock.PersisterCreatorStub{
 			CreatePersisterCalled: func(path string) (storage.Persister, error) {
 				numPersistersCreated++
-				return mock.NewPersisterMock(), nil
+				persisterMock := mock.NewPersisterMock()
+				persisterMock.CloseCalled = func() error {
+					numClosedPersisters++
+
+					return nil
+				}
+				return persisterMock, nil
 			},
 		}
 		args.DataMergerInstance = &mock.DataMergerStub{
@@ -201,5 +208,6 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 		assert.True(t, copyCalled)
 		assert.Equal(t, 3, numPersistersCreated)
 		assert.True(t, mergeDBCalled)
+		assert.Equal(t, 2, numClosedPersisters) // 3 sources, 1 copied, 2 opened to copy key by key
 	})
 }
