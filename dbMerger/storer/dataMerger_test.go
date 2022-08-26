@@ -5,9 +5,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/mock"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestNewDataMerger(t *testing.T) {
+	t.Parallel()
+
+	dm := NewDataMerger()
+	assert.False(t, check.IfNil(dm))
+}
 
 func TestMergeDBs(t *testing.T) {
 	t.Parallel()
@@ -15,25 +23,28 @@ func TestMergeDBs(t *testing.T) {
 	t.Run("nil destination should error", func(t *testing.T) {
 		t.Parallel()
 
-		err := MergeDBs(nil)
+		dm := NewDataMerger()
+		err := dm.MergeDBs(nil)
 		assert.True(t, errors.Is(err, errNilPersister))
 		assert.True(t, strings.Contains(err.Error(), "for the destination persister"))
 	})
 	t.Run("sources contains a nil persister should error", func(t *testing.T) {
 		t.Parallel()
 
-		err := MergeDBs(&mock.PersisterStub{}, nil)
+		dm := NewDataMerger()
+		err := dm.MergeDBs(&mock.PersisterStub{}, nil)
 		assert.True(t, errors.Is(err, errNilPersister))
 		assert.True(t, strings.Contains(err.Error(), "for the source persister, index 0"))
 
-		err = MergeDBs(&mock.PersisterStub{}, &mock.PersisterStub{}, nil)
+		err = dm.MergeDBs(&mock.PersisterStub{}, &mock.PersisterStub{}, nil)
 		assert.True(t, errors.Is(err, errNilPersister))
 		assert.True(t, strings.Contains(err.Error(), "for the source persister, index 1"))
 	})
 	t.Run("empty sources list should not put", func(t *testing.T) {
 		t.Parallel()
 
-		err := MergeDBs(&mock.PersisterStub{
+		dm := NewDataMerger()
+		err := dm.MergeDBs(&mock.PersisterStub{
 			PutCalled: func(key, val []byte) error {
 				assert.Fail(t, "should have not called put")
 				return nil
@@ -61,7 +72,8 @@ func TestMergeDBs(t *testing.T) {
 
 		result := make(map[string]string)
 
-		err := MergeDBs(&mock.PersisterStub{
+		dm := NewDataMerger()
+		err := dm.MergeDBs(&mock.PersisterStub{
 			PutCalled: func(key, val []byte) error {
 				result[string(key)] = string(val)
 				return nil
@@ -87,7 +99,8 @@ func TestMergeDBs(t *testing.T) {
 			"key2": "val2",
 		}
 
-		err := MergeDBs(&mock.PersisterStub{
+		dm := NewDataMerger()
+		err := dm.MergeDBs(&mock.PersisterStub{
 			PutCalled: func(key, val []byte) error {
 				return expectedErr
 			},
