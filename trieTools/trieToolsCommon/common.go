@@ -174,3 +174,14 @@ func NewAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 
 	return accountsAdapter, err
 }
+
+func GetNumTokens(addressTokensMap map[string]map[string]struct{}) int {
+	numTokensInShard := 0
+	for _, tokens := range addressTokensMap {
+		for range tokens {
+			numTokensInShard++
+		}
+	}
+
+	return numTokensInShard
+}

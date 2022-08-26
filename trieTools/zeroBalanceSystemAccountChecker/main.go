@@ -134,8 +134,8 @@ func readInputs(tokensDir string) (map[string]map[string]struct{}, map[uint32]ma
 		log.Info("read data from",
 			"file", file.Name(),
 			"shard", shardID,
-			"num tokens in shard", getNumTokens(shardAddressTokensMap[shardID]),
-			"num addresses in current file", len(shardAddressTokensMap[shardID]),
+			"num tokens in shard", trieToolsCommon.GetNumTokens(shardAddressTokensMap[shardID]),
+			"num addresses in shard", len(shardAddressTokensMap[shardID]),
 			"total num addresses in all shards", len(globalAddressTokensMap))
 	}
 
@@ -202,17 +202,6 @@ func copyMap(addressTokensMap map[string]map[string]struct{}) map[string]map[str
 	}
 
 	return addressTokensMapCopy
-}
-
-func getNumTokens(addressTokensMap map[string]map[string]struct{}) int {
-	numTokensInShard := 0
-	for _, tokens := range addressTokensMap {
-		for range tokens {
-			numTokensInShard++
-		}
-	}
-
-	return numTokensInShard
 }
 
 func merge(dest, src map[string]map[string]struct{}) {
