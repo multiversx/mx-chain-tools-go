@@ -8,7 +8,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
-	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/common"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/common"
 
 	storageFactory "github.com/ElrondNetwork/elrond-go/storage/factory"
 )

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/common"
-	"github.com/ElrondNetwork/elrond-tools-go/balancesExporter/export"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/common"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/export"
 	"github.com/urfave/cli"
 )
 
