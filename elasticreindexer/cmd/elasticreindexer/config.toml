@@ -15,4 +15,5 @@
             enabled = true
             num-parallel-writes = 20
             blockchain-start-time = 1596117600 # mainnet start time ( for testnet will be a different start time)
+            end-time = 0 # 0 - current timestamp OR a provided end time for interval
             indices-with-timestamp = ["accountsesdt", "tokens", "blocks", "receipts", "transactions","miniblocks", "rounds",  "accountshistory", "scresults", "accountsesdthistory", "scdeploys", "logs", "operations"]

@@ -25,6 +25,7 @@ type IndicesConfig struct {
 	WithTimestamp struct {
 		Enabled              bool     `toml:"enabled"`
 		BlockchainStartTime  int64    `toml:"blockchain-start-time"`
+		EndTime              int64    `toml:"end-time"`
 		NumParallelWrites    int      `toml:"num-parallel-writes"`
 		IndicesWithTimestamp []string `toml:"indices-with-timestamp"`
 	} `toml:"with-timestamp"`
