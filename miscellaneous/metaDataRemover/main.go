@@ -101,9 +101,10 @@ func startProcess(c *cli.Context) error {
 		}
 
 		tokensIntervals := groupTokensByIntervals(tokensSorted)
-		//_ = sortTokensByMaxConsecutiveNonces(tokensIntervals)
+		tokensSortedByNonces := sortTokenIntervalsByMaxConsecutiveNonces(tokensIntervals)
+		tokensInBulks := groupTokenIntervalsInBulks(tokensSortedByNonces, cfg.TokensToDeletePerTransaction)
 
-		txsData, err := createTxsData(tokensIntervals, cfg.TokensToDeletePerTransaction)
+		txsData, err := createTxsData(tokensInBulks)
 		if err != nil {
 			return err
 		}

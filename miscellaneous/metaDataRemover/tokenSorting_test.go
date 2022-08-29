@@ -98,7 +98,7 @@ func TestGroupTokensByIntervals(t *testing.T) {
 	)
 }
 
-func TestSortTokensInBulk(t *testing.T) {
+func TestSortTokenIntervalsByMaxConsecutiveNonces(t *testing.T) {
 	tokensIntervals := map[string][]*interval{
 		"token1": {
 			{
@@ -140,10 +140,225 @@ func TestSortTokensInBulk(t *testing.T) {
 		},
 	}
 
-	in := sortTokensByMaxConsecutiveNonces(tokensIntervals)
-	out := sortTokensInBulks(in, 6)
+	sortedTokens := sortTokenIntervalsByMaxConsecutiveNonces(tokensIntervals)
+	expectedOutput := []*tokenWithInterval{
+		{
+			tokenID: "token1",
+			interval: &interval{
+				start: 4,
+				end:   8,
+			},
+		},
+		{
+			tokenID: "token2",
+			interval: &interval{
+				start: 1,
+				end:   5,
+			},
+		},
+		{
+			tokenID: "token3",
+			interval: &interval{
+				start: 1,
+				end:   4,
+			},
+		},
+		{
+			tokenID: "token1",
+			interval: &interval{
+				start: 2,
+				end:   3,
+			},
+		},
+		{
+			tokenID: "token3",
+			interval: &interval{
+				start: 6,
+				end:   7,
+			},
+		},
+		{
+			tokenID: "token1",
+			interval: &interval{
+				start: 0,
+				end:   0,
+			},
+		},
+		{
+			tokenID: "token1",
+			interval: &interval{
+				start: 1,
+				end:   1,
+			},
+		},
+		{
+			tokenID: "token3",
+			interval: &interval{
+				start: 0,
+				end:   0,
+			},
+		},
+	}
 
-	for idx, bulk := range out {
+	require.Equal(t, expectedOutput, sortedTokens)
+}
+
+func TestGroupTokenIntervalsInBulks(t *testing.T) {
+	tokensIntervals := []*tokenWithInterval{
+		{
+			tokenID: "token1",
+			interval: &interval{
+				start: 4,
+				end:   8,
+			},
+		},
+		{
+			tokenID: "token2",
+			interval: &interval{
+				start: 1,
+				end:   5,
+			},
+		},
+		{
+			tokenID: "token3",
+			interval: &interval{
+				start: 1,
+				end:   4,
+			},
+		},
+		{
+			tokenID: "token1",
+			interval: &interval{
+				start: 2,
+				end:   3,
+			},
+		},
+		{
+			tokenID: "token3",
+			interval: &interval{
+				start: 6,
+				end:   7,
+			},
+		},
+		{
+			tokenID: "token1",
+			interval: &interval{
+				start: 0,
+				end:   0,
+			},
+		},
+		{
+			tokenID: "token1",
+			interval: &interval{
+				start: 1,
+				end:   1,
+			},
+		},
+		{
+			tokenID: "token3",
+			interval: &interval{
+				start: 0,
+				end:   0,
+			},
+		},
+	}
+
+	output := groupTokenIntervalsInBulks(tokensIntervals, 6)
+	txsData, err := createTxsData(output)
+	require.Nil(t, err)
+
+	bulk1 := []*tokenData{
+		{
+			tokenID: "token1",
+			intervals: []*interval{
+				{
+					start: 4,
+					end:   8,
+				},
+			},
+		},
+		{
+			tokenID: "token2",
+			intervals: []*interval{
+				{
+					start: 1,
+					end:   1,
+				},
+			},
+		},
+	}
+	bulk2 := []*tokenData{
+		{
+			tokenID: "token2",
+			intervals: []*interval{
+				{
+					start: 2,
+					end:   5,
+				},
+			},
+		},
+		{
+			tokenID: "token3",
+			intervals: []*interval{
+				{
+					start: 1,
+					end:   2,
+				},
+			},
+		},
+	}
+	bulk3 := []*tokenData{
+		{
+			tokenID: "token1",
+			intervals: []*interval{
+				{
+					start: 2,
+					end:   3,
+				},
+			},
+		},
+		{
+			tokenID: "token3",
+			intervals: []*interval{
+				{
+					start: 3,
+					end:   4,
+				},
+				{
+					start: 6,
+					end:   7,
+				},
+			},
+		},
+	}
+	bulk4 := []*tokenData{
+		{
+			tokenID: "token1",
+			intervals: []*interval{
+				{
+					start: 0,
+					end:   0,
+				},
+				{
+					start: 1,
+					end:   1,
+				},
+			},
+		},
+		{
+			tokenID: "token3",
+			intervals: []*interval{
+				{
+					start: 0,
+					end:   0,
+				},
+			},
+		},
+	}
+	expectedOutput := [][]*tokenData{bulk1, bulk2, bulk3, bulk4}
+	require.Equal(t, expectedOutput, output)
+
+	for idx, bulk := range output {
 		fmt.Println("###### bulk idx", idx)
 
 		for _, tkData := range bulk {
@@ -152,6 +367,10 @@ func TestSortTokensInBulk(t *testing.T) {
 			}
 		}
 
+	}
+
+	for _, txData := range txsData {
+		fmt.Println(string(txData))
 	}
 
 }

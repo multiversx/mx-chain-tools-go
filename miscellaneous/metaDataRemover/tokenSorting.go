@@ -77,7 +77,7 @@ type tokenWithInterval struct {
 	interval *interval
 }
 
-func sortTokensByMaxConsecutiveNonces(tokens map[string][]*interval) []*tokenWithInterval {
+func sortTokenIntervalsByMaxConsecutiveNonces(tokens map[string][]*interval) []*tokenWithInterval {
 	ret := make([]*tokenWithInterval, 0)
 	for token, intervals := range tokens {
 		for _, currInterval := range intervals {
@@ -103,8 +103,8 @@ func sortTokensByMaxConsecutiveNonces(tokens map[string][]*interval) []*tokenWit
 	return ret
 }
 
-func sortTokensInBulks(tokens []*tokenWithInterval, intervalBulkSize uint64) [][]*tokenData {
-	intervalsInBulk := make([][]*tokenData, 0, intervalBulkSize)
+func groupTokenIntervalsInBulks(tokens []*tokenWithInterval, bulkSize uint64) [][]*tokenData {
+	intervalsInBulk := make([][]*tokenData, 0, bulkSize)
 
 	currBulk := make(map[string][]*interval, 0)
 	numNoncesInBulk := uint64(0)
@@ -119,7 +119,7 @@ func sortTokensInBulks(tokens []*tokenWithInterval, intervalBulkSize uint64) [][
 		currTokenID := currTokenData.tokenID
 
 		noncesInInterval := currInterval.end - currInterval.start + 1
-		availableSlots := intervalBulkSize - numNoncesInBulk
+		availableSlots := bulkSize - numNoncesInBulk
 		if availableSlots >= noncesInInterval {
 			currBulk[currTokenID] = append(currBulk[currTokenID], currInterval)
 			numNoncesInBulk += noncesInInterval
@@ -131,9 +131,8 @@ func sortTokensInBulks(tokens []*tokenWithInterval, intervalBulkSize uint64) [][
 			numNoncesInBulk += availableSlots
 		}
 
-		bulkFull := numNoncesInBulk == intervalBulkSize
+		bulkFull := numNoncesInBulk == bulkSize
 		lastInterval := index == len(tokensCopy)-1
-
 		if bulkFull || lastInterval {
 			intervalsInBulk = append(intervalsInBulk, tokensMapToOrderedArray(currBulk))
 
@@ -147,10 +146,25 @@ func sortTokensInBulks(tokens []*tokenWithInterval, intervalBulkSize uint64) [][
 	return intervalsInBulk
 }
 
+func splitInterval(currInterval *interval, index uint64) (*interval, *interval) {
+	first := &interval{
+		start: currInterval.start,
+		end:   currInterval.start + index - 1,
+	}
+
+	second := &interval{
+		start: first.end + 1,
+		end:   currInterval.end,
+	}
+
+	return first, second
+}
+
 func insert(tokens []*tokenWithInterval, index int, token *tokenWithInterval) []*tokenWithInterval {
 	if len(tokens) <= index {
 		return append(tokens, token)
 	}
+
 	tokens = append(tokens[:index+1], tokens[index:]...)
 	tokens[index] = token
 	return tokens

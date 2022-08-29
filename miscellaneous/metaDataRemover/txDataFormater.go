@@ -1,111 +1,35 @@
 package main
 
 import (
-	"bytes"
 	"encoding/hex"
 
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 )
 
-func createTxsData(tokens map[string][]*interval, intervalBulkSize uint64) ([][]byte, error) {
-	tokensData := tokensMapToOrderedArray(tokens)
-
-	txsData := make([][]byte, 0)
-	numTokensInBulk := uint64(0)
-	intervalsInBulk := make([]*interval, 0, intervalBulkSize)
-	txDataBuilder := builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix)
-	for _, tkData := range tokensData {
-		tokenIDHex := hex.EncodeToString([]byte(tkData.tokenID))
-		txDataBuilder.ArgHexString(tokenIDHex)
-
-		intervalsCopy := make([]*interval, len(tkData.intervals))
-		copy(intervalsCopy, tkData.intervals)
-
-		intervalIndex := 0
-		for intervalIndex < len(intervalsCopy) {
-			currInterval := intervalsCopy[intervalIndex]
-
-			tokensInInterval := currInterval.end - currInterval.start + 1
-			availableSlots := intervalBulkSize - numTokensInBulk
-			if availableSlots >= tokensInInterval {
-				intervalsInBulk = append(intervalsInBulk, currInterval)
-				numTokensInBulk += tokensInInterval
-			} else {
-				first, second := splitInterval(currInterval, availableSlots)
-
-				intervalsCopy = append(intervalsCopy, second)
-				intervalsInBulk = append(intervalsInBulk, first)
-				numTokensInBulk += availableSlots
-			}
-
-			bulkFull := numTokensInBulk == intervalBulkSize
-			lastInterval := intervalIndex == len(intervalsCopy)-1
-			shouldEmptyBulk := lastInterval && numTokensInBulk != 0
-			if bulkFull || shouldEmptyBulk {
-				addIntervalsAsOnData(txDataBuilder, intervalsInBulk)
-				intervalsInBulk = make([]*interval, 0, intervalBulkSize)
-			}
-
-			if bulkFull {
-				currTxData, err := txDataBuilder.ToDataBytes()
-				if err != nil {
-					return nil, err
-				}
-
-				numTokensInBulk = 0
-				txsData = append(txsData, currTxData)
-				txDataBuilder = builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix).ArgHexString(tokenIDHex)
-
-				if lastInterval {
-					txDataBuilder = builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix)
-				}
-			}
-
-			intervalIndex++
+func createTxsData(bulks [][]*tokenData) ([][]byte, error) {
+	txsData := make([][]byte, 0, len(bulks))
+	for _, bulk := range bulks {
+		txData, err := tokensBulkAsOnData(bulk)
+		if err != nil {
+			return nil, err
 		}
-	}
 
-	remainingTxData, err := getRemainingTxData(txDataBuilder)
-	if err != nil {
-		return nil, err
-	}
-	if len(remainingTxData) > 0 {
-		txsData = append(txsData, remainingTxData)
+		txsData = append(txsData, txData)
 	}
 
 	return txsData, nil
 }
 
-/*
-func createTxsData2(bulkTokens [][]*tokenWithInterval) {
+func tokensBulkAsOnData(bulk []*tokenData) ([]byte, error) {
 	txDataBuilder := builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix)
-
-	for _, bulk := range bulkTokens {
-
-	}
-}
-
-func addTokensAsOnData(txDataBuilder builders.TxDataBuilder, tokens []*tokenWithInterval){
-	for _, tkData := range tokens{
+	for _, tkData := range bulk {
 		tokenIDHex := hex.EncodeToString([]byte(tkData.tokenID))
 		txDataBuilder.ArgHexString(tokenIDHex)
-		addIntervalsAsOnData(txDataBuilder, tkData.interval)
-	}
-}
-*/
 
-func splitInterval(currInterval *interval, index uint64) (*interval, *interval) {
-	first := &interval{
-		start: currInterval.start,
-		end:   currInterval.start + index - 1,
+		addIntervalsAsOnData(txDataBuilder, tkData.intervals)
 	}
 
-	second := &interval{
-		start: first.end + 1,
-		end:   currInterval.end,
-	}
-
-	return first, second
+	return txDataBuilder.ToDataBytes()
 }
 
 func addIntervalsAsOnData(builder builders.TxDataBuilder, intervals []*interval) {
@@ -116,18 +40,4 @@ func addIntervalsAsOnData(builder builders.TxDataBuilder, intervals []*interval)
 			ArgInt64(int64(interval.start)).
 			ArgInt64(int64(interval.end))
 	}
-}
-
-func getRemainingTxData(txDataBuilder builders.TxDataBuilder) ([]byte, error) {
-	txData, err := txDataBuilder.ToDataBytes()
-	if err != nil {
-		return nil, err
-	}
-
-	splits := bytes.Split(txData, []byte("@"))
-	if len(splits) > 2 {
-		return txData, nil
-	}
-
-	return nil, nil
 }
