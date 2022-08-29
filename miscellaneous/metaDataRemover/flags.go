@@ -14,12 +14,12 @@ var (
 	}
 	tokens = cli.StringFlag{
 		Name:  "tokens",
-		Usage: "This flag specifies the input file; it expects the input to be a map<tokens>",
+		Usage: "This flag specifies the input file; it expects the input to be a map<shardID, tokens>",
 		Value: "tokens.json",
 	}
 	pems = cli.StringFlag{
 		Name:  "pem",
-		Usage: "This flag specifies pems file which should be used to sign and send txs",
+		Usage: "This flag specifies pems file which should be used to sign txs. It expects each pem/shardID to be named shard[ID].pem",
 		Value: "pems",
 	}
 )

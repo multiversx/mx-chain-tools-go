@@ -1,5 +1,5 @@
-ProxyUrl = "https://gateway.elrond.com"
+ProxyUrl = ""
 
-TokensToDeletePerTransaction = 500
+TokensToDeletePerTransaction = 0
 
-GasLimit = 200000000
+GasLimit = 0
