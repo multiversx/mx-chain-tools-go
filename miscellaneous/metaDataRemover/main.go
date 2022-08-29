@@ -9,14 +9,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 	"github.com/ElrondNetwork/elrond-tools-go/miscellaneous/metaDataRemover/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/pelletier/go-toml"
@@ -24,11 +19,9 @@ import (
 )
 
 const (
-	ESDTDeleteMetadataPrefix = "ESDTDeleteMetadata"
-	logFilePrefix            = "meta-data-remover"
-	tomlFile                 = "./config.toml"
-	outputFilePerms          = 0644
-	txsBulkSize              = 100
+	logFilePrefix   = "meta-data-remover"
+	tomlFile        = "./config.toml"
+	outputFilePerms = 0644
 )
 
 type interval struct {
@@ -92,44 +85,7 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	shardTxsDataMap := make(map[uint32][][]byte)
-	for shardID, tokens := range shardTokensMap {
-		log.Info("creating txs data", "shardID", shardID, "num tokens", len(tokens))
-		tokensSorted, err := sortTokensIDByNonce(tokens)
-		if err != nil {
-			return err
-		}
-
-		tokensIntervals := groupTokensByIntervals(tokensSorted)
-		tokensSortedByNonces := sortTokenIntervalsByMaxConsecutiveNonces(tokensIntervals)
-		tokensInBulks := groupTokenIntervalsInBulks(tokensSortedByNonces, cfg.TokensToDeletePerTransaction)
-
-		txsData, err := createTxsData(tokensInBulks)
-		if err != nil {
-			return err
-		}
-
-		log.Info("created", "num of txs", len(txsData), "shardID", shardID, "num of nonces per tx", cfg.TokensToDeletePerTransaction)
-		shardTxsDataMap[shardID] = txsData
-	}
-
-	args := blockchain.ArgsElrondProxy{
-		ProxyURL:            cfg.ProxyUrl,
-		CacheExpirationTime: time.Minute,
-		EntityType:          core.Proxy,
-	}
-
-	proxy, err := blockchain.NewElrondProxy(args)
-	if err != nil {
-		return err
-	}
-
-	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
-	if err != nil {
-		return err
-	}
-
-	ti, err := interactors.NewTransactionInteractor(proxy, txBuilder)
+	shardTxsDataMap, err := createShardTxsDataMap(shardTokensMap, cfg.TokensToDeletePerTransaction)
 	if err != nil {
 		return err
 	}
@@ -139,43 +95,7 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	if len(shardPemsDataMap) != len(shardTxsDataMap) {
-		return fmt.Errorf("provided invalid input; expected number of pem files = number of shards in tokens input; got num shard tokens = %d, num pem files = %d",
-			len(shardPemsDataMap), len(shardTxsDataMap))
-	}
-
-	for shardID, txsData := range shardTxsDataMap {
-		pemData, found := shardPemsDataMap[shardID]
-		if !found {
-			return fmt.Errorf("no pem data provided for shard = %d", shardID)
-		}
-
-		log.Info("starting to create txs", "shardID", shardID, "num of txs", len(txsData))
-		txsInShard, err := createTxs(pemData, proxy, ti, txsData, cfg.GasLimit)
-		if err != nil {
-			return err
-		}
-
-		file := "txsShard" + strconv.Itoa(int(shardID)) + ".json"
-		log.Info("saving txs", "shardID", shardID, "file", file)
-		err = saveResult(txsInShard, file)
-	}
-
-	return nil
-}
-
-func saveResult(txs []*data.Transaction, outfile string) error {
-	jsonBytes, err := json.MarshalIndent(txs, "", " ")
-	if err != nil {
-		return err
-	}
-
-	log.Info("writing result in", "file", outfile)
-	err = ioutil.WriteFile(outfile, jsonBytes, fs.FileMode(outputFilePerms))
-	if err != nil {
-		return err
-	}
-	return nil
+	return createShardTxs(cfg, shardPemsDataMap, shardTxsDataMap)
 }
 
 func readInput(tokensFile string) (map[uint32]map[string]struct{}, error) {
@@ -203,6 +123,46 @@ func readInput(tokensFile string) (map[uint32]map[string]struct{}, error) {
 
 	log.Info("read from input", "file", tokensFile, "num of shards", len(shardTokensMap), getNumTokens(shardTokensMap))
 	return shardTokensMap, nil
+}
+
+func loadConfig() (*config.Config, error) {
+	tomlBytes, err := ioutil.ReadFile(tomlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg config.Config
+	err = toml.Unmarshal(tomlBytes, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
+func createShardTxsDataMap(shardTokensMap map[uint32]map[string]struct{}, tokensToDeletePerTx uint64) (map[uint32][][]byte, error) {
+	shardTxsDataMap := make(map[uint32][][]byte)
+	for shardID, tokens := range shardTokensMap {
+		log.Info("creating txs data", "shardID", shardID, "num tokens", len(tokens))
+		tokensSorted, err := sortTokensIDByNonce(tokens)
+		if err != nil {
+			return nil, err
+		}
+
+		tokensIntervals := groupTokensByIntervals(tokensSorted)
+		tokensSortedByNonces := sortTokenIntervalsByMaxConsecutiveNonces(tokensIntervals)
+		tokensInBulks := groupTokenIntervalsInBulks(tokensSortedByNonces, tokensToDeletePerTx)
+
+		txsData, err := createTxsData(tokensInBulks)
+		if err != nil {
+			return nil, err
+		}
+
+		log.Info("created", "num of txs", len(txsData), "shardID", shardID, "num of nonces per tx", tokensToDeletePerTx)
+		shardTxsDataMap[shardID] = txsData
+	}
+
+	return shardTxsDataMap, nil
 }
 
 func readPemsData(pemsFile string) (map[uint32]*pkAddress, error) {
@@ -244,7 +204,7 @@ func getShardID(file string) (uint32, error) {
 	shardIDStr = strings.TrimSuffix(shardIDStr, ".pem")
 	shardID, err := strconv.Atoi(shardIDStr)
 	if err != nil {
-		return 0, fmt.Errorf("invalid file input name = %s; expected pem file name to be <shardX.json>, where X = number(e.g. shard0.json)", file)
+		return 0, fmt.Errorf("invalid file input name = %s; expected pem file name to be <shardX.pem>, where X = number(e.g. shard0.pem)", file)
 	}
 
 	return uint32(shardID), nil
@@ -261,17 +221,16 @@ func getNumTokens(shardTokensMap map[uint32]map[string]struct{}) int {
 	return numTokensInShard
 }
 
-func loadConfig() (*config.Config, error) {
-	tomlBytes, err := ioutil.ReadFile(tomlFile)
+func saveResult(txs []*data.Transaction, outfile string) error {
+	jsonBytes, err := json.MarshalIndent(txs, "", " ")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	var cfg config.Config
-	err = toml.Unmarshal(tomlBytes, &cfg)
+	log.Info("writing result in", "file", outfile)
+	err = ioutil.WriteFile(outfile, jsonBytes, fs.FileMode(outputFilePerms))
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	return &cfg, nil
+	return nil
 }

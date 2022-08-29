@@ -6,6 +6,8 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 )
 
+const ESDTDeleteMetadataPrefix = "ESDTDeleteMetadata"
+
 func createTxsData(bulks [][]*tokenData) ([][]byte, error) {
 	txsData := make([][]byte, 0, len(bulks))
 	for _, bulk := range bulks {
