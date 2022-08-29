@@ -9,8 +9,8 @@ import (
 var (
 	outfile = cli.StringFlag{
 		Name:  "outfile",
-		Usage: "This flag specifies where the output will be stored. It consists of a map<address, tokens>",
-		Value: "output.json",
+		Usage: "This flag specifies where the output will be stored. This folder consists of a list of json files with signed txs to remove meta data (per each shard)",
+		Value: "output",
 	}
 	tokens = cli.StringFlag{
 		Name:  "tokens",

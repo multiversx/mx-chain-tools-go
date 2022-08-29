@@ -7,6 +7,21 @@ import (
 	"strings"
 )
 
+type interval struct {
+	start uint64
+	end   uint64
+}
+
+type tokenWithInterval struct {
+	tokenID  string
+	interval *interval
+}
+
+type tokenData struct {
+	tokenID   string
+	intervals []*interval
+}
+
 func sortTokensIDByNonce(tokens map[string]struct{}) (map[string][]uint64, error) {
 	ret := make(map[string][]uint64)
 	for token := range tokens {
@@ -34,47 +49,44 @@ func sortTokensIDByNonce(tokens map[string]struct{}) (map[string][]uint64, error
 
 func groupTokensByIntervals(tokens map[string][]uint64) map[string][]*interval {
 	ret := make(map[string][]*interval)
-
 	for token, nonces := range tokens {
-		numNonces := len(nonces)
-		for idx := 0; idx < numNonces; idx++ {
-			nonce := nonces[idx]
-			if idx+1 >= numNonces {
-				ret[token] = append(ret[token], &interval{
-					start: nonce,
-					end:   nonce,
-				})
-				break
-			}
-
-			currInterval := &interval{start: nonce}
-			numConsecutiveNonces := uint64(0)
-			for idx < numNonces-1 {
-				currNonce := nonces[idx]
-				nextNonce := nonces[idx+1]
-				if nextNonce-currNonce > 1 {
-					break
-				}
-
-				numConsecutiveNonces++
-				idx++
-			}
-
-			currInterval.end = currInterval.start + numConsecutiveNonces
-			ret[token] = append(ret[token], currInterval)
-		}
+		ret[token] = getIntervals(nonces)
 	}
-
-	//for token, intervals := range ret {
-	//	log.Info("found", "tokenID", token, "num of nonces", len(tokens[token]), "num of intervals", len(intervals))
-	//}
 
 	return ret
 }
 
-type tokenWithInterval struct {
-	tokenID  string
-	interval *interval
+func getIntervals(nonces []uint64) []*interval {
+	numNonces := len(nonces)
+	intervals := make([]*interval, 0)
+	for idx := 0; idx < numNonces; idx++ {
+		nonce := nonces[idx]
+		if idx+1 >= numNonces {
+			intervals = append(intervals, &interval{
+				start: nonce,
+				end:   nonce,
+			})
+			break
+		}
+
+		currInterval := &interval{start: nonce}
+		numConsecutiveNonces := uint64(0)
+		for idx < numNonces-1 {
+			currNonce := nonces[idx]
+			nextNonce := nonces[idx+1]
+			if nextNonce-currNonce > 1 {
+				break
+			}
+
+			numConsecutiveNonces++
+			idx++
+		}
+
+		currInterval.end = currInterval.start + numConsecutiveNonces
+		intervals = append(intervals, currInterval)
+	}
+
+	return intervals
 }
 
 func sortTokenIntervalsByMaxConsecutiveNonces(tokens map[string][]*interval) []*tokenWithInterval {
@@ -104,8 +116,7 @@ func sortTokenIntervalsByMaxConsecutiveNonces(tokens map[string][]*interval) []*
 }
 
 func groupTokenIntervalsInBulks(tokens []*tokenWithInterval, bulkSize uint64) [][]*tokenData {
-	intervalsInBulk := make([][]*tokenData, 0, bulkSize)
-
+	bulks := make([][]*tokenData, 0, bulkSize)
 	currBulk := make(map[string][]*interval, 0)
 	numNoncesInBulk := uint64(0)
 
@@ -121,20 +132,21 @@ func groupTokenIntervalsInBulks(tokens []*tokenWithInterval, bulkSize uint64) []
 		noncesInInterval := currInterval.end - currInterval.start + 1
 		availableSlots := bulkSize - numNoncesInBulk
 		if availableSlots >= noncesInInterval {
-			currBulk[currTokenID] = append(currBulk[currTokenID], currInterval)
 			numNoncesInBulk += noncesInInterval
+			currBulk[currTokenID] = append(currBulk[currTokenID], currInterval)
+
 		} else {
 			first, second := splitInterval(currInterval, availableSlots)
 
-			tokensCopy = insert(tokensCopy, index+1, &tokenWithInterval{tokenID: currTokenID, interval: second})
-			currBulk[currTokenID] = append(currBulk[currTokenID], first)
 			numNoncesInBulk += availableSlots
+			currBulk[currTokenID] = append(currBulk[currTokenID], first)
+			tokensCopy = insert(tokensCopy, index+1, &tokenWithInterval{tokenID: currTokenID, interval: second})
 		}
 
 		bulkFull := numNoncesInBulk == bulkSize
 		lastInterval := index == len(tokensCopy)-1
 		if bulkFull || lastInterval {
-			intervalsInBulk = append(intervalsInBulk, tokensMapToOrderedArray(currBulk))
+			bulks = append(bulks, tokensMapToOrderedArray(currBulk))
 
 			currBulk = make(map[string][]*interval, 0)
 			numNoncesInBulk = 0
@@ -143,7 +155,7 @@ func groupTokenIntervalsInBulks(tokens []*tokenWithInterval, bulkSize uint64) []
 		index++
 	}
 
-	return intervalsInBulk
+	return bulks
 }
 
 func splitInterval(currInterval *interval, index uint64) (*interval, *interval) {

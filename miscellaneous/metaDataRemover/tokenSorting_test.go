@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -264,9 +263,6 @@ func TestGroupTokenIntervalsInBulks(t *testing.T) {
 	}
 
 	output := groupTokenIntervalsInBulks(tokensIntervals, 6)
-	txsData, err := createTxsData(output)
-	require.Nil(t, err)
-
 	bulk1 := []*tokenData{
 		{
 			tokenID: "token1",
@@ -357,20 +353,4 @@ func TestGroupTokenIntervalsInBulks(t *testing.T) {
 	}
 	expectedOutput := [][]*tokenData{bulk1, bulk2, bulk3, bulk4}
 	require.Equal(t, expectedOutput, output)
-
-	for idx, bulk := range output {
-		fmt.Println("###### bulk idx", idx)
-
-		for _, tkData := range bulk {
-			for _, intrv := range tkData.intervals {
-				fmt.Println("---- token id", tkData.tokenID, "start", intrv.start, "end", intrv.end)
-			}
-		}
-
-	}
-
-	for _, txData := range txsData {
-		fmt.Println(string(txData))
-	}
-
 }

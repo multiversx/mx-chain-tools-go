@@ -2,7 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/fs"
+	"io/ioutil"
+	"os"
 	"strconv"
 	"time"
 
@@ -39,6 +43,7 @@ func getPrivateKeyAndAddress(pemFile string) (*pkAddress, error) {
 }
 
 func createShardTxs(
+	outFile string,
 	cfg *config.Config,
 	shardPemsDataMap map[uint32]*pkAddress,
 	shardTxsDataMap map[uint32][][]byte,
@@ -69,6 +74,11 @@ func createShardTxs(
 		return err
 	}
 
+	err = createOutputFileIfDoesNotExist(outFile)
+	if err != nil {
+		return err
+	}
+
 	for shardID, txsData := range shardTxsDataMap {
 		pemData, found := shardPemsDataMap[shardID]
 		if !found {
@@ -81,7 +91,7 @@ func createShardTxs(
 			return err
 		}
 
-		file := "txsShard" + strconv.Itoa(int(shardID)) + ".json"
+		file := outFile + "/txsShard" + strconv.Itoa(int(shardID)) + ".json"
 		log.Info("saving txs", "shardID", shardID, "file", file)
 		err = saveResult(txsInShard, file)
 	}
@@ -133,4 +143,31 @@ func getDefaultTxsArgs(proxy proxyProvider, address core.AddressHandler, gasLimi
 	transactionArguments.GasLimit = gasLimit
 
 	return &transactionArguments, nil
+}
+
+func createOutputFileIfDoesNotExist(outFile string) error {
+	_, err := os.Stat(outFile)
+
+	if os.IsNotExist(err) {
+		errDir := os.MkdirAll(outFile, os.ModePerm)
+		if errDir != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func saveResult(txs []*data.Transaction, outfile string) error {
+	jsonBytes, err := json.MarshalIndent(txs, "", " ")
+	if err != nil {
+		return err
+	}
+
+	log.Info("writing result in", "file", outfile)
+	err = ioutil.WriteFile(outfile, jsonBytes, fs.FileMode(outputFilePerms))
+	if err != nil {
+		return err
+	}
+	return nil
 }

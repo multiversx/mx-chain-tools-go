@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -11,7 +10,6 @@ import (
 	"strings"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 	"github.com/ElrondNetwork/elrond-tools-go/miscellaneous/metaDataRemover/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/pelletier/go-toml"
@@ -23,16 +21,6 @@ const (
 	tomlFile        = "./config.toml"
 	outputFilePerms = 0644
 )
-
-type interval struct {
-	start uint64
-	end   uint64
-}
-
-type tokenData struct {
-	tokenID   string
-	intervals []*interval
-}
 
 func main() {
 	app := cli.NewApp()
@@ -75,7 +63,7 @@ func startProcess(c *cli.Context) error {
 
 	log.Info("starting processing", "pid", os.Getpid())
 
-	shardTokensMap, err := readInput(flagsConfig.Tokens)
+	shardTokensMap, err := readTokensInput(flagsConfig.Tokens)
 	if err != nil {
 		return err
 	}
@@ -95,10 +83,10 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	return createShardTxs(cfg, shardPemsDataMap, shardTxsDataMap)
+	return createShardTxs(flagsConfig.Outfile, cfg, shardPemsDataMap, shardTxsDataMap)
 }
 
-func readInput(tokensFile string) (map[uint32]map[string]struct{}, error) {
+func readTokensInput(tokensFile string) (map[uint32]map[string]struct{}, error) {
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -138,31 +126,6 @@ func loadConfig() (*config.Config, error) {
 	}
 
 	return &cfg, nil
-}
-
-func createShardTxsDataMap(shardTokensMap map[uint32]map[string]struct{}, tokensToDeletePerTx uint64) (map[uint32][][]byte, error) {
-	shardTxsDataMap := make(map[uint32][][]byte)
-	for shardID, tokens := range shardTokensMap {
-		log.Info("creating txs data", "shardID", shardID, "num tokens", len(tokens))
-		tokensSorted, err := sortTokensIDByNonce(tokens)
-		if err != nil {
-			return nil, err
-		}
-
-		tokensIntervals := groupTokensByIntervals(tokensSorted)
-		tokensSortedByNonces := sortTokenIntervalsByMaxConsecutiveNonces(tokensIntervals)
-		tokensInBulks := groupTokenIntervalsInBulks(tokensSortedByNonces, tokensToDeletePerTx)
-
-		txsData, err := createTxsData(tokensInBulks)
-		if err != nil {
-			return nil, err
-		}
-
-		log.Info("created", "num of txs", len(txsData), "shardID", shardID, "num of nonces per tx", tokensToDeletePerTx)
-		shardTxsDataMap[shardID] = txsData
-	}
-
-	return shardTxsDataMap, nil
 }
 
 func readPemsData(pemsFile string) (map[uint32]*pkAddress, error) {
@@ -219,18 +182,4 @@ func getNumTokens(shardTokensMap map[uint32]map[string]struct{}) int {
 	}
 
 	return numTokensInShard
-}
-
-func saveResult(txs []*data.Transaction, outfile string) error {
-	jsonBytes, err := json.MarshalIndent(txs, "", " ")
-	if err != nil {
-		return err
-	}
-
-	log.Info("writing result in", "file", outfile)
-	err = ioutil.WriteFile(outfile, jsonBytes, fs.FileMode(outputFilePerms))
-	if err != nil {
-		return err
-	}
-	return nil
 }

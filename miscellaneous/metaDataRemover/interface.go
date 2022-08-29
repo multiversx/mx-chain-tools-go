@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 )
@@ -17,6 +18,4 @@ type proxyProvider interface {
 
 type transactionInteractor interface {
 	ApplySignatureAndGenerateTx(skBytes []byte, arg data.ArgCreateTransaction) (*data.Transaction, error)
-	AddTransaction(tx *data.Transaction)
-	SendTransactionsAsBunch(ctx context.Context, bunchSize int) ([]string, error)
 }
