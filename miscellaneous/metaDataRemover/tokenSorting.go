@@ -92,28 +92,68 @@ func sortTokensByMaxConsecutiveNonces(tokens map[string][]*interval) []*tokenWit
 	sort.SliceStable(ret, func(i, j int) bool {
 		consecutiveNonces1 := ret[i].interval.end - ret[i].interval.start + 1
 		consecutiveNonces2 := ret[j].interval.end - ret[j].interval.start + 1
+
+		if consecutiveNonces1 == consecutiveNonces2 {
+			return ret[i].tokenID < ret[j].tokenID
+		}
+
 		return consecutiveNonces1 > consecutiveNonces2
 	})
 
-	consecutiveNoncesOverThreshold := uint64(0)
-	consecutiveNoncesUnderThreshold := uint64(0)
-	for _, r := range ret {
-		if r.interval.end-r.interval.start+1 >= 50 {
-			consecutiveNoncesOverThreshold += r.interval.end - r.interval.start + 1
-		} else {
-			consecutiveNoncesUnderThreshold += r.interval.end - r.interval.start + 1
-		}
-	}
-	totalNonces := consecutiveNoncesOverThreshold + consecutiveNoncesUnderThreshold
-	//for _, r := range ret {
-	//	log.Info("found", "tokenID", r.tokenID, "consecutive nonces", r.interval.end - r.interval.start + 1)
-	//}
-
-	log.Info("found",
-		"consecutiveNoncesOverThreshold", consecutiveNoncesOverThreshold,
-		"consecutiveNoncesUnderThreshold", consecutiveNoncesUnderThreshold,
-		"% * consecutiveNoncesOverThreshold of total nonces", (100*consecutiveNoncesOverThreshold)/totalNonces)
 	return ret
+}
+
+func sortTokensInBulks(tokens []*tokenWithInterval, intervalBulkSize uint64) [][]*tokenData {
+	intervalsInBulk := make([][]*tokenData, 0, intervalBulkSize)
+
+	currBulk := make(map[string][]*interval, 0)
+	numNoncesInBulk := uint64(0)
+
+	tokensCopy := make([]*tokenWithInterval, len(tokens))
+	copy(tokensCopy, tokens)
+
+	index := 0
+	for index < len(tokensCopy) {
+		currTokenData := tokensCopy[index]
+		currInterval := currTokenData.interval
+		currTokenID := currTokenData.tokenID
+
+		noncesInInterval := currInterval.end - currInterval.start + 1
+		availableSlots := intervalBulkSize - numNoncesInBulk
+		if availableSlots >= noncesInInterval {
+			currBulk[currTokenID] = append(currBulk[currTokenID], currInterval)
+			numNoncesInBulk += noncesInInterval
+		} else {
+			first, second := splitInterval(currInterval, availableSlots)
+
+			tokensCopy = insert(tokensCopy, index+1, &tokenWithInterval{tokenID: currTokenID, interval: second})
+			currBulk[currTokenID] = append(currBulk[currTokenID], first)
+			numNoncesInBulk += availableSlots
+		}
+
+		bulkFull := numNoncesInBulk == intervalBulkSize
+		lastInterval := index == len(tokensCopy)-1
+
+		if bulkFull || lastInterval {
+			intervalsInBulk = append(intervalsInBulk, tokensMapToOrderedArray(currBulk))
+
+			currBulk = make(map[string][]*interval, 0)
+			numNoncesInBulk = 0
+		}
+
+		index++
+	}
+
+	return intervalsInBulk
+}
+
+func insert(tokens []*tokenWithInterval, index int, token *tokenWithInterval) []*tokenWithInterval {
+	if len(tokens) <= index {
+		return append(tokens, token)
+	}
+	tokens = append(tokens[:index+1], tokens[index:]...)
+	tokens[index] = token
+	return tokens
 }
 
 func tokensMapToOrderedArray(tokens map[string][]*interval) []*tokenData {

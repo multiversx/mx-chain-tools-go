@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 )
 
@@ -74,6 +75,24 @@ func createTxsData(tokens map[string][]*interval, intervalBulkSize uint64) ([][]
 
 	return txsData, nil
 }
+
+/*
+func createTxsData2(bulkTokens [][]*tokenWithInterval) {
+	txDataBuilder := builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix)
+
+	for _, bulk := range bulkTokens {
+
+	}
+}
+
+func addTokensAsOnData(txDataBuilder builders.TxDataBuilder, tokens []*tokenWithInterval){
+	for _, tkData := range tokens{
+		tokenIDHex := hex.EncodeToString([]byte(tkData.tokenID))
+		txDataBuilder.ArgHexString(tokenIDHex)
+		addIntervalsAsOnData(txDataBuilder, tkData.interval)
+	}
+}
+*/
 
 func splitInterval(currInterval *interval, index uint64) (*interval, *interval) {
 	first := &interval{

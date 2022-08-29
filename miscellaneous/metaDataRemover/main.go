@@ -3,6 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
@@ -13,13 +21,6 @@ import (
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
-	"io/fs"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -138,7 +139,7 @@ func startProcess(c *cli.Context) error {
 	}
 
 	if len(shardPemsDataMap) != len(shardTxsDataMap) {
-		return fmt.Errorf("provided invalid input; expected number of pem files = number of shards in tokens input; got len(<shard,tokens>) = %d, len(<shard, pem>) = %d",
+		return fmt.Errorf("provided invalid input; expected number of pem files = number of shards in tokens input; got num shard tokens = %d, num pem files = %d",
 			len(shardPemsDataMap), len(shardTxsDataMap))
 	}
 
@@ -159,12 +160,6 @@ func startProcess(c *cli.Context) error {
 		err = saveResult(txsInShard, file)
 	}
 
-	//log.Info("starting to create txs", "num of txs", len(txsData))
-	//err = sendTxs(flagsConfig.Pem, proxy, ti, txsData, txsBulkSize)
-	//if err != nil {
-	//	return err
-	//}
-	_ = ti
 	return nil
 }
 
