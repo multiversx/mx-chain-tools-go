@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
@@ -41,40 +42,24 @@ func newReindexer(sourceElastic ElasticClientHandler, destinationElastic Elastic
 }
 
 // Process will handle the reindexing from source Elastic client to destination Elastic client
-func (r *reindexer) Process(overwrite bool, skipMappings bool, indices ...string) error {
-	providedIndices := indices
-	if len(providedIndices) == 0 {
-		providedIndices = r.indices
-	}
-
-	for _, index := range providedIndices {
-		if index == "" {
-			continue
-		}
-
-		err := r.processIndex(index, overwrite, skipMappings)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+func (r *reindexer) Process(overwrite bool, skipMappings bool, index string, newName string) error {
+	return r.processIndex(index, overwrite, skipMappings, newName)
 }
 
-func (r *reindexer) processIndex(index string, overwrite bool, skipMappings bool) error {
+func (r *reindexer) processIndex(index string, overwrite bool, skipMappings bool, newName string) error {
 	originalSourceCount, err := r.sourceElastic.GetCount(index)
 	if err != nil {
 		return fmt.Errorf("%w while getting the source count for index %s", err, index)
 	}
 
-	err = r.copyMappingIfNecessary(index, overwrite, skipMappings)
+	err = r.copyMappingIfNecessary(index, overwrite, skipMappings, newName)
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}
 
-	log.Info("starting reindexing", "index", index)
+	log.Info("starting reindexing", "index", index, "index new name", newName)
 
-	err = r.reindexData(index)
+	err = r.reindexData(index, newName)
 	if err != nil {
 		return fmt.Errorf("%w while reindexing data for index %s", err, index)
 	}
@@ -92,20 +77,28 @@ func (r *reindexer) processIndex(index string, overwrite bool, skipMappings bool
 	return nil
 }
 
-func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMappings bool) error {
+func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMappings bool, newIndexName string) error {
 	if skipMappings {
 		return nil
 	}
 
+	indexxxxx := index
 	indexWithSuffix := index + indexSuffix
+	newIndexNameWithSuffix := newIndexName
+	somethingNew := indexWithSuffix
+	if newIndexName != "" {
+		newIndexNameWithSuffix += indexSuffix
+		somethingNew = newIndexNameWithSuffix
+		indexxxxx = newIndexName
+	}
 
-	aliasExists := r.destinationElastic.DoesAliasExist(index)
+	aliasExists := r.destinationElastic.DoesAliasExist(indexxxxx)
 	if aliasExists && !overwrite {
 		return fmt.Errorf("index with alias %s already exists. Please clean the destination indexer before"+
 			" retrying, or start the tool using --overwrite flag", index)
 	}
 
-	indexExists := r.destinationElastic.DoesIndexExist(indexWithSuffix)
+	indexExists := r.destinationElastic.DoesIndexExist(somethingNew)
 	if indexExists && !overwrite {
 		return fmt.Errorf("index %s already exists. Please clean the destination indexer before"+
 			" retrying, or start the tool using --overwrite flag", index)
@@ -117,7 +110,12 @@ func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMap
 			return fmt.Errorf("error while getting mapping from source: %w", err)
 		}
 
-		err = r.destinationElastic.CreateIndexWithMapping(indexWithSuffix, sourceMapping)
+		sourceMappingStr := sourceMapping.String()
+		if newIndexName != "" {
+			sourceMappingStr = strings.Replace(sourceMappingStr, indexWithSuffix, newIndexNameWithSuffix, 1)
+		}
+
+		err = r.destinationElastic.CreateIndexWithMapping(somethingNew, bytes.NewBuffer([]byte(sourceMappingStr)))
 		if err != nil {
 			return fmt.Errorf("error while creating index with mapping to destination: %w", err)
 		}
@@ -127,20 +125,24 @@ func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMap
 		return nil
 	}
 
-	return r.destinationElastic.PutAlias(indexWithSuffix, index)
+	return r.destinationElastic.PutAlias(somethingNew, indexxxxx)
 }
 
-func (r *reindexer) reindexData(index string) error {
+func (r *reindexer) reindexData(index string, newIndex string) error {
+	if newIndex == "" {
+		newIndex = index
+	}
+
 	count := 0
 	handlerFunc := func(responseBytes []byte) error {
 		count++
-		dataBuffers, err := prepareDataForIndexing(responseBytes, index, count)
+		dataBuffers, err := prepareDataForIndexing(responseBytes, newIndex, count)
 		if err != nil {
 			return fmt.Errorf("%w while preparing data for indexing", err)
 		}
 
 		for i := 0; i < len(dataBuffers); i++ {
-			err = r.destinationElastic.DoBulkRequest(dataBuffers[i], index)
+			err = r.destinationElastic.DoBulkRequest(dataBuffers[i], newIndex)
 			if err != nil {
 				return fmt.Errorf("%w while r.destinationElastic.DoBulkRequest", err)
 			}
@@ -182,7 +184,7 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 
 // ProcessIndexWithTimestamp will handle the reindexing from source Elastic client to destination Elastic client based on the provided interval
 func (r *reindexer) ProcessIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error {
-	err := r.copyMappingIfNecessary(index, overwrite, skipMappings)
+	err := r.copyMappingIfNecessary(index, overwrite, skipMappings, "")
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}

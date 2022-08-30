@@ -21,8 +21,9 @@ type ElasticInstanceConfig struct {
 
 // IndicesConfig holds the configuration for the indices
 type IndicesConfig struct {
-	Indices       []string `toml:"indices-no-timestamp"`
-	WithTimestamp struct {
+	Indices           []string `toml:"indices-no-timestamp"`
+	IndicesNamesOnDst []string `toml:"indices-name-on-dest"`
+	WithTimestamp     struct {
 		Enabled              bool     `toml:"enabled"`
 		BlockchainStartTime  int64    `toml:"blockchain-start-time"`
 		EndTime              int64    `toml:"end-time"`

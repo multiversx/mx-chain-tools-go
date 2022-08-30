@@ -62,6 +62,9 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 func generateSliceWithCodes() []int {
 	codes := make([]int, 0, 200)
 	for code := 400; code < 600; code++ {
+		if code == http.StatusNotFound {
+			continue
+		}
 		codes = append(codes, code)
 	}
 

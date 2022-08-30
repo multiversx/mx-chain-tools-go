@@ -21,6 +21,6 @@ type ElasticClientHandler interface {
 
 // ReindexerHandler defines the behaviour of an reindexer handler
 type ReindexerHandler interface {
-	Process(overwrite bool, skipMappings bool, indices ...string) error
+	Process(overwrite bool, skipMappings bool, index string, newIndex string) error
 	ProcessIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error
 }

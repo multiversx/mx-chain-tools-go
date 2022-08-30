@@ -14,12 +14,13 @@ type interval struct {
 }
 
 type reindexerMultiWrite struct {
-	indicesNoTimestamp   []string
-	indicesWithTimestamp []string
-	numParallelWrite     int
-	blockChainStartTime  int64
-	endTime              int64
-	enabled              bool
+	indicesNoTimestamp          []string
+	indicesNoTimestampNameOnDST []string
+	indicesWithTimestamp        []string
+	numParallelWrite            int
+	blockChainStartTime         int64
+	endTime                     int64
+	enabled                     bool
 
 	reindexerClient ReindexerHandler
 }
@@ -42,23 +43,24 @@ func NewReindexerMultiWrite(reindexer ReindexerHandler, cfg config.IndicesConfig
 	}
 
 	return &reindexerMultiWrite{
-		reindexerClient:      reindexer,
-		indicesNoTimestamp:   cfg.Indices,
-		indicesWithTimestamp: cfg.WithTimestamp.IndicesWithTimestamp,
-		numParallelWrite:     cfg.WithTimestamp.NumParallelWrites,
-		blockChainStartTime:  cfg.WithTimestamp.BlockchainStartTime,
-		enabled:              cfg.WithTimestamp.Enabled,
-		endTime:              endTime,
+		reindexerClient:             reindexer,
+		indicesNoTimestamp:          cfg.Indices,
+		indicesWithTimestamp:        cfg.WithTimestamp.IndicesWithTimestamp,
+		indicesNoTimestampNameOnDST: cfg.IndicesNamesOnDst,
+		numParallelWrite:            cfg.WithTimestamp.NumParallelWrites,
+		blockChainStartTime:         cfg.WithTimestamp.BlockchainStartTime,
+		enabled:                     cfg.WithTimestamp.Enabled,
+		endTime:                     endTime,
 	}, nil
 }
 
 func (rmw *reindexerMultiWrite) ProcessNoTimestamp(overwrite bool, skipMappings bool) error {
-	for _, index := range rmw.indicesNoTimestamp {
+	for idx, index := range rmw.indicesNoTimestamp {
 		if index == "" {
 			continue
 		}
 
-		err := rmw.reindexerClient.Process(overwrite, skipMappings, index)
+		err := rmw.reindexerClient.Process(overwrite, skipMappings, index, rmw.indicesNoTimestampNameOnDST[idx])
 		if err != nil {
 			return err
 		}
