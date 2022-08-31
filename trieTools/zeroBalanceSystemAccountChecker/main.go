@@ -2,13 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"net/http"
 	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
@@ -68,7 +65,10 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	globalAddressTokensMap, shardAddressTokensMap, err := readInputs(flagsConfig.TokensDirectory)
+	fh := newOSFileHandler()
+	inputReader := newAddressTokensMapFileReader(fh)
+
+	globalAddressTokensMap, shardAddressTokensMap, err := inputReader.readInputs(flagsConfig.TokensDirectory)
 	if err != nil {
 		return err
 	}
@@ -102,116 +102,6 @@ func startProcess(c *cli.Context) error {
 	return nil
 }
 
-func readInputs(tokensDir string) (trieToolsCommon.AddressTokensMap, map[uint32]trieToolsCommon.AddressTokensMap, error) {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	fullPath := filepath.Join(workingDir, tokensDir)
-	contents, err := ioutil.ReadDir(fullPath)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	globalAddressTokensMap := trieToolsCommon.NewAddressTokensMap()
-	shardAddressTokensMap := make(map[uint32]trieToolsCommon.AddressTokensMap)
-	for _, file := range contents {
-		if file.IsDir() {
-			continue
-		}
-
-		shardID, err := getShardID(file.Name())
-		if err != nil {
-			return nil, nil, err
-		}
-
-		addressTokensMapInCurrFile, err := getFileContent(filepath.Join(fullPath, file.Name()))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		shardAddressTokensMap[shardID] = addressTokensMapInCurrFile.ShallowClone()
-		merge(globalAddressTokensMap, addressTokensMapInCurrFile)
-
-		log.Info("read data from",
-			"file", file.Name(),
-			"shard", shardID,
-			"num tokens in shard", shardAddressTokensMap[shardID].NumTokens(),
-			"num addresses in shard", shardAddressTokensMap[shardID].NumAddresses(),
-			"total num addresses in all shards", globalAddressTokensMap.NumAddresses())
-	}
-
-	return globalAddressTokensMap, shardAddressTokensMap, nil
-}
-
-func getShardID(file string) (uint32, error) {
-	shardIDStr := strings.TrimPrefix(file, "shard")
-	shardIDStr = strings.TrimSuffix(shardIDStr, ".json")
-	shardID, err := strconv.Atoi(shardIDStr)
-	if err != nil {
-		return 0, fmt.Errorf("invalid file input name; expected tokens shard file name to be <shardX.json>, where X = number(e.g. shard0.json)")
-	}
-
-	return uint32(shardID), nil
-}
-
-func getFileContent(file string) (trieToolsCommon.AddressTokensMap, error) {
-	jsonFile, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-
-	bytesFromJson, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return nil, err
-	}
-
-	addressTokensMapInCurrFile := make(map[string]map[string]struct{})
-	err = json.Unmarshal(bytesFromJson, &addressTokensMapInCurrFile)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := trieToolsCommon.NewAddressTokensMap()
-	for address, tokens := range addressTokensMapInCurrFile {
-		tokensWithNonce := getTokensWithNonce(tokens)
-		ret.Add(address, tokensWithNonce)
-	}
-
-	return ret, nil
-}
-
-func getTokensWithNonce(tokens map[string]struct{}) map[string]struct{} {
-	ret := make(map[string]struct{})
-
-	for token := range tokens {
-		addTokenInMapIfHasNonce(token, ret)
-	}
-
-	return ret
-}
-
-func addTokenInMapIfHasNonce(token string, tokens map[string]struct{}) {
-	if hasNonce(token) {
-		tokens[token] = struct{}{}
-	}
-}
-
-func hasNonce(token string) bool {
-	return strings.Count(token, "-") == 2
-}
-
-func merge(dest, src trieToolsCommon.AddressTokensMap) {
-	for addressSrc, tokensSrc := range src.GetMapCopy() {
-		if dest.HasAddress(addressSrc) {
-			log.Debug("same address found in multiple files", "address", addressSrc)
-		}
-
-		dest.Add(addressSrc, tokensSrc)
-	}
-}
-
 func saveResult(tokens map[uint32]map[string]struct{}, outfile string) error {
 	jsonBytes, err := json.MarshalIndent(tokens, "", " ")
 	if err != nil {
@@ -234,7 +124,7 @@ func crossCheckExtraTokens(globalExtraTokens map[string]struct{}, extraTokensPer
 		return err
 	}
 
-	nftGetter := newTokenBalanceGetter(cfg.Config.Gateway.URL)
+	nftGetter := newTokenBalanceGetter(cfg.Config.Gateway.URL, http.Get)
 	elasticClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
 		URL:      cfg.Config.ElasticIndexerConfig.URL,
 		Username: cfg.Config.ElasticIndexerConfig.Username,
