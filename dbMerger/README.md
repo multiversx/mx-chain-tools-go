@@ -21,7 +21,8 @@ go build
 after the compilation of the binary, the merge can be made by calling the binary with the following parameters:
 
 ```
-./generalDBManager -dest=destdb -sources=src1/db,src2/db,src3/db
+mkdir destdb
+./generalDBManager -dest=./destdb -sources=./src1/db,./src2/db,./src3/db
 ```
 
 for full flags list, launch the binary with the following parameter
