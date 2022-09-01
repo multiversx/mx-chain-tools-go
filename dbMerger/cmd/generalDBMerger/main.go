@@ -27,7 +27,7 @@ var (
 	}
 	sources = cli.StringFlag{
 		Name:  "sources",
-		Usage: "This flag specifies the source paths separated by `,`. Example `-sources " + strings.Join([]string{"path/1", "path/2", "path/3"}, sourcePathsDelimiter),
+		Usage: `This flag specifies the source paths separated by ",". Example "-sources ` + strings.Join([]string{"path/1", "path/2", "path/3"}, sourcePathsDelimiter) + "\"",
 		Value: "",
 	}
 	logLevel = cli.StringFlag{
@@ -123,6 +123,7 @@ func parseFlags(ctx *cli.Context) (parsedFlags, error) {
 		logSave:     ctx.GlobalBool(logSaveFile.Name),
 	}
 
+	// TODO add separate check functions
 	if len(flags.destPath) == 0 {
 		return parsedFlags{}, fmt.Errorf("%w for `dest` flag", errEmptyPathProvided)
 	}
