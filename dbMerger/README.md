@@ -1,6 +1,6 @@
 # DB merger tool
 
-- These types of tool are able to merge level-DBs directories by creating a new one containing all data.
+- These tools are able to merge level-DBs directories by creating a new one containing all the data.
 
 ## The tools
 ### generalDBMerger tool
