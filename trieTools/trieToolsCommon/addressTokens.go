@@ -1,5 +1,6 @@
 package trieToolsCommon
 
+// This is not concurrent safe
 type addressTokensMap struct {
 	internalMap map[string]map[string]struct{}
 }
@@ -10,35 +11,37 @@ func NewAddressTokensMap() AddressTokensMap {
 	}
 }
 
-func (atm *addressTokensMap) Add(addr string, tokens map[string]struct{}) {
-	_, addressExists := atm.internalMap[addr]
+// Add will add all provided tokens to the corresponding address
+func (atm *addressTokensMap) Add(address string, tokens map[string]struct{}) {
+	_, addressExists := atm.internalMap[address]
 	if !addressExists {
-		atm.internalMap[addr] = tokens
-	} else {
-		atm.addTokens(addr, tokens)
+		atm.internalMap[address] = make(map[string]struct{})
 	}
+
+	atm.internalMap[address] = copyTokens(tokens)
 }
 
-func (atm *addressTokensMap) addTokens(addr string, tokens map[string]struct{}) {
+func copyTokens(tokens map[string]struct{}) map[string]struct{} {
+	ret := make(map[string]struct{})
 	for token := range tokens {
-		atm.internalMap[addr][token] = struct{}{}
+		ret[token] = struct{}{}
 	}
+
+	return ret
 }
 
-func (atm *addressTokensMap) HasAddress(addr string) bool {
-	_, found := atm.internalMap[addr]
+// HasAddress checks if the address is in map
+func (atm *addressTokensMap) HasAddress(address string) bool {
+	_, found := atm.internalMap[address]
 	return found
 }
 
-func (atm *addressTokensMap) HasToken(addr string, token string) bool {
-	_, found := atm.internalMap[addr][token]
-	return found
-}
-
+// NumAddresses returns the num of addresses in map
 func (atm *addressTokensMap) NumAddresses() uint64 {
 	return uint64(len(atm.internalMap))
 }
 
+// NumTokens returns the num of tokens in map for all addresses
 func (atm *addressTokensMap) NumTokens() uint64 {
 	numTokens := uint64(0)
 	for _, tokens := range atm.internalMap {
@@ -50,6 +53,7 @@ func (atm *addressTokensMap) NumTokens() uint64 {
 	return numTokens
 }
 
+// GetMapCopy returns an internal copy map
 func (atm *addressTokensMap) GetMapCopy() map[string]map[string]struct{} {
 	addressTokensMapCopy := make(map[string]map[string]struct{})
 
@@ -63,23 +67,17 @@ func (atm *addressTokensMap) GetMapCopy() map[string]map[string]struct{} {
 	return addressTokensMapCopy
 }
 
-func (atm *addressTokensMap) GetAddresses() map[string]struct{} {
-	ret := make(map[string]struct{})
-	for addr := range atm.internalMap {
-		ret[addr] = struct{}{}
-	}
-
-	return ret
-}
-
+// GetTokens returns all tokens of the provided address
 func (atm *addressTokensMap) GetTokens(address string) map[string]struct{} {
-	return atm.internalMap[address]
+	return copyTokens(atm.internalMap[address])
 }
 
+// Delete deletes the map entry for the provided address
 func (atm *addressTokensMap) Delete(address string) {
 	delete(atm.internalMap, address)
 }
 
+// GetAllTokens returns all tokens from all addresses
 func (atm *addressTokensMap) GetAllTokens() map[string]struct{} {
 	allTokens := make(map[string]struct{})
 	for _, tokens := range atm.internalMap {
@@ -91,6 +89,7 @@ func (atm *addressTokensMap) GetAllTokens() map[string]struct{} {
 	return allTokens
 }
 
+// ShallowClone returns a shallow clone of the current object
 func (atm *addressTokensMap) ShallowClone() AddressTokensMap {
 	mapCopy := atm.GetMapCopy()
 	return &addressTokensMap{

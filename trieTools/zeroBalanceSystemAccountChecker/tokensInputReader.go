@@ -1,41 +1,39 @@
 package main
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 )
 
-type FileInfo interface {
-	Name() string
-	IsDir() bool
-}
-
-type fileHandler interface {
-	Open(name string) (io.Reader, error)
-	ReadAll(r io.Reader) ([]byte, error)
-	Getwd() (dir string, err error)
-	ReadDir(dirname string) ([]FileInfo, error)
-}
-
 type addressTokensMapFileReader struct {
 	fileHandler fileHandler
+	marshaller  marshal.Marshalizer
 }
 
 func newAddressTokensMapFileReader(
 	fileHandler fileHandler,
-) *addressTokensMapFileReader {
+	marshaller marshal.Marshalizer,
+) (*addressTokensMapFileReader, error) {
+	if fileHandler == nil {
+		return nil, errors.New("nil file handler provided")
+	}
+	if marshaller == nil {
+		return nil, errors.New("nil marshaller provided")
+	}
+
 	return &addressTokensMapFileReader{
 		fileHandler: fileHandler,
-	}
+		marshaller:  marshaller,
+	}, nil
 }
 
-func (atr *addressTokensMapFileReader) readInputs(tokensDir string) (trieToolsCommon.AddressTokensMap, map[uint32]trieToolsCommon.AddressTokensMap, error) {
+func (atr *addressTokensMapFileReader) readTokensWithNonce(tokensDir string) (trieToolsCommon.AddressTokensMap, map[uint32]trieToolsCommon.AddressTokensMap, error) {
 	workingDir, err := atr.fileHandler.Getwd()
 	if err != nil {
 		return nil, nil, err
@@ -101,7 +99,7 @@ func (atr *addressTokensMapFileReader) getFileContent(file string) (trieToolsCom
 	}
 
 	addressTokensMapInCurrFile := make(map[string]map[string]struct{})
-	err = json.Unmarshal(bytesFromJson, &addressTokensMapInCurrFile)
+	err = atr.marshaller.Unmarshal(&addressTokensMapInCurrFile, bytesFromJson)
 	if err != nil {
 		return nil, err
 	}

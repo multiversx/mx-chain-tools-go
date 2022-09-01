@@ -56,6 +56,7 @@ func TestExportSystemAccZeroTokensBalances(t *testing.T) {
 
 	exporter, err := newZeroTokensBalancesExporter(addressConverter)
 	require.Nil(t, err)
+
 	globalExtraTokens, shardExtraTokens, err := exporter.getExtraTokens(globalTokens, shardAddressTokenMap)
 	require.Nil(t, err)
 	expectedShardExtraTokens := make(map[uint32]map[string]struct{})
@@ -72,4 +73,79 @@ func TestExportSystemAccZeroTokensBalances(t *testing.T) {
 		"token5-r-0": {},
 	}
 	require.Equal(t, expectedGlobalExtraTokens, globalExtraTokens)
+}
+
+func TestRemoveTokensIfStillExist(t *testing.T) {
+	t.Run("no extra tokens to remove, should not touch the map", func(t *testing.T) {
+		var tokensThatStillExist []string
+		extraTokensPerShard := map[uint32]map[string]struct{}{
+			0: {
+				"token1": {},
+			},
+			1: {
+				"token1": {},
+				"token2": {},
+			},
+		}
+
+		removeTokensIfStillExist(tokensThatStillExist, extraTokensPerShard)
+		require.Equal(t, extraTokensPerShard, map[uint32]map[string]struct{}{
+			0: {
+				"token1": {},
+			},
+			1: {
+				"token1": {},
+				"token2": {},
+			},
+		})
+	})
+
+	t.Run("tokens to remove are not in map, should not change the map", func(t *testing.T) {
+		tokensThatStillExist := []string{"token44"}
+		extraTokensPerShard := map[uint32]map[string]struct{}{
+			0: {
+				"token1": {},
+			},
+			1: {
+				"token2": {},
+			},
+		}
+
+		removeTokensIfStillExist(tokensThatStillExist, extraTokensPerShard)
+		require.Equal(t, extraTokensPerShard, map[uint32]map[string]struct{}{
+			0: {
+				"token1": {},
+			},
+			1: {
+				"token2": {},
+			},
+		})
+	})
+
+	t.Run("should remove extra tokens", func(t *testing.T) {
+		tokensThatStillExist := []string{"token1", "token2"}
+		extraTokensPerShard := map[uint32]map[string]struct{}{
+			0: {
+				"token1": {},
+				"token3": {},
+				"token4": {},
+			},
+			1: {
+				"token1": {},
+				"token2": {},
+				"token5": {},
+			},
+		}
+
+		removeTokensIfStillExist(tokensThatStillExist, extraTokensPerShard)
+		require.Equal(t, extraTokensPerShard, map[uint32]map[string]struct{}{
+			0: {
+				"token3": {},
+				"token4": {},
+			},
+			1: {
+				"token5": {},
+			},
+		})
+	})
 }

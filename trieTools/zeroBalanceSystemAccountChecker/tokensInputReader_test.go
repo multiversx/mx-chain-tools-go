@@ -1,101 +1,39 @@
 package main
 
 import (
-	"encoding/json"
 	"io"
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/mocks"
 	"github.com/stretchr/testify/require"
 )
 
-type FileHandlerStub struct {
-	OpenCalled    func(name string) (io.Reader, error)
-	ReadAllCalled func(r io.Reader) ([]byte, error)
-	GetwdCalled   func() (dir string, err error)
-	ReadDirCalled func(dirname string) ([]FileInfo, error)
-}
-
-func (fhs *FileHandlerStub) Open(name string) (io.Reader, error) {
-	if fhs.OpenCalled != nil {
-		return fhs.OpenCalled(name)
-	}
-
-	return nil, nil
-}
-
-func (fhs *FileHandlerStub) ReadAll(r io.Reader) ([]byte, error) {
-	if fhs.ReadAllCalled != nil {
-		return fhs.ReadAllCalled(r)
-	}
-
-	return nil, nil
-}
-
-func (fhs *FileHandlerStub) Getwd() (dir string, err error) {
-	if fhs.GetwdCalled != nil {
-		return fhs.GetwdCalled()
-	}
-
-	return "", nil
-}
-
-func (fhs *FileHandlerStub) ReadDir(dirname string) ([]FileInfo, error) {
-	if fhs.ReadDirCalled != nil {
-		return fhs.ReadDirCalled(dirname)
-	}
-
-	return nil, nil
-}
-
-type FileStub struct {
-	NameCalled  func() string
-	IsDirCalled func() bool
-}
-
-func (fs *FileStub) Name() string {
-	if fs.NameCalled != nil {
-		return fs.NameCalled()
-	}
-
-	return ""
-}
-
-func (fs *FileStub) IsDir() bool {
-	if fs.IsDirCalled != nil {
-		return fs.IsDirCalled()
-	}
-
-	return false
-}
-
-type ReaderStub struct {
-	ReadCalled func(p []byte) (n int, err error)
-}
-
-func (rs *ReaderStub) Read(p []byte) (n int, err error) {
-	if rs.ReadCalled != nil {
-		return rs.ReadCalled(p)
-	}
-
-	return 0, nil
-}
-
-func TestReadInputs(t *testing.T) {
+func TestReadTokensWithNonce(t *testing.T) {
 	workingDir := "working-dir"
 	tokensDir := "tokens-dir"
 
 	file1Name := "shard0"
 	file2Name := "shard1"
+	file3Name := "shard1"
 
-	file1 := &FileStub{
+	file1 := &mocks.FileStub{
 		NameCalled: func() string {
 			return file1Name
 		},
 	}
-	file2 := &FileStub{
+	file2 := &mocks.FileStub{
 		NameCalled: func() string {
 			return file2Name
+		},
+	}
+	file3 := &mocks.FileStub{
+		NameCalled: func() string {
+			return file3Name
+		},
+		IsDirCalled: func() bool {
+			return true
 		},
 	}
 
@@ -105,10 +43,12 @@ func TestReadInputs(t *testing.T) {
 	adr1Tokens := map[string]struct{}{
 		"token1-r-0": {},
 		"token2-r-0": {},
+		"esdt1-rand": {},
 	}
 	sysAccTokensShard0 := map[string]struct{}{
 		"token3-r-0": {},
 		"token3-r-1": {},
+		"esdt1-rand": {},
 	}
 	addressTokensMapShard0 := trieToolsCommon.NewAddressTokensMap()
 	addressTokensMapShard0.Add(adr1, adr1Tokens)
@@ -122,19 +62,20 @@ func TestReadInputs(t *testing.T) {
 	sysAccTokensShard1 := map[string]struct{}{
 		"token3-r-0": {},
 		"token3-r-2": {},
+		"esdt2-rand": {},
 	}
 	addressTokensMapShard1 := trieToolsCommon.NewAddressTokensMap()
 	addressTokensMapShard1.Add(adr2, adr2Tokens)
 	addressTokensMapShard1.Add(sysAccAddr, sysAccTokensShard1)
 
 	openCt := 0
-	fileHandlerStub := &FileHandlerStub{
+	fileHandlerStub := &mocks.FileHandlerStub{
 		GetwdCalled: func() (dir string, err error) {
 			return workingDir, nil
 		},
-		ReadDirCalled: func(dirname string) ([]FileInfo, error) {
+		ReadDirCalled: func(dirname string) ([]common.FileInfo, error) {
 			require.Equal(t, workingDir+"/"+tokensDir, dirname)
-			return []FileInfo{file1, file2}, nil
+			return []common.FileInfo{file1, file2, file3}, nil
 		},
 
 		OpenCalled: func(name string) (io.Reader, error) {
@@ -145,6 +86,8 @@ func TestReadInputs(t *testing.T) {
 				require.Equal(t, workingDir+"/"+tokensDir+"/"+file1Name, name)
 			case 2:
 				require.Equal(t, workingDir+"/"+tokensDir+"/"+file2Name, name)
+			default:
+				require.Fail(t, "should not have opened another file")
 			}
 
 			return nil, nil
@@ -152,20 +95,27 @@ func TestReadInputs(t *testing.T) {
 		ReadAllCalled: func(r io.Reader) ([]byte, error) {
 			switch openCt {
 			case 1:
-				return json.Marshal(addressTokensMapShard0.GetMapCopy())
+				return jsonMarshaller.Marshal(addressTokensMapShard0.GetMapCopy())
 			case 2:
-				return json.Marshal(addressTokensMapShard1.GetMapCopy())
+				return jsonMarshaller.Marshal(addressTokensMapShard1.GetMapCopy())
+			default:
+				require.Fail(t, "should not have read another file")
 			}
 
 			return nil, nil
 		},
 	}
 
-	reader := newAddressTokensMapFileReader(fileHandlerStub)
-	globalTokens, shardTokens, err := reader.readInputs(tokensDir)
+	reader, err := newAddressTokensMapFileReader(fileHandlerStub, jsonMarshaller)
+	require.Nil(t, err)
+
+	globalTokens, shardTokens, err := reader.readTokensWithNonce(tokensDir)
 	require.Nil(t, err)
 
 	expectedGlobalTokensMap := trieToolsCommon.NewAddressTokensMap()
+	delete(adr1Tokens, "esdt1-rand")
+	delete(sysAccTokensShard0, "esdt1-rand")
+	delete(sysAccTokensShard1, "esdt2-rand")
 	expectedGlobalTokensMap.Add(adr1, adr1Tokens)
 	expectedGlobalTokensMap.Add(adr2, adr2Tokens)
 	expectedGlobalTokensMap.Add(sysAccAddr, map[string]struct{}{

@@ -24,10 +24,6 @@ const (
 	tomlFile        = "./config.toml"
 )
 
-type crossTokenChecker interface {
-	crossCheckExtraTokens(tokens map[string]struct{}) ([]string, error)
-}
-
 func main() {
 	app := cli.NewApp()
 	app.Name = "Tokens exporter CLI app"
@@ -66,9 +62,12 @@ func startProcess(c *cli.Context) error {
 	}
 
 	fh := newOSFileHandler()
-	inputReader := newAddressTokensMapFileReader(fh)
+	inputReader, err := newAddressTokensMapFileReader(fh, jsonMarshaller)
+	if err != nil {
+		return err
+	}
 
-	globalAddressTokensMap, shardAddressTokensMap, err := inputReader.readInputs(flagsConfig.TokensDirectory)
+	globalAddressTokensMap, shardAddressTokensMap, err := inputReader.readTokensWithNonce(flagsConfig.TokensDirectory)
 	if err != nil {
 		return err
 	}
@@ -144,17 +143,7 @@ func crossCheckExtraTokens(globalExtraTokens map[string]struct{}, extraTokensPer
 		return err
 	}
 
-	if len(tokensThatStillExist) == 0 {
-		log.Info("all cross-checks were successful; exported tokens are only stored in system account")
-		return nil
-	}
-
-	log.Error("found tokens with balances that still exist in other accounts; probably found in pending mbs during snapshot; will remove them from exported tokens",
-		"tokens", tokensThatStillExist)
-	for _, extraTokensInShard := range extraTokensPerShard {
-		removeTokensThatStillExist(tokensThatStillExist, extraTokensInShard)
-	}
-
+	removeTokensIfStillExist(tokensThatStillExist, extraTokensPerShard)
 	return nil
 }
 
@@ -171,6 +160,19 @@ func loadConfig() (*sysAccConfig.GeneralConfig, error) {
 	}
 
 	return &tc, nil
+}
+
+func removeTokensIfStillExist(tokensThatStillExist []string, extraTokensPerShard map[uint32]map[string]struct{}) {
+	if len(tokensThatStillExist) == 0 {
+		log.Info("all cross-checks were successful; exported tokens are only stored in system account")
+		return
+	}
+
+	log.Error("found tokens with balances that still exist in other accounts; probably found in pending mbs during snapshot; will remove them from exported tokens",
+		"tokens", tokensThatStillExist)
+	for _, extraTokensInShard := range extraTokensPerShard {
+		removeTokensThatStillExist(tokensThatStillExist, extraTokensInShard)
+	}
 }
 
 func removeTokensThatStillExist(tokensThatStillExist []string, tokens map[string]struct{}) {
