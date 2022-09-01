@@ -52,9 +52,7 @@ func (atm *addressTokensMap) NumAddresses() uint64 {
 func (atm *addressTokensMap) NumTokens() uint64 {
 	numTokens := uint64(0)
 	for _, tokens := range atm.internalMap {
-		for range tokens {
-			numTokens++
-		}
+		numTokens += uint64(len(tokens))
 	}
 
 	return numTokens
