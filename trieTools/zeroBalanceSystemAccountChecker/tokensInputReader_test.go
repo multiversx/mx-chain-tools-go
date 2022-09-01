@@ -16,7 +16,7 @@ func TestReadTokensWithNonce(t *testing.T) {
 
 	file1Name := "shard0"
 	file2Name := "shard1"
-	file3Name := "shard1"
+	file3Name := "shard3"
 
 	file1 := &mocks.FileStub{
 		NameCalled: func() string {
