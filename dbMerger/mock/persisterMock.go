@@ -6,8 +6,9 @@ import (
 )
 
 type persisterMock struct {
-	mut  sync.RWMutex
-	data map[string][]byte
+	mut         sync.RWMutex
+	data        map[string][]byte
+	CloseCalled func() error
 }
 
 // NewPersisterMock -
@@ -55,6 +56,10 @@ func (mock *persisterMock) Has(key []byte) error {
 
 // Close -
 func (mock *persisterMock) Close() error {
+	if mock.CloseCalled != nil {
+		return mock.CloseCalled()
+	}
+
 	return nil
 }
 

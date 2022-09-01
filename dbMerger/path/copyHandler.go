@@ -24,6 +24,7 @@ func NewCopyHandler() *copyHandler {
 
 // CopyDirectory is able to recursively copy the contents of one directory to another
 func (handler *copyHandler) CopyDirectory(destination string, source string) error {
+	log.Debug("copying raw data", "source", source, "destination", destination)
 	entries, errReadDir := os.ReadDir(source)
 	if errReadDir != nil {
 		return errReadDir
