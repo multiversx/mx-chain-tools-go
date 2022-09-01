@@ -14,7 +14,7 @@ storing them in the destination DB.
 How to use:
 
 ```
-cd cmd/generalDBManager
+cd cmd/generalDBMerger
 go build
 ```
 
@@ -22,13 +22,13 @@ after the compilation of the binary, the merge can be made by calling the binary
 
 ```
 mkdir destdb
-./generalDBManager -dest=./destdb -sources=./src1/db,./src2/db,./src3/db
+./generalDBMerger -dest=./destdb -sources=./src1/db,./src2/db,./src3/db
 ```
 
 for full flags list, launch the binary with the following parameter
 
 ```
-./generalDBManager -h
+./generalDBMerger -h
 ```
 
 ### trieMerger tool
