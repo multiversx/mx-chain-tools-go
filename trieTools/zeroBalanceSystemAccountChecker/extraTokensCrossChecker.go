@@ -12,14 +12,6 @@ const (
 	multipleSearchBulk = 10000
 )
 
-type tokenBalancesGetter interface {
-	getBalance(address, token string) (string, error)
-}
-
-type elasticMultiSearchClient interface {
-	GetMultiple(index string, requests []string) ([]byte, error)
-}
-
 type extraTokensChecker struct {
 	nftBalancesGetter tokenBalancesGetter
 	elasticClient     elasticMultiSearchClient

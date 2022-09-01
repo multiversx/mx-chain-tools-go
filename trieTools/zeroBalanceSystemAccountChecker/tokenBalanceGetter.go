@@ -10,13 +10,17 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+type get func(url string) (resp *http.Response, err error)
+
 type tokenBalanceGetter struct {
 	proxyURL string
+	get      get
 }
 
-func newTokenBalanceGetter(proxyURL string) *tokenBalanceGetter {
+func newTokenBalanceGetter(proxyURL string, getFunc get) *tokenBalanceGetter {
 	return &tokenBalanceGetter{
 		proxyURL: proxyURL,
+		get:      getFunc,
 	}
 }
 
@@ -40,7 +44,7 @@ func (tbg *tokenBalanceGetter) fetchTokenBalanceWithRetrial(address, tokenID str
 
 	for ctRetrials < maxRequestsRetrial {
 		url := fmt.Sprintf("%s/address/%s/nft/%s/nonce/%d", tbg.proxyURL, address, tokenID, nonce)
-		resp, errHttp := http.Get(url)
+		resp, errHttp := tbg.get(url)
 		body, errBody := tbg.getBody(resp)
 		if errHttp == nil && errBody == nil {
 			return gjson.Get(body, "data.tokenData.balance").String(), nil
