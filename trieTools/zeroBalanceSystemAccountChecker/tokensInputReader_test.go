@@ -62,6 +62,7 @@ func TestReadTokensWithNonce(t *testing.T) {
 	sysAccTokensShard1 := map[string]struct{}{
 		"token3-r-0": {},
 		"token3-r-2": {},
+		"token5-r-0": {},
 		"esdt2-rand": {},
 	}
 	addressTokensMapShard1 := trieToolsCommon.NewAddressTokensMap()
@@ -122,11 +123,19 @@ func TestReadTokensWithNonce(t *testing.T) {
 		"token3-r-0": {},
 		"token3-r-1": {},
 		"token3-r-2": {},
+		"token5-r-0": {},
 	})
 	require.Equal(t, expectedGlobalTokensMap, globalTokens)
 
 	expectedShardTokens := make(map[uint32]trieToolsCommon.AddressTokensMap)
-	expectedShardTokens[0] = addressTokensMapShard0
-	expectedShardTokens[1] = addressTokensMapShard1
+	expectedAddressTokensMapShard0 := trieToolsCommon.NewAddressTokensMap()
+	expectedAddressTokensMapShard0.Add(adr1, adr1Tokens)
+	expectedAddressTokensMapShard0.Add(sysAccAddr, sysAccTokensShard0)
+	expectedShardTokens[0] = expectedAddressTokensMapShard0
+
+	expectedAddressTokensMapShard1 := trieToolsCommon.NewAddressTokensMap()
+	expectedAddressTokensMapShard1.Add(adr2, adr2Tokens)
+	expectedAddressTokensMapShard1.Add(sysAccAddr, sysAccTokensShard1)
+	expectedShardTokens[1] = expectedAddressTokensMapShard1
 	require.Equal(t, expectedShardTokens, shardTokens)
 }

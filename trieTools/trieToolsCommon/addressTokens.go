@@ -18,7 +18,14 @@ func (atm *addressTokensMap) Add(address string, tokens map[string]struct{}) {
 		atm.internalMap[address] = make(map[string]struct{})
 	}
 
-	atm.internalMap[address] = copyTokens(tokens)
+	atm.addTokens(address, tokens)
+}
+
+func (atm *addressTokensMap) addTokens(address string, tokens map[string]struct{}) {
+	tokensCopy := copyTokens(tokens)
+	for token := range tokensCopy {
+		atm.internalMap[address][token] = struct{}{}
+	}
 }
 
 func copyTokens(tokens map[string]struct{}) map[string]struct{} {

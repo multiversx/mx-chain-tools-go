@@ -28,6 +28,7 @@ func TestExportSystemAccZeroTokensBalances(t *testing.T) {
 		"token3-r-0": {},
 		"token4-r-0": {},
 		"token5-r-0": {},
+		"token6-r-0": {},
 	})
 
 	shardAddressTokenMap := make(map[uint32]trieToolsCommon.AddressTokensMap)
@@ -54,6 +55,12 @@ func TestExportSystemAccZeroTokensBalances(t *testing.T) {
 		"token3-r-0": {},
 	})
 
+	// Shard 2
+	shardAddressTokenMap[2] = trieToolsCommon.NewAddressTokensMap()
+	shardAddressTokenMap[2].Add(systemSCAddress, map[string]struct{}{
+		"token6-r-0": {},
+	})
+
 	exporter, err := newZeroTokensBalancesExporter(addressConverter)
 	require.Nil(t, err)
 
@@ -66,11 +73,15 @@ func TestExportSystemAccZeroTokensBalances(t *testing.T) {
 	expectedShardExtraTokens[1] = map[string]struct{}{
 		"token5-r-0": {},
 	}
+	expectedShardExtraTokens[2] = map[string]struct{}{
+		"token6-r-0": {},
+	}
 	require.Equal(t, expectedShardExtraTokens, shardExtraTokens)
 
 	expectedGlobalExtraTokens := map[string]struct{}{
 		"token4-r-0": {},
 		"token5-r-0": {},
+		"token6-r-0": {},
 	}
 	require.Equal(t, expectedGlobalExtraTokens, globalExtraTokens)
 }
