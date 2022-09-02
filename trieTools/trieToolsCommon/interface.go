@@ -7,7 +7,7 @@ type AddressTokensMap interface {
 	GetAllTokens() map[string]struct{}
 	GetTokens(address string) map[string]struct{}
 	GetMapCopy() map[string]map[string]struct{}
-	ShallowClone() AddressTokensMap
+	Clone() AddressTokensMap
 	HasAddress(addr string) bool
 	NumAddresses() uint64
 	NumTokens() uint64

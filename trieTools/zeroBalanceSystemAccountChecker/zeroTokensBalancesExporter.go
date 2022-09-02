@@ -68,7 +68,7 @@ func getGlobalExtraTokens(allAddressesTokensMap trieToolsCommon.AddressTokensMap
 }
 
 func getAllTokensWithoutSystemAccount(allAddressesTokensMap trieToolsCommon.AddressTokensMap, systemSCAddress string) map[string]struct{} {
-	mapCopy := allAddressesTokensMap.ShallowClone()
+	mapCopy := allAddressesTokensMap.Clone()
 	mapCopy.Delete(systemSCAddress)
 
 	return mapCopy.GetAllTokens()

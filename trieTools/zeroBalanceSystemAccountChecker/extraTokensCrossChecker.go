@@ -38,14 +38,14 @@ func (etc *extraTokensChecker) crossCheckExtraTokens(tokens map[string]struct{})
 	bulkSize := core.MinInt(multipleSearchBulk, numTokens)
 	tokensThatStillExist := make([]string, 0)
 	requests := make([]string, 0, bulkSize)
-	currTokenIdx := 0
-	ctRequests := 0
+	currentTokenIdx := 0
+	counterRequests := 0
 	for token := range tokens {
-		currTokenIdx++
+		currentTokenIdx++
 		requests = append(requests, createRequest(token))
 
 		notEnoughRequests := len(requests) < bulkSize
-		notLastBulk := currTokenIdx != numTokens
+		notLastBulk := currentTokenIdx != numTokens
 		if notEnoughRequests && notLastBulk {
 			continue
 		}
@@ -64,19 +64,19 @@ func (etc *extraTokensChecker) crossCheckExtraTokens(tokens map[string]struct{})
 			return nil, err
 		}
 
-		go printProgress(numTokens, currTokenIdx)
+		go printProgress(numTokens, currentTokenIdx)
 
-		ctRequests += len(requests)
+		counterRequests += len(requests)
 		requests = make([]string, 0, bulkSize)
 		tokensThatStillExist = append(tokensThatStillExist, tokensThatStillExistFromRequest...)
 	}
 
 	log.Info("finished cross-checking",
 		"total num of tokens", numTokens,
-		"total num of tokens cross-checked", currTokenIdx,
-		"total num of tokens requests in indexer", ctRequests)
+		"total num of tokens cross-checked", currentTokenIdx,
+		"total num of tokens requests in indexer", counterRequests)
 
-	if numTokens != currTokenIdx || numTokens != ctRequests {
+	if numTokens != currentTokenIdx || numTokens != counterRequests {
 		return nil, errors.New("failed to cross check all tokens, check logs")
 	}
 

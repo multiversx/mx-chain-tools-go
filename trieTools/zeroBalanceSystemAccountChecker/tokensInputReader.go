@@ -11,6 +11,11 @@ import (
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 )
 
+const (
+	shardFilePrefix = "shard"
+	shardFileSuffix = ".json"
+)
+
 type addressTokensMapFileReader struct {
 	fileHandler fileHandler
 	marshaller  marshal.Marshalizer
@@ -62,7 +67,7 @@ func (atr *addressTokensMapFileReader) readTokensWithNonce(tokensDir string) (tr
 			return nil, nil, err
 		}
 
-		shardAddressTokensMap[shardID] = addressTokensMapInCurrFile.ShallowClone()
+		shardAddressTokensMap[shardID] = addressTokensMapInCurrFile.Clone()
 		merge(globalAddressTokensMap, addressTokensMapInCurrFile)
 
 		log.Info("read data from",
@@ -77,11 +82,12 @@ func (atr *addressTokensMapFileReader) readTokensWithNonce(tokensDir string) (tr
 }
 
 func getShardID(file string) (uint32, error) {
-	shardIDStr := strings.TrimPrefix(file, "shard")
-	shardIDStr = strings.TrimSuffix(shardIDStr, ".json")
+	shardIDStr := strings.TrimPrefix(file, shardFilePrefix)
+	shardIDStr = strings.TrimSuffix(shardIDStr, shardFileSuffix)
 	shardID, err := strconv.Atoi(shardIDStr)
 	if err != nil {
-		return 0, fmt.Errorf("invalid file input name; expected tokens shard file name to be <shardX.json>, where X = number(e.g. shard0.json)")
+		return 0, fmt.Errorf("invalid file input name: %s; expected tokens shard file name to be <%sX%s>, where X = number(e.g. %s0%s)",
+			file, shardFilePrefix, shardFileSuffix, shardFilePrefix, shardFileSuffix)
 	}
 
 	return uint32(shardID), nil

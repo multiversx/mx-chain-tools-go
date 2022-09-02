@@ -5,6 +5,7 @@ type addressTokensMap struct {
 	internalMap map[string]map[string]struct{}
 }
 
+// NewAddressTokensMap creates a new map<address, tokens> handler
 func NewAddressTokensMap() AddressTokensMap {
 	return &addressTokensMap{
 		internalMap: make(map[string]map[string]struct{}),
@@ -22,8 +23,7 @@ func (atm *addressTokensMap) Add(address string, tokens map[string]struct{}) {
 }
 
 func (atm *addressTokensMap) addTokens(address string, tokens map[string]struct{}) {
-	tokensCopy := copyTokens(tokens)
-	for token := range tokensCopy {
+	for token := range tokens {
 		atm.internalMap[address][token] = struct{}{}
 	}
 }
@@ -94,8 +94,8 @@ func (atm *addressTokensMap) GetAllTokens() map[string]struct{} {
 	return allTokens
 }
 
-// ShallowClone returns a shallow clone of the current object
-func (atm *addressTokensMap) ShallowClone() AddressTokensMap {
+// Clone returns a shallow clone of the current object
+func (atm *addressTokensMap) Clone() AddressTokensMap {
 	mapCopy := atm.GetMapCopy()
 	return &addressTokensMap{
 		internalMap: mapCopy,
