@@ -2,6 +2,11 @@ package trieToolsCommon
 
 import (
 	"fmt"
+	"io/ioutil"
+	"math/big"
+	"os"
+	"path"
+
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common"
@@ -17,10 +22,6 @@ import (
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
-	"io/ioutil"
-	"math/big"
-	"os"
-	"path"
 )
 
 const (
@@ -173,4 +174,16 @@ func NewAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 	})
 
 	return accountsAdapter, err
+}
+
+// GetNumTokens will return the number of tokens in the map
+func GetNumTokens(addressTokensMap map[string]map[string]struct{}) int {
+	numTokensInShard := 0
+	for _, tokens := range addressTokensMap {
+		for range tokens {
+			numTokensInShard++
+		}
+	}
+
+	return numTokensInShard
 }

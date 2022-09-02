@@ -149,7 +149,7 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 	log.Info("parsed main trie",
 		"num accounts", numAccountsOnMainTrie,
 		"num accounts with tokens", len(addressTokensMap),
-		"num tokens in all accounts", getNumTokens(addressTokensMap),
+		"num tokens in all accounts", trieToolsCommon.GetNumTokens(addressTokensMap),
 		"num tokens in system account address", len(addressTokensMap[encodedSysAccAddress]))
 
 	_, found := addressTokensMap[encodedSysAccAddress]
@@ -172,17 +172,6 @@ func getAddress(kv core.KeyValueHolder) ([]byte, bool) {
 	}
 
 	return kv.Key(), true
-}
-
-func getNumTokens(addressTokensMap map[string]map[string]struct{}) uint64 {
-	numTokens := uint64(0)
-	for _, tokens := range addressTokensMap {
-		for range tokens {
-			numTokens++
-		}
-	}
-
-	return numTokens
 }
 
 func saveResult(addressTokensMap map[string]map[string]struct{}, outfile string) error {
