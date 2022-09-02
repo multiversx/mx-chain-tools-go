@@ -23,8 +23,7 @@ func (atm *addressTokensMap) Add(address string, tokens map[string]struct{}) {
 }
 
 func (atm *addressTokensMap) addTokens(address string, tokens map[string]struct{}) {
-	tokensCopy := copyTokens(tokens)
-	for token := range tokensCopy {
+	for token := range tokens {
 		atm.internalMap[address][token] = struct{}{}
 	}
 }
