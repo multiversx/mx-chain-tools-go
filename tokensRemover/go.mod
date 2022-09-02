@@ -1,11 +1,11 @@
-module github.com/ElrondNetwork/elrond-tools-go/miscellaneous
+module github.com/ElrondNetwork/elrond-tools-go/tokensRemover
 
 go 1.17
 
 require (
 	github.com/ElrondNetwork/elrond-go-logger v1.0.7
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5
-	github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220804091347-e9375a5608b4
+	github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220901104921-139fa8753332
 	github.com/pelletier/go-toml v1.9.3
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli v1.22.9
@@ -45,5 +45,3 @@ replace github.com/ElrondNetwork/arwen-wasm-vm/v1_2 v1.2.40 => github.com/Elrond
 replace github.com/ElrondNetwork/arwen-wasm-vm/v1_3 v1.3.40 => github.com/ElrondNetwork/arwen-wasm-vm v1.3.40
 
 replace github.com/ElrondNetwork/arwen-wasm-vm/v1_4 v1.4.54-rc3 => github.com/ElrondNetwork/arwen-wasm-vm v1.4.54-rc3
-
-replace github.com/ElrondNetwork/elrond-tools-go/trieTools => /home/elrond/go/src/github.com/ElrondNetwork/elrond-tools-go/trieTools

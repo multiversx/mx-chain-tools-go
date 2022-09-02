@@ -6,7 +6,7 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
 )
 
-const ESDTDeleteMetadataPrefix = "ESDTDeleteMetadata"
+const esdtDeleteMetadataFunction = "ESDTDeleteMetadata"
 
 func createShardTxsDataMap(shardTokensMap map[uint32]map[string]struct{}, tokensToDeletePerTx uint64) (map[uint32][][]byte, error) {
 	shardTxsDataMap := make(map[uint32][][]byte)
@@ -48,7 +48,7 @@ func createTxsData(bulks [][]*tokenData) ([][]byte, error) {
 }
 
 func tokensBulkAsOnData(bulk []*tokenData) ([]byte, error) {
-	txDataBuilder := builders.NewTxDataBuilder().Function(ESDTDeleteMetadataPrefix)
+	txDataBuilder := builders.NewTxDataBuilder().Function(esdtDeleteMetadataFunction)
 	for _, tkData := range bulk {
 		tokenIDHex := hex.EncodeToString([]byte(tkData.tokenID))
 		txDataBuilder.ArgHexString(tokenIDHex)

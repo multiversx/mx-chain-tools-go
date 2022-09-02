@@ -2,10 +2,12 @@ package mocks
 
 import (
 	"context"
+
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
 )
 
+// ProxyStub -
 type ProxyStub struct {
 	GetNetworkConfigCalled               func(ctx context.Context) (*data.NetworkConfig, error)
 	GetDefaultTransactionArgumentsCalled func(
@@ -15,6 +17,7 @@ type ProxyStub struct {
 	) (data.ArgCreateTransaction, error)
 }
 
+// GetNetworkConfig -
 func (ps *ProxyStub) GetNetworkConfig(ctx context.Context) (*data.NetworkConfig, error) {
 	if ps.GetNetworkConfigCalled != nil {
 		return ps.GetNetworkConfigCalled(ctx)
@@ -23,6 +26,7 @@ func (ps *ProxyStub) GetNetworkConfig(ctx context.Context) (*data.NetworkConfig,
 	return nil, nil
 }
 
+// GetDefaultTransactionArguments -
 func (ps *ProxyStub) GetDefaultTransactionArguments(
 	ctx context.Context,
 	address core.AddressHandler,

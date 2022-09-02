@@ -19,3 +19,7 @@ type proxyProvider interface {
 type transactionInteractor interface {
 	ApplySignatureAndGenerateTx(skBytes []byte, arg data.ArgCreateTransaction) (*data.Transaction, error)
 }
+
+type pemProvider interface {
+	getPrivateKeyAndAddress(pemFile string) (*pkAddress, error)
+}

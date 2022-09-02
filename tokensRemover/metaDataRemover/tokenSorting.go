@@ -12,6 +12,20 @@ type interval struct {
 	end   uint64
 }
 
+func (i *interval) split(index uint64) (*interval, *interval) {
+	first := &interval{
+		start: i.start,
+		end:   i.start + index - 1,
+	}
+
+	second := &interval{
+		start: first.end + 1,
+		end:   i.end,
+	}
+
+	return first, second
+}
+
 type tokenWithInterval struct {
 	tokenID  string
 	interval *interval
@@ -136,7 +150,7 @@ func groupTokenIntervalsInBulks(tokens []*tokenWithInterval, bulkSize uint64) []
 			currBulk[currTokenID] = append(currBulk[currTokenID], currInterval)
 
 		} else {
-			first, second := splitInterval(currInterval, availableSlots)
+			first, second := currInterval.split(availableSlots)
 
 			numNoncesInBulk += availableSlots
 			currBulk[currTokenID] = append(currBulk[currTokenID], first)
@@ -156,20 +170,6 @@ func groupTokenIntervalsInBulks(tokens []*tokenWithInterval, bulkSize uint64) []
 	}
 
 	return bulks
-}
-
-func splitInterval(currInterval *interval, index uint64) (*interval, *interval) {
-	first := &interval{
-		start: currInterval.start,
-		end:   currInterval.start + index - 1,
-	}
-
-	second := &interval{
-		start: first.end + 1,
-		end:   currInterval.end,
-	}
-
-	return first, second
 }
 
 func insert(tokens []*tokenWithInterval, index int, token *tokenWithInterval) []*tokenWithInterval {
