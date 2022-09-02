@@ -71,8 +71,8 @@ github.com/ElrondNetwork/elrond-go-logger v1.0.7/go.mod h1:cBfgx0ST/CJx8jrxJSC5a
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5 h1:MCLJUX4IgS5zocb/AUuP8gccQ9O3cI1QkeU4DDD0Kmg=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5/go.mod h1:WqknC6O3Z94dBte7s7LVYmg30KtuJxhGvm0EQ3RknyE=
 github.com/ElrondNetwork/elrond-tools-go/elasticreindexer v0.0.0-20220822122240-fd32ce986e4c/go.mod h1:tdcxQ73bFf0JQLcpFmZ8E0mONYEErTV1mEG6IFlgtjQ=
-github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220901104921-139fa8753332 h1:MolQwHOiawqdB2MQ+eEIWeay0amGbV/svooEWwXZhaE=
-github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220901104921-139fa8753332/go.mod h1:SCKT+uf3+F8WPkYf4a5xGfg31ay6WpWCihvYYAvP+5o=
+github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220902141155-9219e6c4577f h1:nYZy91R7GKZkxC/HzoRmQb5VthlXQRwmAqalu832Fqs=
+github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220902141155-9219e6c4577f/go.mod h1:SCKT+uf3+F8WPkYf4a5xGfg31ay6WpWCihvYYAvP+5o=
 github.com/ElrondNetwork/elrond-vm-common v1.1.0/go.mod h1:w3i6f8uiuRkE68Ie/gebRcLgTuHqvruJSYrFyZWuLrE=
 github.com/ElrondNetwork/elrond-vm-common v1.2.9/go.mod h1:B/Y8WiqHyDd7xsjNYsaYbVMp1jQgQ+z4jTJkFvj/EWI=
 github.com/ElrondNetwork/elrond-vm-common v1.3.4/go.mod h1:B/Y8WiqHyDd7xsjNYsaYbVMp1jQgQ+z4jTJkFvj/EWI=

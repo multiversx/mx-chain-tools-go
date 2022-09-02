@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/ElrondNetwork/elrond-go-logger v1.0.7
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5
-	github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220901104921-139fa8753332
+	github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220902141155-9219e6c4577f
 	github.com/pelletier/go-toml v1.9.3
 	github.com/stretchr/testify v1.8.0
 	github.com/urfave/cli v1.22.9
