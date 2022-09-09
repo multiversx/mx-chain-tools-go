@@ -68,11 +68,11 @@ func (tbg *tokenBalanceGetter) fetchTokenBalanceWithRetrial(address, tokenID str
 
 func (tbg *tokenBalanceGetter) getBody(response *http.Response) (string, error) {
 	if response == nil {
-		return "", fmt.Errorf("got nil http response")
+		return "", errNilHttpResponse
 	}
 
 	if response.Body == nil {
-		return "", fmt.Errorf("got nil body in http response")
+		return "", errNilHttpResponseBody
 	}
 
 	bodyBytes, err := io.ReadAll(response.Body)

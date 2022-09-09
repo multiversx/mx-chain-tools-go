@@ -20,7 +20,6 @@ func createTokenBalanceBodyResponse(balance, error string) string {
 			}
 		},
 		"error": "%s",
-			"code": "successful"
 	}`, balance, error)
 }
 
