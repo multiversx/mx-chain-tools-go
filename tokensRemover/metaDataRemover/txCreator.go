@@ -21,7 +21,7 @@ import (
 func createShardTxs(
 	outFile string,
 	cfg *config.Config,
-	shardPemsDataMap map[uint32]*pkAddress,
+	shardPemsDataMap map[uint32]*skAddress,
 	shardTxsDataMap map[uint32][][]byte,
 ) error {
 	if len(shardPemsDataMap) != len(shardTxsDataMap) {
@@ -76,7 +76,7 @@ func createShardTxs(
 }
 
 func createTxs(
-	pemData *pkAddress,
+	pemData *skAddress,
 	proxy proxyProvider,
 	txInteractor transactionInteractor,
 	txsData [][]byte,
@@ -90,7 +90,7 @@ func createTxs(
 	txs := make([]*data.Transaction, 0, len(txsData))
 	for _, txData := range txsData {
 		transactionArguments.Data = txData
-		tx, err := txInteractor.ApplySignatureAndGenerateTx(pemData.privateKey, *transactionArguments)
+		tx, err := txInteractor.ApplySignatureAndGenerateTx(pemData.secretKey, *transactionArguments)
 		if err != nil {
 			return nil, err
 		}

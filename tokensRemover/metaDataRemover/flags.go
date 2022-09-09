@@ -19,7 +19,7 @@ var (
 	}
 	pems = cli.StringFlag{
 		Name:  "pem",
-		Usage: "This flag specifies pems file which should be used to sign txs. It expects each pem/shardID to be named shard[ID].pem",
+		Usage: "This flag specifies pems directory, which should contain multiple pems to be used to sign txs. It expects each pem/shardID to be named shard[ID].pem",
 		Value: "pems",
 	}
 )

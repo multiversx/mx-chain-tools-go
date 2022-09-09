@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func readPemsData(pemsFile string, pemDataProvider pemProvider) (map[uint32]*pkAddress, error) {
+func readPemsData(pemsFile string, pemDataProvider pemProvider) (map[uint32]*skAddress, error) {
 	workingDir, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func readPemsData(pemsFile string, pemDataProvider pemProvider) (map[uint32]*pkA
 		return nil, err
 	}
 
-	shardPemDataMap := make(map[uint32]*pkAddress)
+	shardPemDataMap := make(map[uint32]*skAddress)
 	for _, file := range contents {
 		if file.IsDir() {
 			continue

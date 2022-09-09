@@ -45,8 +45,12 @@ func sortTokensIDByNonce(tokens map[string]struct{}) (map[string][]uint64, error
 		}
 
 		tokenID := splits[0] + "-" + splits[1] // ticker-randSequence
+		nonceStr := splits[2]
 		nonceBI := big.NewInt(0)
-		nonceBI.SetString(splits[2], 16)
+		_, ok := nonceBI.SetString(nonceStr, 16)
+		if !ok {
+			return nil, fmt.Errorf("could not convert nonce to big int; token = %s, nonce string = %s", tokenID, nonceStr)
+		}
 
 		ret[tokenID] = append(ret[tokenID], nonceBI.Uint64())
 	}

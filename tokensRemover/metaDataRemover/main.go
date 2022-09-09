@@ -49,8 +49,6 @@ func startProcess(c *cli.Context) error {
 		return errLogger
 	}
 
-	log.Info("sanity checks...")
-
 	err := logger.SetLogLevel(flagsConfig.LogLevel)
 	if err != nil {
 		return err

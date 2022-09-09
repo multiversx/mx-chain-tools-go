@@ -5,15 +5,15 @@ import (
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
 )
 
-type pkAddress struct {
-	privateKey []byte
-	address    core.AddressHandler
+type skAddress struct {
+	secretKey []byte
+	address   core.AddressHandler
 }
 
 type pemDataProvider struct {
 }
 
-func (pdp *pemDataProvider) getPrivateKeyAndAddress(pemFile string) (*pkAddress, error) {
+func (pdp *pemDataProvider) getPrivateKeyAndAddress(pemFile string) (*skAddress, error) {
 	w := interactors.NewWallet()
 	privateKey, err := w.LoadPrivateKeyFromPemFile(pemFile)
 	if err != nil {
@@ -26,8 +26,8 @@ func (pdp *pemDataProvider) getPrivateKeyAndAddress(pemFile string) (*pkAddress,
 
 	}
 
-	return &pkAddress{
-		privateKey: privateKey,
-		address:    address,
+	return &skAddress{
+		secretKey: privateKey,
+		address:   address,
 	}, nil
 }

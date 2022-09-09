@@ -21,5 +21,5 @@ type transactionInteractor interface {
 }
 
 type pemProvider interface {
-	getPrivateKeyAndAddress(pemFile string) (*pkAddress, error)
+	getPrivateKeyAndAddress(pemFile string) (*skAddress, error)
 }
