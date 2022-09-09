@@ -7,10 +7,7 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-const (
-	maxRequestsRetrial = 10
-	multipleSearchBulk = 10000
-)
+const multipleSearchBulk = 10000
 
 type extraTokensChecker struct {
 	nftBalancesGetter tokenBalancesGetter

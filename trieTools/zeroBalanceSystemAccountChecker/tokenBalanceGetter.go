@@ -10,6 +10,8 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+const maxRequestsRetrial = 10
+
 type get func(url string) (resp *http.Response, err error)
 
 type tokenBalanceGetter struct {
