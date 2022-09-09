@@ -50,6 +50,8 @@ func (tbg *tokenBalanceGetter) fetchTokenBalanceWithRetrial(address, tokenID str
 			return gjson.Get(body, "data.tokenData.balance").String(), nil
 		}
 
+		ctRetrials++
+
 		log.Warn("could not get balance; retrying...",
 			"address", address,
 			"tokenID", tokenID,
@@ -57,14 +59,20 @@ func (tbg *tokenBalanceGetter) fetchTokenBalanceWithRetrial(address, tokenID str
 			"error http", errHttp,
 			"error body", errBody,
 			"num retrials", ctRetrials)
-
-		ctRetrials++
 	}
 
-	return "", fmt.Errorf("could not get adress's tokens = %s after num of retrials = %d", address, maxRequestsRetrial)
+	return "", fmt.Errorf("%w; address = %s after num of retrials = %d", errCouldNotGetBalance, address, maxRequestsRetrial)
 }
 
 func (tbg *tokenBalanceGetter) getBody(response *http.Response) (string, error) {
+	if response == nil {
+		return "", fmt.Errorf("got nil http response")
+	}
+
+	if response.Body == nil {
+		return "", fmt.Errorf("got nil body in http response")
+	}
+
 	bodyBytes, err := io.ReadAll(response.Body)
 	if err != nil {
 		return "", fmt.Errorf("could not ready bytes from body; error: %w", err)
