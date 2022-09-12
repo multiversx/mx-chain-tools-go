@@ -1,30 +1,65 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestSortTokensIDByNonce(t *testing.T) {
-	tokens := map[string]struct{}{
-		"token1-rand1-0f": {},
-		"token1-rand1-01": {},
-		"token1-rand1-0a": {},
-		"token1-rand1-0b": {},
+	t.Parallel()
 
-		"token2-rand2-04": {},
+	t.Run("invalid token format, should error", func(t *testing.T) {
+		t.Parallel()
 
-		"token3-rand3-04": {},
-		"token3-rand3-08": {},
-	}
+		tokens := map[string]struct{}{
+			"token1-rand1-0f": {},
+			"token1-rand1":    {},
+		}
 
-	sortedTokens, err := sortTokensIDByNonce(tokens)
-	require.Nil(t, err)
-	require.Equal(t, sortedTokens, map[string][]uint64{
-		"token1-rand1": {1, 10, 11, 15},
-		"token2-rand2": {4},
-		"token3-rand3": {4, 8},
+		sortedTokens, err := sortTokensIDByNonce(tokens)
+		require.Nil(t, sortedTokens)
+		require.ErrorIs(t, err, errInvalidTokenFormat)
+		require.True(t, strings.Contains(err.Error(), "token1-rand1"))
+	})
+
+	t.Run("invalid nonce format, should error", func(t *testing.T) {
+		t.Parallel()
+
+		tokens := map[string]struct{}{
+			"token1-rand1-0f": {},
+			"token1-rand1-zx": {},
+		}
+
+		sortedTokens, err := sortTokensIDByNonce(tokens)
+		require.Nil(t, sortedTokens)
+		require.ErrorIs(t, err, errCouldNotConvertNonceToBigInt)
+		require.True(t, strings.Contains(err.Error(), "zx"))
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		tokens := map[string]struct{}{
+			"token1-rand1-0f": {},
+			"token1-rand1-01": {},
+			"token1-rand1-0a": {},
+			"token1-rand1-0b": {},
+
+			"token2-rand2-04": {},
+
+			"token3-rand3-04": {},
+			"token3-rand3-08": {},
+		}
+
+		sortedTokens, err := sortTokensIDByNonce(tokens)
+		require.Nil(t, err)
+		require.Equal(t, sortedTokens, map[string][]uint64{
+			"token1-rand1": {1, 10, 11, 15},
+			"token2-rand2": {4},
+			"token3-rand3": {4, 8},
+		})
 	})
 }
 

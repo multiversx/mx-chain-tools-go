@@ -49,7 +49,7 @@ func sortTokensIDByNonce(tokens map[string]struct{}) (map[string][]uint64, error
 		nonceBI := big.NewInt(0)
 		_, ok := nonceBI.SetString(nonceStr, 16)
 		if !ok {
-			return nil, fmt.Errorf("could not convert nonce to big int; token = %s, nonce string = %s", tokenID, nonceStr)
+			return nil, fmt.Errorf("%w; token = %s, nonce string = %s", errCouldNotConvertNonceToBigInt, tokenID, nonceStr)
 		}
 
 		ret[tokenID] = append(ret[tokenID], nonceBI.Uint64())

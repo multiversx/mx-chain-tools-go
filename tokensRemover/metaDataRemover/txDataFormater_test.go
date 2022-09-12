@@ -206,6 +206,8 @@ func TestCreateShardTxsDataMap(t *testing.T) {
 	t.Parallel()
 
 	t.Run("invalid token format, should return error", func(t *testing.T) {
+		t.Parallel()
+
 		tokensShard0 := map[string]struct{}{
 			"token1-r-04": {},
 		}
@@ -225,6 +227,8 @@ func TestCreateShardTxsDataMap(t *testing.T) {
 	})
 
 	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
 		tokensShard0 := map[string]struct{}{
 			"token1-r-04": {},
 			"token2-r-01": {},
