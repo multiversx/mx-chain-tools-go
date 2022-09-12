@@ -19,10 +19,10 @@ type extraTokensChecker struct {
 
 func newExtraTokensCrossChecker(client elasticMultiSearchClient, nftBalancesGetter tokenBalancesGetter) (crossTokenChecker, error) {
 	if client == nil {
-		return nil, errors.New("nil elastic client provided")
+		return nil, errNilElasticClient
 	}
 	if nftBalancesGetter == nil {
-		return nil, errors.New("nil nft balances getter provided")
+		return nil, errNilTokenBalancesGetter
 	}
 
 	return &extraTokensChecker{

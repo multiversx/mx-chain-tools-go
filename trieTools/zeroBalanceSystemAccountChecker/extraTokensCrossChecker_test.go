@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -47,7 +48,108 @@ func requireIndexerRequestsAreCorrect(t *testing.T, requests []string, index str
 	requireSameSliceDifferentOrder(t, expectedRequests, requests)
 }
 
+func TestNewExtraTokensCrossChecker(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil elastic indexer, should error", func(t *testing.T) {
+		t.Parallel()
+
+		etc, err := newExtraTokensCrossChecker(nil, &mocks.TokenBalanceGetterStub{})
+		require.Nil(t, etc)
+		require.Equal(t, errNilElasticClient, err)
+	})
+
+	t.Run("nil token balances getter, should error", func(t *testing.T) {
+		t.Parallel()
+
+		etc, err := newExtraTokensCrossChecker(&mocks.ElasticClientStub{}, nil)
+		require.Nil(t, etc)
+		require.Equal(t, errNilTokenBalancesGetter, err)
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		etc, err := newExtraTokensCrossChecker(&mocks.ElasticClientStub{}, &mocks.TokenBalanceGetterStub{})
+		require.NotNil(t, etc)
+		require.Nil(t, err)
+	})
+}
+
+func TestExtraTokensChecker_CrossCheckExtraTokensErrorCases(t *testing.T) {
+	t.Parallel()
+
+	tokens := map[string]struct{}{
+		"token": {},
+	}
+
+	t.Run("error requesting elastic client multiple search", func(t *testing.T) {
+		t.Parallel()
+
+		expectedErr := errors.New("err elastic client")
+		elasticClient := &mocks.ElasticClientStub{
+			GetMultipleCalled: func(index string, requests []string) ([]byte, error) {
+				return nil, expectedErr
+			},
+		}
+
+		getBalanceCalled := false
+		balanceGetter := &mocks.TokenBalanceGetterStub{
+			GetBalanceCalled: func(address, token string) (string, error) {
+				getBalanceCalled = true
+				return "", nil
+			},
+		}
+
+		checker, _ := newExtraTokensCrossChecker(elasticClient, balanceGetter)
+		extraTokens, err := checker.crossCheckExtraTokens(tokens)
+		require.Nil(t, extraTokens)
+		require.Equal(t, expectedErr, err)
+		require.False(t, getBalanceCalled)
+	})
+
+	t.Run("error requesting balance", func(t *testing.T) {
+		t.Parallel()
+
+		getMultipleCalledCt := 0
+		elasticClient := &mocks.ElasticClientStub{
+			GetMultipleCalled: func(index string, requests []string) ([]byte, error) {
+				getMultipleCalledCt++
+				requireIndexerRequestsAreCorrect(t, requests, index, tokens)
+
+				resp := &indexerResponse{
+					Responses: []response{
+						{
+							Hits: hits{
+								Hits: []addressHits{{Source: source{Address: "address"}}},
+							},
+						},
+					},
+				}
+
+				responseBytes, _ := json.Marshal(resp)
+				return responseBytes, nil
+			},
+		}
+
+		expectedErr := errors.New("err get balance")
+		balanceGetter := &mocks.TokenBalanceGetterStub{
+			GetBalanceCalled: func(address, token string) (string, error) {
+				return "", expectedErr
+			},
+		}
+
+		checker, _ := newExtraTokensCrossChecker(elasticClient, balanceGetter)
+		extraTokens, err := checker.crossCheckExtraTokens(tokens)
+		require.Nil(t, extraTokens)
+		require.Equal(t, expectedErr, err)
+		require.Equal(t, 1, getMultipleCalledCt)
+	})
+}
+
 func TestExtraTokensChecker_CrossCheckExtraTokens(t *testing.T) {
+	t.Parallel()
+
 	address1 := "address1"
 	address2 := "address2"
 	address3 := "address3"
