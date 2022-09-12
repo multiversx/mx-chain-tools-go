@@ -41,7 +41,7 @@ func sortTokensIDByNonce(tokens map[string]struct{}) (map[string][]uint64, error
 	for token := range tokens {
 		splits := strings.Split(token, "-")
 		if len(splits) != 3 {
-			return nil, fmt.Errorf("found invalid format in token = %s; expected [ticker-randSequence-nonce]", token)
+			return nil, fmt.Errorf("found %w = %s; expected format = [ticker-randSequence-nonce]", errInvalidTokenFormat, token)
 		}
 
 		tokenID := splits[0] + "-" + splits[1] // ticker-randSequence

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -199,4 +200,57 @@ func TestCreateTxsData(t *testing.T) {
 		require.Equal(t, expectedTxsData, txsData)
 	}
 
+}
+
+func TestCreateShardTxsDataMap(t *testing.T) {
+	t.Parallel()
+
+	t.Run("invalid token format, should return error", func(t *testing.T) {
+		tokensShard0 := map[string]struct{}{
+			"token1-r-04": {},
+		}
+		tokensShard1 := map[string]struct{}{
+			"token3-r": {},
+		}
+
+		shardTokensMap := map[uint32]map[string]struct{}{
+			0: tokensShard0,
+			1: tokensShard1,
+		}
+
+		ret, err := createShardTxsDataMap(shardTokensMap, 2)
+		require.Nil(t, ret)
+		require.ErrorIs(t, err, errInvalidTokenFormat)
+		require.True(t, strings.Contains(err.Error(), "token3-r"))
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		tokensShard0 := map[string]struct{}{
+			"token1-r-04": {},
+			"token2-r-01": {},
+			"token1-r-05": {},
+			"token1-r-01": {},
+		}
+		tokensShard1 := map[string]struct{}{
+			"token3-r-02": {},
+		}
+
+		shardTokensMap := map[uint32]map[string]struct{}{
+			0: tokensShard0,
+			1: tokensShard1,
+		}
+
+		ret, err := createShardTxsDataMap(shardTokensMap, 2)
+		require.Nil(t, err)
+		expectedRet := map[uint32][][]byte{
+			0: {
+				[]byte("ESDTDeleteMetadata@746f6b656e312d72@01@04@05"),
+				[]byte("ESDTDeleteMetadata@746f6b656e312d72@01@01@01@746f6b656e322d72@01@01@01"),
+			},
+			1: {
+				[]byte("ESDTDeleteMetadata@746f6b656e332d72@01@02@02"),
+			},
+		}
+		require.Equal(t, expectedRet, ret)
+	})
 }
