@@ -7,7 +7,10 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-const multipleSearchBulk = 10000
+const (
+	multipleSearchBulk = 10000
+	accountsEsdtIndex  = "accountsesdt"
+)
 
 type extraTokensChecker struct {
 	nftBalancesGetter tokenBalancesGetter
@@ -47,7 +50,7 @@ func (etc *extraTokensChecker) crossCheckExtraTokens(tokens map[string]struct{})
 			continue
 		}
 
-		respBytes, err := etc.elasticClient.GetMultiple("accountsesdt", requests)
+		respBytes, err := etc.elasticClient.GetMultiple(accountsEsdtIndex, requests)
 		if err != nil {
 			log.Error("elasticClient.GetMultiple(accountsesdt, requests)",
 				"error", err,
@@ -109,7 +112,7 @@ func (etc *extraTokensChecker) crossCheckToken(hits []gjson.Result, token string
 	tokenExists := false
 	for _, hit := range hits {
 		address := hit.Get("_source.address").String()
-		balance, err := etc.nftBalancesGetter.getBalance(address, token)
+		balance, err := etc.nftBalancesGetter.GetBalance(address, token)
 		if err != nil {
 			return false, err
 		}

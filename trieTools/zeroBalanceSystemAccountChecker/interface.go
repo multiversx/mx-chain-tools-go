@@ -11,7 +11,7 @@ type crossTokenChecker interface {
 }
 
 type tokenBalancesGetter interface {
-	getBalance(address, token string) (string, error)
+	GetBalance(address, token string) (string, error)
 }
 
 type elasticMultiSearchClient interface {

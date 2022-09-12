@@ -41,7 +41,7 @@ func TestTokenBalanceGetter_GetBalance(t *testing.T) {
 
 		tbg := newTokenBalanceGetter(proxyUrl, getFunc)
 
-		balance, err := tbg.getBalance(address, token)
+		balance, err := tbg.GetBalance(address, token)
 		require.Nil(t, err)
 		require.Equal(t, expectedBalance, balance)
 	})
@@ -73,7 +73,7 @@ func TestTokenBalanceGetter_GetBalance(t *testing.T) {
 
 		tbg := newTokenBalanceGetter(proxyUrl, getFunc)
 
-		balance, err := tbg.getBalance(address, token)
+		balance, err := tbg.GetBalance(address, token)
 		require.Nil(t, err)
 		require.Equal(t, expectedBalance, balance)
 	})
@@ -88,7 +88,7 @@ func TestTokenBalanceGetter_GetBalance(t *testing.T) {
 
 		tbg := newTokenBalanceGetter(proxyUrl, getFunc)
 
-		balance, err := tbg.getBalance(address, token)
+		balance, err := tbg.GetBalance(address, token)
 		require.Empty(t, balance)
 		require.Equal(t, maxRequestsRetrial, errorCt)
 
