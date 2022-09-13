@@ -26,6 +26,7 @@ func newTokenBalanceGetter(proxyURL string, getFunc get) *tokenBalanceGetter {
 	}
 }
 
+// GetBalance will fetch the address's token balance from proxy with retrial
 func (tbg *tokenBalanceGetter) GetBalance(address, token string) (string, error) {
 	tokenID, nonce := getTokenIDAndNonce(token)
 	return tbg.fetchTokenBalanceWithRetrial(address, tokenID, nonce)
