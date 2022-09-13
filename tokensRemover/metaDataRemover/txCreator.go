@@ -50,6 +50,11 @@ func createShardTxs(
 		return err
 	}
 
+	txc, err := newTxCreator(proxy, ti)
+	if err != nil {
+		return err
+	}
+
 	err = createOutputFileIfDoesNotExist(outFile)
 	if err != nil {
 		return err
@@ -62,7 +67,7 @@ func createShardTxs(
 		}
 
 		log.Info("starting to create txs", "shardID", shardID, "num of txs", len(txsData))
-		txsInShard, err := createTxs(pemData, proxy, ti, txsData, cfg.GasLimit)
+		txsInShard, err := txc.createTxs(pemData, txsData, cfg.GasLimit)
 		if err != nil {
 			return err
 		}
@@ -75,14 +80,31 @@ func createShardTxs(
 	return nil
 }
 
-func createTxs(
+type txCreator struct {
+	proxy        proxyProvider
+	txInteractor transactionInteractor
+}
+
+func newTxCreator(proxy proxyProvider, txInteractor transactionInteractor) (*txCreator, error) {
+	if proxy == nil {
+		return nil, errNilProxy
+	}
+	if txInteractor == nil {
+		return nil, errNilTxInteractor
+	}
+
+	return &txCreator{
+		proxy:        proxy,
+		txInteractor: txInteractor,
+	}, nil
+}
+
+func (tc *txCreator) createTxs(
 	pemData *skAddress,
-	proxy proxyProvider,
-	txInteractor transactionInteractor,
 	txsData [][]byte,
 	gasLimit uint64,
 ) ([]*data.Transaction, error) {
-	transactionArguments, err := getDefaultTxsArgs(proxy, pemData.address, gasLimit)
+	transactionArguments, err := tc.getDefaultTxsArgs(pemData.address, gasLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +112,7 @@ func createTxs(
 	txs := make([]*data.Transaction, 0, len(txsData))
 	for _, txData := range txsData {
 		transactionArguments.Data = txData
-		tx, err := txInteractor.ApplySignatureAndGenerateTx(pemData.secretKey, *transactionArguments)
+		tx, err := tc.txInteractor.ApplySignatureAndGenerateTx(pemData.secretKey, *transactionArguments)
 		if err != nil {
 			return nil, err
 		}
@@ -102,14 +124,14 @@ func createTxs(
 	return txs, nil
 }
 
-func getDefaultTxsArgs(proxy proxyProvider, address core.AddressHandler, gasLimit uint64) (*data.ArgCreateTransaction, error) {
-	netConfigs, err := proxy.GetNetworkConfig(context.Background())
+func (tc *txCreator) getDefaultTxsArgs(address core.AddressHandler, gasLimit uint64) (*data.ArgCreateTransaction, error) {
+	netConfigs, err := tc.proxy.GetNetworkConfig(context.Background())
 	if err != nil {
 		return nil, err
 
 	}
 
-	transactionArguments, err := proxy.GetDefaultTransactionArguments(context.Background(), address, netConfigs)
+	transactionArguments, err := tc.proxy.GetDefaultTransactionArguments(context.Background(), address, netConfigs)
 	if err != nil {
 		return nil, err
 	}
