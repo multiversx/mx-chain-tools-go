@@ -9,6 +9,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewPemsDataReader(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil pem data provider, should err", func(t *testing.T) {
+		t.Parallel()
+
+		pdr, err := newPemsDataReader(nil, common.NewOSFileHandler())
+		require.Nil(t, pdr)
+		require.Equal(t, errNilPemProvider, err)
+	})
+
+	t.Run("nil file handler, should err", func(t *testing.T) {
+		t.Parallel()
+
+		pdr, err := newPemsDataReader(&pemDataProvider{}, nil)
+		require.Nil(t, pdr)
+		require.Equal(t, errNilFileHandler, err)
+	})
+
+	t.Run("should work", func(t *testing.T) {
+		t.Parallel()
+
+		pdr, err := newPemsDataReader(&pemDataProvider{}, common.NewOSFileHandler())
+		require.NotNil(t, pdr)
+		require.Nil(t, err)
+	})
+}
+
 func TestReadPemsData_RealData(t *testing.T) {
 	pemsReader, _ := newPemsDataReader(&pemDataProvider{}, common.NewOSFileHandler())
 	pemsData, err := pemsReader.readPemsData("testDataPem")
