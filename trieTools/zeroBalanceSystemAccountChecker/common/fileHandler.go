@@ -1,17 +1,16 @@
-package main
+package common
 
 import (
 	"io"
 	"io/ioutil"
 	"os"
-
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 )
 
 type osFileHandler struct {
 }
 
-func newOSFileHandler() *osFileHandler {
+// NewOSFileHandler creates a new instance of os file handler
+func NewOSFileHandler() *osFileHandler {
 	return &osFileHandler{}
 }
 
@@ -31,13 +30,13 @@ func (fh *osFileHandler) Getwd() (dir string, err error) {
 }
 
 // ReadDir reads the directory and returns no directory entries along with the error.
-func (fh *osFileHandler) ReadDir(dirname string) ([]common.FileInfo, error) {
+func (fh *osFileHandler) ReadDir(dirname string) ([]FileInfo, error) {
 	files, err := ioutil.ReadDir(dirname)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := make([]common.FileInfo, 0, len(files))
+	ret := make([]FileInfo, 0, len(files))
 	for _, f := range files {
 		ret = append(ret, f)
 	}
