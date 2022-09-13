@@ -9,6 +9,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 )
 
 const (
@@ -17,12 +18,12 @@ const (
 )
 
 type addressTokensMapFileReader struct {
-	fileHandler fileHandler
+	fileHandler common.FileHandler
 	marshaller  marshal.Marshalizer
 }
 
 func newAddressTokensMapFileReader(
-	fileHandler fileHandler,
+	fileHandler common.FileHandler,
 	marshaller marshal.Marshalizer,
 ) (*addressTokensMapFileReader, error) {
 	if fileHandler == nil {

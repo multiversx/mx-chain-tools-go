@@ -12,6 +12,7 @@ import (
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/elastic"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 	sysAccConfig "github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/config"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
@@ -61,7 +62,7 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	fh := newOSFileHandler()
+	fh := common.NewOSFileHandler()
 	inputReader, err := newAddressTokensMapFileReader(fh, jsonMarshaller)
 	if err != nil {
 		return err
