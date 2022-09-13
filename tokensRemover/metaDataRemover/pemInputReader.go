@@ -2,21 +2,40 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 )
 
-func readPemsData(pemsFile string, pemDataProvider pemProvider) (map[uint32]*skAddress, error) {
-	workingDir, err := os.Getwd()
+type pemsDataReader struct {
+	pemProvider pemProvider
+	fileHandler common.FileHandler
+}
+
+func newPemsDataReader(pemProvider pemProvider, fileHandler common.FileHandler) (*pemsDataReader, error) {
+	if pemProvider == nil {
+		return nil, errNilPemProvider
+	}
+	if fileHandler == nil {
+		return nil, errNilFileHandler
+	}
+
+	return &pemsDataReader{
+		pemProvider: pemProvider,
+		fileHandler: fileHandler,
+	}, nil
+}
+
+func (pdr *pemsDataReader) readPemsData(pemsFile string) (map[uint32]*skAddress, error) {
+	workingDir, err := pdr.fileHandler.Getwd()
 	if err != nil {
 		return nil, err
 	}
 
 	fullPath := filepath.Join(workingDir, pemsFile)
-	contents, err := ioutil.ReadDir(fullPath)
+	contents, err := pdr.fileHandler.ReadDir(fullPath)
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +51,7 @@ func readPemsData(pemsFile string, pemDataProvider pemProvider) (map[uint32]*skA
 			return nil, err
 		}
 
-		pemData, err := pemDataProvider.getPrivateKeyAndAddress(filepath.Join(fullPath, file.Name()))
+		pemData, err := pdr.pemProvider.getPrivateKeyAndAddress(filepath.Join(fullPath, file.Name()))
 		if err != nil {
 			return nil, err
 		}

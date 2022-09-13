@@ -7,6 +7,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/metaDataRemover/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
@@ -71,12 +72,22 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	shardPemsDataMap, err := readPemsData(flagsConfig.Pems, &pemDataProvider{})
+	shardPemsDataMap, err := getShardPemsDataMap(flagsConfig.Pems)
 	if err != nil {
 		return err
 	}
 
 	return createShardTxs(flagsConfig.Outfile, cfg, shardPemsDataMap, shardTxsDataMap)
+}
+
+func getShardPemsDataMap(pemsFile string) (map[uint32]*skAddress, error) {
+	osFileHandler := common.NewOSFileHandler()
+	pemsReader, err := newPemsDataReader(&pemDataProvider{}, osFileHandler)
+	if err != nil {
+		return nil, err
+	}
+
+	return pemsReader.readPemsData(pemsFile)
 }
 
 func loadConfig() (*config.Config, error) {
