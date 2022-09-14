@@ -1,0 +1,2 @@
+# Proxy url used to fetch network config + send txs; e.g.: https://gateway.elrond.com for mainnet
+ProxyUrl = ""

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"io/ioutil"
 	"os"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/txsSender/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
 
@@ -54,4 +57,19 @@ func startProcess(c *cli.Context) error {
 	log.Info("starting processing", "pid", os.Getpid())
 
 	return nil
+}
+
+func loadConfig() (*config.Config, error) {
+	tomlBytes, err := ioutil.ReadFile(tomlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg config.Config
+	err = toml.Unmarshal(tomlBytes, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }

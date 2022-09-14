@@ -15,6 +15,8 @@ type ProxyStub struct {
 		address core.AddressHandler,
 		networkConfigs *data.NetworkConfig,
 	) (data.ArgCreateTransaction, error)
+	SendTransactionCalled func(ctx context.Context, tx *data.Transaction) (string, error)
+	GetAccountCalled      func(ctx context.Context, address core.AddressHandler) (*data.Account, error)
 }
 
 // GetNetworkConfig -
@@ -37,4 +39,20 @@ func (ps *ProxyStub) GetDefaultTransactionArguments(
 	}
 
 	return data.ArgCreateTransaction{}, nil
+}
+
+func (ps *ProxyStub) SendTransaction(ctx context.Context, tx *data.Transaction) (string, error) {
+	if ps.SendTransactionCalled != nil {
+		return ps.SendTransactionCalled(ctx, tx)
+	}
+
+	return "", nil
+}
+
+func (ps *ProxyStub) GetAccount(ctx context.Context, address core.AddressHandler) (*data.Account, error) {
+	if ps.GetAccountCalled != nil {
+		return ps.GetAccountCalled(ctx, address)
+	}
+
+	return nil, nil
 }
