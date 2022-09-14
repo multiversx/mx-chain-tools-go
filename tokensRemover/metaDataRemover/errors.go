@@ -9,7 +9,3 @@ var errCouldNotConvertNonceToBigInt = errors.New("could not convert nonce to big
 var errNilPemProvider = errors.New("received nil pem provider")
 
 var errNilFileHandler = errors.New("received nil file handler")
-
-var errNilProxy = errors.New("received nil proxy")
-
-var errNilTxInteractor = errors.New("received nil tx interactor")

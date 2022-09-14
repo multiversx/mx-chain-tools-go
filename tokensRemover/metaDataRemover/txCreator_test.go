@@ -11,34 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewTxCreator(t *testing.T) {
-	t.Parallel()
-
-	t.Run("nil proxy, should err", func(t *testing.T) {
-		t.Parallel()
-
-		txc, err := newTxCreator(nil, &mocks.TransactionInteractorStub{})
-		require.Nil(t, txc)
-		require.Equal(t, errNilProxy, err)
-	})
-
-	t.Run("nil tx interactor, should err", func(t *testing.T) {
-		t.Parallel()
-
-		txc, err := newTxCreator(&mocks.ProxyStub{}, nil)
-		require.Nil(t, txc)
-		require.Equal(t, errNilTxInteractor, err)
-	})
-
-	t.Run("should work", func(t *testing.T) {
-		t.Parallel()
-
-		txc, err := newTxCreator(&mocks.ProxyStub{}, &mocks.TransactionInteractorStub{})
-		require.Nil(t, err)
-		require.NotNil(t, txc)
-	})
-}
-
 func TestTxCreator_CreateTxs(t *testing.T) {
 	t.Parallel()
 
@@ -115,7 +87,10 @@ func TestTxCreator_CreateTxs(t *testing.T) {
 		},
 	}
 
-	txc, _ := newTxCreator(proxy, txInteractor)
+	txc := &txCreator{
+		proxy:        proxy,
+		txInteractor: txInteractor,
+	}
 	signedTxs, err := txc.createTxs(pemData, txsData, gasLimit)
 	require.Nil(t, err)
 	require.Equal(t, signedTxs, txs)

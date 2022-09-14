@@ -50,9 +50,9 @@ func createShardTxs(
 		return err
 	}
 
-	txc, err := newTxCreator(proxy, ti)
-	if err != nil {
-		return err
+	txc := &txCreator{
+		proxy:        proxy,
+		txInteractor: ti,
 	}
 
 	err = createOutputFileIfDoesNotExist(outFile)
@@ -83,20 +83,6 @@ func createShardTxs(
 type txCreator struct {
 	proxy        proxyProvider
 	txInteractor transactionInteractor
-}
-
-func newTxCreator(proxy proxyProvider, txInteractor transactionInteractor) (*txCreator, error) {
-	if proxy == nil {
-		return nil, errNilProxy
-	}
-	if txInteractor == nil {
-		return nil, errNilTxInteractor
-	}
-
-	return &txCreator{
-		proxy:        proxy,
-		txInteractor: txInteractor,
-	}, nil
 }
 
 func (tc *txCreator) createTxs(
