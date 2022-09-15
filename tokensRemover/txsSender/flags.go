@@ -1,21 +1,21 @@
 package main
 
 import (
-	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/metaDataRemover/config"
+	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/txsSender/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
 )
 
 var (
-	tokens = cli.StringFlag{
+	input = cli.StringFlag{
 		Name:  "tokens",
-		Usage: "This flag specifies the input file; it expects the input to be a map<shardID, tokens>",
-		Value: "tokens.json",
+		Usage: "This flag specifies the input file; it expects the input to be an array of signed txs",
+		Value: "input.json",
 	}
-	pems = cli.StringFlag{
-		Name:  "pem",
-		Usage: "This flag specifies pems directory, which should contain multiple pems to be used to sign txs. It expects each pem/shardID to be named shard[ID].pem",
-		Value: "pems",
+	startIndex = cli.Uint64Flag{
+		Name:  "start-index",
+		Usage: "This flag specifies the starting index from txs input array. This tool will start to send txs starting from this index",
+		Value: 0,
 	}
 )
 
@@ -26,20 +26,20 @@ func getFlags() []cli.Flag {
 		trieToolsCommon.LogSaveFile,
 		trieToolsCommon.LogWithLoggerName,
 		trieToolsCommon.ProfileMode,
-		tokens,
-		pems,
+		input,
+		startIndex,
 	}
 }
 
-func getFlagsConfig(ctx *cli.Context) config.ContextFlagsMetaDataRemover {
-	flagsConfig := config.ContextFlagsMetaDataRemover{}
+func getFlagsConfig(ctx *cli.Context) config.ContextFlagsTxsSender {
+	flagsConfig := config.ContextFlagsTxsSender{}
 
 	flagsConfig.LogLevel = ctx.GlobalString(trieToolsCommon.LogLevel.Name)
 	flagsConfig.SaveLogFile = ctx.GlobalBool(trieToolsCommon.LogSaveFile.Name)
 	flagsConfig.EnableLogName = ctx.GlobalBool(trieToolsCommon.LogWithLoggerName.Name)
 	flagsConfig.EnablePprof = ctx.GlobalBool(trieToolsCommon.ProfileMode.Name)
-	flagsConfig.Tokens = ctx.GlobalString(tokens.Name)
-	flagsConfig.Pems = ctx.GlobalString(pems.Name)
+	flagsConfig.TxsInput = ctx.GlobalString(input.Name)
+	flagsConfig.StartIndex = ctx.GlobalUint64(startIndex.Name)
 
 	return flagsConfig
 }

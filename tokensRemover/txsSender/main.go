@@ -3,8 +3,11 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"time"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
+	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/txsSender/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/pelletier/go-toml"
@@ -56,7 +59,32 @@ func startProcess(c *cli.Context) error {
 
 	log.Info("starting processing", "pid", os.Getpid())
 
-	return nil
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	args := blockchain.ArgsElrondProxy{
+		ProxyURL:            cfg.ProxyUrl,
+		CacheExpirationTime: time.Minute,
+		EntityType:          core.Proxy,
+	}
+
+	proxy, err := blockchain.NewElrondProxy(args)
+	if err != nil {
+		return err
+	}
+
+	txs, err := readTxsInput(flagsConfig.TxsInput)
+	if err != nil {
+		return err
+	}
+
+	ts := &txsSender{
+		proxy:                    proxy,
+		waitTimeNonceIncremented: cfg.WaitTimeNonceIncremented,
+	}
+
+	return ts.send(txs, flagsConfig.StartIndex)
 }
 
 func loadConfig() (*config.Config, error) {
