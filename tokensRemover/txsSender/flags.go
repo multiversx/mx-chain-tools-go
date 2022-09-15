@@ -8,7 +8,7 @@ import (
 
 var (
 	input = cli.StringFlag{
-		Name:  "tokens",
+		Name:  "input",
 		Usage: "This flag specifies the input file; it expects the input to be an array of signed txs",
 		Value: "input.json",
 	}

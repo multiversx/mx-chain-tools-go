@@ -41,6 +41,7 @@ func (ps *ProxyStub) GetDefaultTransactionArguments(
 	return data.ArgCreateTransaction{}, nil
 }
 
+// SendTransaction -
 func (ps *ProxyStub) SendTransaction(ctx context.Context, tx *data.Transaction) (string, error) {
 	if ps.SendTransactionCalled != nil {
 		return ps.SendTransactionCalled(ctx, tx)
@@ -49,6 +50,7 @@ func (ps *ProxyStub) SendTransaction(ctx context.Context, tx *data.Transaction) 
 	return "", nil
 }
 
+// GetAccount -
 func (ps *ProxyStub) GetAccount(ctx context.Context, address core.AddressHandler) (*data.Account, error) {
 	if ps.GetAccountCalled != nil {
 		return ps.GetAccountCalled(ctx, address)
