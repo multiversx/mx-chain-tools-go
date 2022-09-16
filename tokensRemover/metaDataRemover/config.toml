@@ -4,5 +4,5 @@ ProxyUrl = ""
 # Each generated transaction will delete exactly the same number of token nonces specified by this param
 TokensToDeletePerTransaction = 100
 
-# GasLimit for each tx (should be adjusted based on TokensToDeletePerTransaction)
-GasLimit = 1000000
+# AdditionalGasLimit for each tx (should be adjusted based on TokensToDeletePerTransaction)
+AdditionalGasLimit = 500000
