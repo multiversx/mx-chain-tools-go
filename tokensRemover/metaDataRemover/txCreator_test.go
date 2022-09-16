@@ -28,7 +28,7 @@ func TestTxCreator_CreateTxs(t *testing.T) {
 	txsData := [][]byte{txData1, txData2}
 
 	nonce := uint64(4)
-	gasLimit := uint64(44444)
+	additionalGas := uint64(500)
 
 	txs := []*data.Transaction{
 		{
@@ -42,8 +42,10 @@ func TestTxCreator_CreateTxs(t *testing.T) {
 	}
 
 	networkCfg := &data.NetworkConfig{
-		ChainID:     "1",
-		MinGasPrice: 100,
+		ChainID:        "1",
+		MinGasPrice:    100,
+		MinGasLimit:    500,
+		GasPerDataByte: 15,
 	}
 
 	proxy := &mocks.ProxyStub{
@@ -74,7 +76,7 @@ func TestTxCreator_CreateTxs(t *testing.T) {
 				Data:     txsData[txIdx],
 				ChainID:  networkCfg.ChainID,
 				GasPrice: networkCfg.MinGasPrice,
-				GasLimit: gasLimit,
+				GasLimit: 1105,
 				SndAddr:  addr.AddressAsBech32String(),
 				RcvAddr:  addr.AddressAsBech32String()}, arg)
 
@@ -87,11 +89,9 @@ func TestTxCreator_CreateTxs(t *testing.T) {
 		},
 	}
 
-	txc := &txCreator{
-		proxy:        proxy,
-		txInteractor: txInteractor,
-	}
-	signedTxs, err := txc.createTxs(pemData, txsData, gasLimit)
+	txc, err := newTxCreator(proxy, txInteractor)
+	require.Nil(t, err)
+	signedTxs, err := txc.createTxs(pemData, txsData, additionalGas)
 	require.Nil(t, err)
 	require.Equal(t, signedTxs, txs)
 }

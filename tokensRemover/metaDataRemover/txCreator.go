@@ -50,9 +50,9 @@ func createShardTxs(
 		return err
 	}
 
-	txc := &txCreator{
-		proxy:        proxy,
-		txInteractor: ti,
+	txc, err := newTxCreator(proxy, ti)
+	if err != nil {
+		return err
 	}
 
 	err = createOutputFileIfDoesNotExist(outFile)
@@ -67,7 +67,7 @@ func createShardTxs(
 		}
 
 		log.Info("starting to create txs", "shardID", shardID, "num of txs", len(txsData))
-		txsInShard, err := txc.createTxs(pemData, txsData, cfg.GasLimit)
+		txsInShard, err := txc.createTxs(pemData, txsData, cfg.AdditionalGasLimit)
 		if err != nil {
 			return err
 		}
@@ -81,16 +81,31 @@ func createShardTxs(
 }
 
 type txCreator struct {
-	proxy        proxyProvider
-	txInteractor transactionInteractor
+	proxy         proxyProvider
+	txInteractor  transactionInteractor
+	networkConfig *data.NetworkConfig
+}
+
+// no need to check for nil pointers since this is unexported and only used internally
+func newTxCreator(proxy proxyProvider, txInteractor transactionInteractor) (*txCreator, error) {
+	netConfigs, err := proxy.GetNetworkConfig(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	return &txCreator{
+		proxy:         proxy,
+		txInteractor:  txInteractor,
+		networkConfig: netConfigs,
+	}, nil
 }
 
 func (tc *txCreator) createTxs(
 	pemData *skAddress,
 	txsData [][]byte,
-	gasLimit uint64,
+	additionalGasLimit uint64,
 ) ([]*data.Transaction, error) {
-	transactionArguments, err := tc.getDefaultTxsArgs(pemData.address, gasLimit)
+	transactionArguments, err := tc.getDefaultTxsArgs(pemData.address)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +113,7 @@ func (tc *txCreator) createTxs(
 	txs := make([]*data.Transaction, 0, len(txsData))
 	for _, txData := range txsData {
 		transactionArguments.Data = txData
+		transactionArguments.GasLimit = tc.computeGasLimit(uint64(len(txData))) + additionalGasLimit
 		tx, err := tc.txInteractor.ApplySignatureAndGenerateTx(pemData.secretKey, *transactionArguments)
 		if err != nil {
 			return nil, err
@@ -110,23 +126,20 @@ func (tc *txCreator) createTxs(
 	return txs, nil
 }
 
-func (tc *txCreator) getDefaultTxsArgs(address core.AddressHandler, gasLimit uint64) (*data.ArgCreateTransaction, error) {
-	netConfigs, err := tc.proxy.GetNetworkConfig(context.Background())
-	if err != nil {
-		return nil, err
-
-	}
-
-	transactionArguments, err := tc.proxy.GetDefaultTransactionArguments(context.Background(), address, netConfigs)
+func (tc *txCreator) getDefaultTxsArgs(address core.AddressHandler) (*data.ArgCreateTransaction, error) {
+	transactionArguments, err := tc.proxy.GetDefaultTransactionArguments(context.Background(), address, tc.networkConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	transactionArguments.RcvAddr = address.AddressAsBech32String() // send to self
 	transactionArguments.Value = "0"
-	transactionArguments.GasLimit = gasLimit
 
 	return &transactionArguments, nil
+}
+
+func (tc *txCreator) computeGasLimit(dataLen uint64) uint64 {
+	return tc.networkConfig.MinGasLimit + tc.networkConfig.GasPerDataByte*dataLen
 }
 
 func createOutputFileIfDoesNotExist(outFile string) error {

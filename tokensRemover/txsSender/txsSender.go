@@ -24,8 +24,13 @@ func (ts *txsSender) send(txs []*data.Transaction, startIdx uint64) error {
 		return err
 	}
 
+	numTxsSent := 0
 	roundDuration := cfg.RoundDuration
-	log.Info("found", "round duration(ms)", roundDuration, "num of txs to send", numTxs, "starting index", startIdx)
+	log.Info("found",
+		"round duration(ms)", roundDuration,
+		"total num of txs in file", numTxs,
+		"starting index", startIdx,
+		"total num of txs to send", numTxs-startIdx)
 	for idx := startIdx; idx < numTxs; idx++ {
 		tx := txs[idx]
 		err = ts.waitForNonceIncremental(tx.SndAddr, tx.Nonce, ts.waitTimeNonceIncremented)
@@ -40,14 +45,17 @@ func (ts *txsSender) send(txs []*data.Transaction, startIdx uint64) error {
 			return err
 		}
 
+		numTxsSent++
 		log.Info("sent transaction",
 			"tx hash", hash,
 			"current tx index:", idx,
-			"remaining num of txs", numTxs-idx-1,
-			"sender nonce", tx.Nonce)
+			"sender nonce", tx.Nonce,
+			"num txs sent", numTxsSent,
+			"remaining num of txs", numTxs-idx-1)
 		time.Sleep(time.Millisecond * time.Duration(roundDuration))
 	}
 
+	log.Info("finished sending txs", "num sent txs", numTxsSent)
 	return nil
 }
 

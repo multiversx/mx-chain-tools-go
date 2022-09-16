@@ -14,5 +14,5 @@ type ContextFlagsMetaDataRemover struct {
 type Config struct {
 	ProxyUrl                     string `toml:"ProxyUrl"`
 	TokensToDeletePerTransaction uint64 `toml:"TokensToDeletePerTransaction"`
-	GasLimit                     uint64 `toml:"GasLimit"`
+	AdditionalGasLimit           uint64 `toml:"AdditionalGasLimit"`
 }
