@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common"
@@ -16,9 +17,11 @@ import (
 	"github.com/ElrondNetwork/elrond-go/state"
 	stateFactory "github.com/ElrondNetwork/elrond-go/state/factory"
 	disabled2 "github.com/ElrondNetwork/elrond-go/state/storagePruningManager/disabled"
+	"github.com/ElrondNetwork/elrond-go/storage"
 	"github.com/ElrondNetwork/elrond-go/storage/databaseremover/disabled"
 	"github.com/ElrondNetwork/elrond-go/storage/factory"
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
+	"github.com/ElrondNetwork/elrond-go/storage/storageUnit"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
@@ -122,8 +125,8 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-// GetTrie will create and return a trie using the provided flags
-func GetTrie(flags ContextFlagsConfig, maxDBValue int) (common.Trie, error) {
+// GetPruningStorer will create and return a pruning storer using the provided flags
+func GetPruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Storer, error) {
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
@@ -146,12 +149,33 @@ func GetTrie(flags ContextFlagsConfig, maxDBValue int) (common.Trie, error) {
 		EnabledDbLookupExtensions: false,
 	}
 
-	db, err := pruning.NewTriePruningStorer(args)
-	if err != nil {
-		return nil, err
+	return pruning.NewTriePruningStorer(args)
+}
+
+// GetStorer will create and return a storer using the provided flags
+func GetStorer(flags ContextFlagsConfig) (storage.Storer, error) {
+	localDbConfig := dbConfig // copy
+	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
+	dbPath := path.Join(flags.WorkingDir, flags.DbDir)
+
+	dbConf := storageUnit.DBConfig{
+		FilePath:          dbPath,
+		Type:              storageUnit.DBType(dbConfig.Type),
+		BatchDelaySeconds: dbConfig.BatchDelaySeconds,
+		MaxBatchSize:      dbConfig.MaxBatchSize,
+		MaxOpenFiles:      dbConfig.MaxOpenFiles,
 	}
 
-	tsm, err := trie.NewTrieStorageManagerWithoutPruning(db)
+	return storageUnit.NewStorageUnitFromConf(cacheConfig, dbConf)
+}
+
+// GetTrie will create and return a trie using the provided flags
+func GetTrie(storer storage.Storer) (common.Trie, error) {
+	if check.IfNil(storer) {
+		return nil, fmt.Errorf("nil storer provided")
+	}
+
+	tsm, err := trie.NewTrieStorageManagerWithoutPruning(storer)
 	if err != nil {
 		return nil, err
 	}
