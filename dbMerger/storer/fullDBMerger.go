@@ -11,15 +11,15 @@ const minNumOfPersisters = 2
 
 // ArgsFullDBMerger is the DTO used in the NewFullDBMerger constructor function
 type ArgsFullDBMerger struct {
-	DataMergerInstance DataMerger
-	PersisterCreator   PersisterCreator
-	CopyHandler        CopyHandler
+	DataMergerInstance  DataMerger
+	PersisterCreator    PersisterCreator
+	OsOperationsHandler OsOperationsHandler
 }
 
 type fullDBMerger struct {
-	dataMergerInstance DataMerger
-	persisterCreator   PersisterCreator
-	copyHandler        CopyHandler
+	dataMergerInstance  DataMerger
+	persisterCreator    PersisterCreator
+	osOperationsHandler OsOperationsHandler
 }
 
 // NewFullDBMerger creates a new instance of type fullDBMerger
@@ -30,14 +30,14 @@ func NewFullDBMerger(args ArgsFullDBMerger) (*fullDBMerger, error) {
 	if check.IfNil(args.PersisterCreator) {
 		return nil, fmt.Errorf("%w, PersisterCreator", errNilComponent)
 	}
-	if check.IfNil(args.CopyHandler) {
-		return nil, fmt.Errorf("%w, CopyHandler", errNilComponent)
+	if check.IfNil(args.OsOperationsHandler) {
+		return nil, fmt.Errorf("%w, OsOperationsHandler", errNilComponent)
 	}
 
 	return &fullDBMerger{
-		dataMergerInstance: args.DataMergerInstance,
-		persisterCreator:   args.PersisterCreator,
-		copyHandler:        args.CopyHandler,
+		dataMergerInstance:  args.DataMergerInstance,
+		persisterCreator:    args.PersisterCreator,
+		osOperationsHandler: args.OsOperationsHandler,
 	}, nil
 }
 
@@ -47,7 +47,12 @@ func (fdm *fullDBMerger) MergeDBs(destinationPath string, sourcePaths ...string)
 		return nil, fmt.Errorf("%w, provided %d, minimum %d", errInvalidNumberOfPersisters, len(sourcePaths), minNumOfPersisters)
 	}
 
-	err := fdm.copyHandler.CopyDirectory(destinationPath, sourcePaths[0])
+	err := fdm.osOperationsHandler.CheckIfDirectoryIsEmpty(destinationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	err = fdm.osOperationsHandler.CopyDirectory(destinationPath, sourcePaths[0])
 	if err != nil {
 		return nil, err
 	}

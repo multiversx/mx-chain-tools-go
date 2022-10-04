@@ -14,8 +14,9 @@ type PersisterCreator interface {
 	IsInterfaceNil() bool
 }
 
-// CopyHandler is able to handle the os-level copy functions
-type CopyHandler interface {
+// OsOperationsHandler is able to handle the os-level functions
+type OsOperationsHandler interface {
+	CheckIfDirectoryIsEmpty(directory string) error
 	CopyDirectory(destination string, source string) error
 	IsInterfaceNil() bool
 }

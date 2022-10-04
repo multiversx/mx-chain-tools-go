@@ -14,16 +14,16 @@ var log = logger.GetOrCreate("path")
 
 const dirPermMode = os.FileMode(0755)
 
-type copyHandler struct {
+type osOperationsHandler struct {
 }
 
-// NewCopyHandler returns a new instance of a copy handler
-func NewCopyHandler() *copyHandler {
-	return &copyHandler{}
+// NewOsOperationsHandler returns a new instance of a handler that deals with the OS-level functions
+func NewOsOperationsHandler() *osOperationsHandler {
+	return &osOperationsHandler{}
 }
 
 // CopyDirectory is able to recursively copy the contents of one directory to another
-func (handler *copyHandler) CopyDirectory(destination string, source string) error {
+func (handler *osOperationsHandler) CopyDirectory(destination string, source string) error {
 	log.Debug("copying raw data", "source", source, "destination", destination)
 	entries, errReadDir := os.ReadDir(source)
 	if errReadDir != nil {
@@ -148,7 +148,21 @@ func copySymLink(dest string, source string) error {
 	return os.Symlink(link, dest)
 }
 
+// CheckIfDirectoryIsEmpty returns true if the directory exists and is empty
+func (handler *osOperationsHandler) CheckIfDirectoryIsEmpty(directory string) error {
+	entries, errReadDir := os.ReadDir(directory)
+	if errReadDir != nil {
+		return fmt.Errorf("%w while reading the directory %s", errReadDir, directory)
+	}
+
+	if len(entries) > 0 {
+		return fmt.Errorf("%w %s", errDirectoryIsNotEmpty, directory)
+	}
+
+	return nil
+}
+
 // IsInterfaceNil returns true if there is no value under the interface
-func (handler *copyHandler) IsInterfaceNil() bool {
+func (handler *osOperationsHandler) IsInterfaceNil() bool {
 	return handler == nil
 }
