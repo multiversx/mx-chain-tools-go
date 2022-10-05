@@ -3,7 +3,7 @@ module github.com/ElrondNetwork/elrond-tools-go/tokensRemover
 go 1.17
 
 require (
-	github.com/ElrondNetwork/elrond-go-logger v1.0.7
+	github.com/ElrondNetwork/elrond-go-logger v1.0.9
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5
 	github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220913084212-c356e1f153f8
 	github.com/pelletier/go-toml v1.9.3

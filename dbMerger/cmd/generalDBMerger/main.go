@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/common/logging"
+	"github.com/ElrondNetwork/elrond-go-logger/file"
 	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/path"
 	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/storer"
 	"github.com/urfave/cli"
@@ -164,7 +164,7 @@ func doAction(flags parsedFlags) error {
 func processFileLogger(log logger.Logger, flags parsedFlags) error {
 	var err error
 	if flags.logSave {
-		_, err = logging.NewFileLogging(logging.ArgsFileLogging{
+		_, err = file.NewFileLogging(file.ArgsFileLogging{
 			WorkingDir:      "",
 			DefaultLogsPath: defaultLogsPath,
 			LogFilePrefix:   logFilePrefix,

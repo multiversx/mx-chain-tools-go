@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/ElrondNetwork/elrond-go v1.3.36
 	github.com/ElrondNetwork/elrond-go-core v1.1.15
-	github.com/ElrondNetwork/elrond-go-logger v1.0.7
+	github.com/ElrondNetwork/elrond-go-logger v1.0.9
 	github.com/stretchr/testify v1.7.1
 	github.com/urfave/cli v1.22.9
 )
