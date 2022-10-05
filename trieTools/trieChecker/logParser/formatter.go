@@ -7,6 +7,8 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 )
 
+// TODO remove this package
+
 type loggerFormatter struct {
 	mutErrors    sync.RWMutex
 	errorStrings []string
