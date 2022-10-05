@@ -93,12 +93,12 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 		return err
 	}
 
-	db, err := trieToolsCommon.GetPruningStorer(flags.ContextFlagsConfig, maxDBValue)
+	db, err := trieToolsCommon.CreatePruningStorer(flags.ContextFlagsConfig, maxDBValue)
 	if err != nil {
 		return err
 	}
 
-	tr, err := trieToolsCommon.GetTrie(db)
+	tr, err := trieToolsCommon.CreateTrie(db)
 	if err != nil {
 		return err
 	}

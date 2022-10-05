@@ -125,8 +125,8 @@ func contains(haystack []string, needle string) bool {
 	return false
 }
 
-// GetPruningStorer will create and return a pruning storer using the provided flags
-func GetPruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Storer, error) {
+// CreatePruningStorer will create and return a pruning storer using the provided flags
+func CreatePruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Storer, error) {
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
@@ -152,8 +152,8 @@ func GetPruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Storer,
 	return pruning.NewTriePruningStorer(args)
 }
 
-// GetStorer will create and return a storer using the provided flags
-func GetStorer(flags ContextFlagsConfig) (storage.Storer, error) {
+// CreateStorer will create and return a storer using the provided flags
+func CreateStorer(flags ContextFlagsConfig) (storage.Storer, error) {
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 	dbPath := path.Join(flags.WorkingDir, flags.DbDir)
@@ -169,8 +169,8 @@ func GetStorer(flags ContextFlagsConfig) (storage.Storer, error) {
 	return storageUnit.NewStorageUnitFromConf(cacheConfig, dbConf)
 }
 
-// GetTrie will create and return a trie using the provided flags
-func GetTrie(storer storage.Storer) (common.Trie, error) {
+// CreateTrie will create and return a trie using the provided flags
+func CreateTrie(storer storage.Storer) (common.Trie, error) {
 	if check.IfNil(storer) {
 		return nil, fmt.Errorf("nil storer provided")
 	}

@@ -2,6 +2,7 @@ package path
 
 import (
 	"errors"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -100,11 +101,10 @@ func readFileContent(tb testing.TB, path string) string {
 		require.Nil(tb, errClose)
 	}()
 
-	buff := make([]byte, 10000)
-	n, err := in.Read(buff)
+	buff, err := io.ReadAll(in)
 	require.Nil(tb, err)
+	contents := string(buff)
 
-	contents := string(buff[:n])
 	log.Info("read file", "path", path, "contents", contents)
 
 	return contents

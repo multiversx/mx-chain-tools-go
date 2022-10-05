@@ -83,12 +83,12 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		return err
 	}
 
-	db, err := getDB(flags, log)
+	db, err := createDB(flags, log)
 	if err != nil {
 		return err
 	}
 
-	tr, err := trieToolsCommon.GetTrie(db)
+	tr, err := trieToolsCommon.CreateTrie(db)
 	if err != nil {
 		return err
 	}
@@ -160,13 +160,13 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 	return nil
 }
 
-func getDB(flags trieToolsCommon.ContextFlagsConfig, log logger.Logger) (storage.Storer, error) {
+func createDB(flags trieToolsCommon.ContextFlagsConfig, log logger.Logger) (storage.Storer, error) {
 	maxDBValue, err := trieToolsCommon.GetMaxDBValue(filepath.Join(flags.WorkingDir, flags.DbDir), log)
 	if err == nil {
-		return trieToolsCommon.GetPruningStorer(flags, maxDBValue)
+		return trieToolsCommon.CreatePruningStorer(flags, maxDBValue)
 	}
 
 	log.Info("no ordered DBs for a pruning storer operation, will switch to single directory operation...")
 
-	return trieToolsCommon.GetStorer(flags)
+	return trieToolsCommon.CreateStorer(flags)
 }
