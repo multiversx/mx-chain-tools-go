@@ -83,12 +83,12 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		return err
 	}
 
-	db, err := createDB(flags, log)
+	storer, err := createStorer(flags, log)
 	if err != nil {
 		return err
 	}
 
-	tr, err := trieToolsCommon.CreateTrie(db)
+	tr, err := trieToolsCommon.CreateTrie(storer)
 	if err != nil {
 		return err
 	}
@@ -160,7 +160,7 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 	return nil
 }
 
-func createDB(flags trieToolsCommon.ContextFlagsConfig, log logger.Logger) (storage.Storer, error) {
+func createStorer(flags trieToolsCommon.ContextFlagsConfig, log logger.Logger) (storage.Storer, error) {
 	maxDBValue, err := trieToolsCommon.GetMaxDBValue(filepath.Join(flags.WorkingDir, flags.DbDir), log)
 	if err == nil {
 		return trieToolsCommon.CreatePruningStorer(flags, maxDBValue)
