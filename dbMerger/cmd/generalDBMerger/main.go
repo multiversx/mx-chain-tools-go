@@ -144,9 +144,9 @@ func doAction(flags parsedFlags) error {
 
 	persisterCreator := storer.NewPersisterCreator()
 	args := storer.ArgsFullDBMerger{
-		DataMergerInstance: storer.NewDataMerger(),
-		PersisterCreator:   persisterCreator,
-		CopyHandler:        path.NewCopyHandler(),
+		DataMergerInstance:  storer.NewDataMerger(),
+		PersisterCreator:    persisterCreator,
+		OsOperationsHandler: path.NewOsOperationsHandler(),
 	}
 	fullDataMerger, err := storer.NewFullDBMerger(args)
 	if err != nil {

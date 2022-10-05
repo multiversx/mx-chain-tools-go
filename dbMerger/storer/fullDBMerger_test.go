@@ -13,9 +13,9 @@ import (
 
 func createMockArgsFullDBMerger() ArgsFullDBMerger {
 	return ArgsFullDBMerger{
-		DataMergerInstance: &mock.DataMergerStub{},
-		PersisterCreator:   &mock.PersisterCreatorStub{},
-		CopyHandler:        &mock.CopyHandlerStub{},
+		DataMergerInstance:  &mock.DataMergerStub{},
+		PersisterCreator:    &mock.PersisterCreatorStub{},
+		OsOperationsHandler: &mock.OsOperationsHandlerStub{},
 	}
 }
 
@@ -44,16 +44,16 @@ func TestNewFullDBMerger(t *testing.T) {
 		assert.True(t, errors.Is(err, errNilComponent))
 		assert.True(t, strings.Contains(err.Error(), "PersisterCreator"))
 	})
-	t.Run("nil CopyHandler", func(t *testing.T) {
+	t.Run("nil OsOperationsHandler", func(t *testing.T) {
 		t.Parallel()
 
 		args := createMockArgsFullDBMerger()
-		args.CopyHandler = nil
+		args.OsOperationsHandler = nil
 		merger, err := NewFullDBMerger(args)
 
 		assert.True(t, check.IfNil(merger))
 		assert.True(t, errors.Is(err, errNilComponent))
-		assert.True(t, strings.Contains(err.Error(), "CopyHandler"))
+		assert.True(t, strings.Contains(err.Error(), "OsOperationsHandler"))
 	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
@@ -85,12 +85,28 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 		assert.True(t, errors.Is(err, errInvalidNumberOfPersisters))
 		assert.True(t, strings.Contains(err.Error(), "provided 1, minimum 2"))
 	})
+	t.Run("directory not empty", func(t *testing.T) {
+		t.Parallel()
+
+		args := createMockArgsFullDBMerger()
+		expectedErr := errors.New("expected error")
+		args.OsOperationsHandler = &mock.OsOperationsHandlerStub{
+			CheckIfDirectoryIsEmptyCalled: func(directory string) error {
+				return expectedErr
+			},
+		}
+		merger, _ := NewFullDBMerger(args)
+
+		destPersister, err := merger.MergeDBs("dest", "src1", "src2")
+		assert.True(t, check.IfNil(destPersister))
+		assert.Equal(t, expectedErr, err)
+	})
 	t.Run("directory copy errors", func(t *testing.T) {
 		t.Parallel()
 
 		expectedErr := errors.New("expected error")
 		args := createMockArgsFullDBMerger()
-		args.CopyHandler = &mock.CopyHandlerStub{
+		args.OsOperationsHandler = &mock.OsOperationsHandlerStub{
 			CopyDirectoryCalled: func(destination string, source string) error {
 				return expectedErr
 			},
@@ -172,7 +188,7 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 		numPersistersCreated := 0
 		mergeDBCalled := false
 		args := createMockArgsFullDBMerger()
-		args.CopyHandler = &mock.CopyHandlerStub{
+		args.OsOperationsHandler = &mock.OsOperationsHandlerStub{
 			CopyDirectoryCalled: func(destination string, source string) error {
 				copyCalled = true
 

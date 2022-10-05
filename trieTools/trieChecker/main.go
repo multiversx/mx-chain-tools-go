@@ -12,6 +12,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/state"
+	"github.com/ElrondNetwork/elrond-go/storage"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
 )
@@ -71,23 +72,23 @@ func startProcess(c *cli.Context) error {
 		return fmt.Errorf("wrong root hash length: expected %d, got %d", rootHashLength, len(rootHash))
 	}
 
-	maxDBValue, err := trieToolsCommon.GetMaxDBValue(filepath.Join(flagsConfig.WorkingDir, flagsConfig.DbDir), log)
-	if err != nil {
-		return err
-	}
-
 	log.Info("starting processing trie", "pid", os.Getpid())
 
-	return checkTrie(flagsConfig, rootHash, maxDBValue)
+	return checkTrie(flagsConfig, rootHash)
 }
 
-func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte, maxDBValue int) error {
+func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) error {
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
 	if err != nil {
 		return err
 	}
 
-	tr, err := trieToolsCommon.GetTrie(flags, maxDBValue)
+	storer, err := createStorer(flags, log)
+	if err != nil {
+		return err
+	}
+
+	tr, err := trieToolsCommon.CreateTrie(storer)
 	if err != nil {
 		return err
 	}
@@ -157,4 +158,15 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte, ma
 		"num data tries leaves", numDataTriesLeaves)
 
 	return nil
+}
+
+func createStorer(flags trieToolsCommon.ContextFlagsConfig, log logger.Logger) (storage.Storer, error) {
+	maxDBValue, err := trieToolsCommon.GetMaxDBValue(filepath.Join(flags.WorkingDir, flags.DbDir), log)
+	if err == nil {
+		return trieToolsCommon.CreatePruningStorer(flags, maxDBValue)
+	}
+
+	log.Info("no ordered DBs for a pruning storer operation, will switch to single directory operation...")
+
+	return trieToolsCommon.CreateStorer(flags)
 }
