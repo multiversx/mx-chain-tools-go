@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -103,7 +103,7 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 
 	// TODO remove this workaround when the GetAllLeavesOnChannel gets refactored
 	formatter := logParser.NewLoggerFormatter()
-	err = logger.AddLogObserver(ioutil.Discard, formatter)
+	err = logger.AddLogObserver(io.Discard, formatter)
 	if err != nil {
 		return err
 	}
