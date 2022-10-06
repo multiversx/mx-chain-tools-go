@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
@@ -13,6 +15,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/state"
 	"github.com/ElrondNetwork/elrond-go/storage"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieChecker/logParser"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
 )
@@ -98,6 +101,13 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		log.LogIfError(errNotCritical)
 	}()
 
+	// TODO remove this workaround when the GetAllLeavesOnChannel gets refactored
+	formatter := logParser.NewLoggerFormatter()
+	err = logger.AddLogObserver(io.Discard, formatter)
+	if err != nil {
+		return err
+	}
+
 	ch := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
 	err = tr.GetAllLeavesOnChannel(ch, context.Background(), mainRootHash)
 	if err != nil {
@@ -131,8 +141,6 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		"num code nodes", numCodeNodes,
 		"num data tries", len(dataTriesRootHashes))
 
-	// TODO add error signaling in the trie implementation
-
 	if len(dataTriesRootHashes) == 0 {
 		return nil
 	}
@@ -151,13 +159,36 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		}
 	}
 
-	log.Info("parsed all tries",
-		"num accounts", numAccountsOnMainTrie,
-		"num code nodes", numCodeNodes,
-		"num data tries", len(dataTriesRootHashes),
-		"num data tries leaves", numDataTriesLeaves)
+	displayMessage(
+		formatter.GetAllErrorStrings(),
+		numAccountsOnMainTrie,
+		numCodeNodes,
+		len(dataTriesRootHashes),
+		numDataTriesLeaves,
+	)
 
 	return nil
+}
+
+func displayMessage(errorStrings []string, numAccountsOnMainTrie int, numCodeNodes int, numDataTriesRootHashes int, numDataTriesLeaves int) {
+	if len(errorStrings) == 0 {
+		log.Info("parsed all tries",
+			"num accounts", numAccountsOnMainTrie,
+			"num code nodes", numCodeNodes,
+			"num data tries", numDataTriesRootHashes,
+			"num data tries leaves", numDataTriesLeaves)
+
+		return
+	}
+
+	log.Error("parsed all tries and encountered problems",
+		"num accounts", numAccountsOnMainTrie,
+		"num code nodes", numCodeNodes,
+		"num data tries", numDataTriesRootHashes,
+		"num data tries leaves", numDataTriesLeaves,
+		"num problems", len(errorStrings),
+		"problems:", "\n\t"+strings.Join(errorStrings, "\n\t"),
+	)
 }
 
 func createStorer(flags trieToolsCommon.ContextFlagsConfig, log logger.Logger) (storage.Storer, error) {

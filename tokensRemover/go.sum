@@ -66,8 +66,9 @@ github.com/ElrondNetwork/elrond-go-crypto v1.0.1 h1:xJUUshIZQ7h+rG7Art/9QHVyaPRV
 github.com/ElrondNetwork/elrond-go-crypto v1.0.1/go.mod h1:uunsvweBrrhVojL8uiQSaTPsl3YIQ9iBqtYGM6xs4s0=
 github.com/ElrondNetwork/elrond-go-logger v1.0.4/go.mod h1:e5D+c97lKUfFdAzFX7rrI2Igl/z4Y0RkKYKWyzprTGk=
 github.com/ElrondNetwork/elrond-go-logger v1.0.5/go.mod h1:cBfgx0ST/CJx8jrxJSC5aiSrvkGzcnF7sK06RD8mFxQ=
-github.com/ElrondNetwork/elrond-go-logger v1.0.7 h1:Ldl1rVS0RGKc1IsW8jIaGCb6Zwei04gsMvyjL05X6mE=
 github.com/ElrondNetwork/elrond-go-logger v1.0.7/go.mod h1:cBfgx0ST/CJx8jrxJSC5aiSrvkGzcnF7sK06RD8mFxQ=
+github.com/ElrondNetwork/elrond-go-logger v1.0.9 h1:RByDnVHgSN4zy3bwmvQarsnCd/gDmZ+zwVI+b6i4Plc=
+github.com/ElrondNetwork/elrond-go-logger v1.0.9/go.mod h1:86lz/Y9D1sMAZiukCYxCsETLl1zuI23qj37ct3KUT6A=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5 h1:MCLJUX4IgS5zocb/AUuP8gccQ9O3cI1QkeU4DDD0Kmg=
 github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5/go.mod h1:WqknC6O3Z94dBte7s7LVYmg30KtuJxhGvm0EQ3RknyE=
 github.com/ElrondNetwork/elrond-tools-go/elasticreindexer v0.0.0-20220822122240-fd32ce986e4c/go.mod h1:tdcxQ73bFf0JQLcpFmZ8E0mONYEErTV1mEG6IFlgtjQ=
