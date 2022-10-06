@@ -12,6 +12,11 @@ var (
 		Usage: "This flag specifies where the output will be stored. It consists of a map<address, tokens>",
 		Value: "output.json",
 	}
+	token = cli.StringFlag{
+		Name:  "token",
+		Usage: "Name of the token to get the balance from",
+		Value: "",
+	}
 )
 
 func getFlags() []cli.Flag {
@@ -25,6 +30,7 @@ func getFlags() []cli.Flag {
 		trieToolsCommon.ProfileMode,
 		trieToolsCommon.HexRootHash,
 		outfile,
+		token,
 	}
 }
 
@@ -39,6 +45,7 @@ func getFlagsConfig(ctx *cli.Context) config.ContextFlagsTokensExporter {
 	flagsConfig.EnablePprof = ctx.GlobalBool(trieToolsCommon.ProfileMode.Name)
 	flagsConfig.HexRootHash = ctx.GlobalString(trieToolsCommon.HexRootHash.Name)
 	flagsConfig.Outfile = ctx.GlobalString(outfile.Name)
+	flagsConfig.Token = ctx.GlobalString(token.Name)
 
 	return flagsConfig
 }

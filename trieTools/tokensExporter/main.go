@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"path/filepath"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
+	"github.com/ElrondNetwork/elrond-go-core/data/esdt"
+	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/state"
@@ -120,7 +123,8 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 	}
 
 	numAccountsOnMainTrie := 0
-	addressTokensMap := make(map[string]map[string]struct{})
+	allBalances := big.NewInt(0)
+	numAccountsWithToken := 0
 	for keyValue := range ch {
 		address, found := getAddress(keyValue)
 		if !found {
@@ -134,30 +138,24 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 			return errGetAccount
 		}
 
-		esdtTokens, errGetESDT := getAllESDTTokens(account, addressConverter)
+		if bytes.Compare(account.AddressBytes(), vmcommon.SystemAccountAddress) == 0 {
+			log.Debug("found sys account address in trie, ignoring it...")
+			continue
+		}
+
+		esdtBalance, errGetESDT := getESDTBalance(flags.Token, account, addressConverter)
 		if errGetESDT != nil {
 			return errGetESDT
 		}
 
-		if len(esdtTokens) > 0 {
-			encodedAddress := addressConverter.Encode(address)
-			addressTokensMap[encodedAddress] = esdtTokens
+		if esdtBalance.Cmp(big.NewInt(0)) > 0 {
+			allBalances = big.NewInt(0).Add(allBalances, esdtBalance)
+			numAccountsWithToken++
 		}
 	}
 
-	encodedSysAccAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
-	log.Info("parsed main trie",
-		"num accounts", numAccountsOnMainTrie,
-		"num accounts with tokens", len(addressTokensMap),
-		"num tokens in all accounts", trieToolsCommon.GetNumTokens(addressTokensMap),
-		"num tokens in system account address", len(addressTokensMap[encodedSysAccAddress]))
-
-	_, found := addressTokensMap[encodedSysAccAddress]
-	if !found {
-		log.Warn(fmt.Sprintf("system account address(%s) not found, input dbs might be incomplete/corrupted", encodedSysAccAddress))
-	}
-
-	return saveResult(addressTokensMap, flags.Outfile)
+	log.Info("found ", "global balance", allBalances.String(), "num accounts with token", numAccountsWithToken)
+	return nil
 }
 
 func getAddress(kv core.KeyValueHolder) ([]byte, bool) {
@@ -190,16 +188,16 @@ func saveResult(addressTokensMap map[string]map[string]struct{}, outfile string)
 	return nil
 }
 
-func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.PubkeyConverter) (map[string]struct{}, error) {
+func getESDTBalance(token string, account vmcommon.AccountHandler, pubKeyConverter core.PubkeyConverter) (*big.Int, error) {
 	userAccount, ok := account.(state.UserAccountHandler)
 	if !ok {
 		return nil, fmt.Errorf("could not convert account to user account, address = %s",
 			pubKeyConverter.Encode(account.AddressBytes()))
 	}
 
-	allESDTs := make(map[string]struct{})
+	balance := big.NewInt(0)
 	if check.IfNil(userAccount.DataTrie()) {
-		return allESDTs, nil
+		return balance, nil
 	}
 
 	rootHash, err := userAccount.DataTrie().RootHash()
@@ -213,21 +211,26 @@ func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.Pubk
 		return nil, err
 	}
 
-	esdtPrefix := []byte(core.ElrondProtectedKeyPrefix + core.ESDTKeyIdentifier)
+	marshaller := marshal.GogoProtoMarshalizer{}
+	esdtPrefix := []byte(core.ElrondProtectedKeyPrefix + core.ESDTKeyIdentifier + token)
 	for leaf := range chLeaves {
 		if !bytes.HasPrefix(leaf.Key(), esdtPrefix) {
 			continue
 		}
 
-		// TODO: Try to unmarshal it when the new meta data storage model will be live
-		tokenKey := leaf.Key()
-		lenESDTPrefix := len(esdtPrefix)
-		tokenName := getPrettyTokenName(tokenKey[lenESDTPrefix:])
+		marshalledData, err := userAccount.RetrieveValueFromDataTrieTracker(leaf.Key())
+		esdtData := &esdt.ESDigitalToken{}
+		err = marshaller.Unmarshal(esdtData, marshalledData)
+		if err != nil {
+			return nil, fmt.Errorf("could not unmarshall in ESDigitalToken address:%s, err: %w",
+				pubKeyConverter.Encode(account.AddressBytes()), err,
+			)
+		}
 
-		allESDTs[tokenName] = struct{}{}
+		balance = big.NewInt(0).Add(balance, esdtData.Value)
 	}
 
-	return allESDTs, nil
+	return balance, nil
 }
 
 func getPrettyTokenName(tokenName []byte) string {

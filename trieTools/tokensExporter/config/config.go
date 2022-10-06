@@ -6,4 +6,5 @@ import "github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 type ContextFlagsTokensExporter struct {
 	trieToolsCommon.ContextFlagsConfig
 	Outfile string
+	Token   string
 }
