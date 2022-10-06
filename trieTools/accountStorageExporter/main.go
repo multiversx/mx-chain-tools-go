@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io/fs"
-	"io/ioutil"
+	"math/big"
 	"os"
 	"path/filepath"
 
@@ -142,29 +140,18 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		return err
 	}
 
-	keyValueMap := make(map[string]string)
+	numLeaves := 0
+	sizeInBytes := big.NewInt(0)
+	numBytes := 0
+
 	for leaf := range leavesCh {
-		suffix := append(leaf.Key(), userAccount.AddressBytes()...)
-		value, errVal := leaf.ValueWithoutSuffix(suffix)
-		if errVal != nil {
-			log.Warn("cannot get value without suffix", "error", errVal, "key", leaf.Key())
-			continue
-		}
 
-		keyValueMap[hex.EncodeToString(leaf.Key())] = hex.EncodeToString(value)
+		numBytes += len(leaf.Value())
+		sizeInBytes = big.NewInt(0).Add(sizeInBytes, big.NewInt(int64(len(leaf.Value()))))
+		numLeaves++
 	}
 
-	jsonBytes, err := json.MarshalIndent(keyValueMap, "", " ")
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
-	if err != nil {
-		return err
-	}
-
-	log.Info("key-value map", "value", keyValueMap)
+	log.Info("stats", "num leaves", numLeaves, "sizeInBytes", sizeInBytes.String(), "num bytes", numBytes)
 
 	return nil
 }
