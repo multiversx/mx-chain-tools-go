@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/ElrondNetwork/elrond-go/trie/keyBuilder"
 	"io/fs"
 	"io/ioutil"
 	"os"
@@ -141,14 +142,17 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		return err
 	}
 
-	leavesCh := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
-	err = userAccount.DataTrie().GetAllLeavesOnChannel(leavesCh, context.Background(), rootHash)
+	iteratorChannels := &common.TrieIteratorChannels{
+		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+		ErrChan:    make(chan error, 1),
+	}
+	err = userAccount.DataTrie().GetAllLeavesOnChannel(iteratorChannels, context.Background(), rootHash, keyBuilder.NewKeyBuilder())
 	if err != nil {
 		return err
 	}
 
 	keyValueMap := make(map[string]string)
-	for leaf := range leavesCh {
+	for leaf := range iteratorChannels.LeavesChan {
 		suffix := append(leaf.Key(), userAccount.AddressBytes()...)
 		value, errVal := leaf.ValueWithoutSuffix(suffix)
 		if errVal != nil {
@@ -157,6 +161,11 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		}
 
 		keyValueMap[hex.EncodeToString(leaf.Key())] = hex.EncodeToString(value)
+	}
+
+	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	if err != nil {
+		return err
 	}
 
 	jsonBytes, err := json.MarshalIndent(keyValueMap, "", " ")

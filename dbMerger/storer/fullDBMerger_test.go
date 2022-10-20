@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go/storage"
+	"github.com/ElrondNetwork/elrond-go-storage/types"
 	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -123,7 +123,7 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		args := createMockArgsFullDBMerger()
 		args.PersisterCreator = &mock.PersisterCreatorStub{
-			CreatePersisterCalled: func(path string) (storage.Persister, error) {
+			CreatePersisterCalled: func(path string) (types.Persister, error) {
 				if path == "dest" {
 					return nil, expectedErr
 				}
@@ -144,7 +144,7 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		args := createMockArgsFullDBMerger()
 		args.PersisterCreator = &mock.PersisterCreatorStub{
-			CreatePersisterCalled: func(path string) (storage.Persister, error) {
+			CreatePersisterCalled: func(path string) (types.Persister, error) {
 				if strings.Contains(path, "src") {
 					return nil, expectedErr
 				}
@@ -165,12 +165,12 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 		expectedErr := errors.New("expected error")
 		args := createMockArgsFullDBMerger()
 		args.PersisterCreator = &mock.PersisterCreatorStub{
-			CreatePersisterCalled: func(path string) (storage.Persister, error) {
+			CreatePersisterCalled: func(path string) (types.Persister, error) {
 				return mock.NewPersisterMock(), nil
 			},
 		}
 		args.DataMergerInstance = &mock.DataMergerStub{
-			MergeDBsCalled: func(dest storage.Persister, sources ...storage.Persister) error {
+			MergeDBsCalled: func(dest types.Persister, sources ...types.Persister) error {
 				return expectedErr
 			},
 		}
@@ -196,7 +196,7 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 			},
 		}
 		args.PersisterCreator = &mock.PersisterCreatorStub{
-			CreatePersisterCalled: func(path string) (storage.Persister, error) {
+			CreatePersisterCalled: func(path string) (types.Persister, error) {
 				numPersistersCreated++
 				persisterMock := mock.NewPersisterMock()
 				persisterMock.CloseCalled = func() error {
@@ -208,7 +208,7 @@ func TestDataMerger_MergeDBs(t *testing.T) {
 			},
 		}
 		args.DataMergerInstance = &mock.DataMergerStub{
-			MergeDBsCalled: func(dest storage.Persister, sources ...storage.Persister) error {
+			MergeDBsCalled: func(dest types.Persister, sources ...types.Persister) error {
 				assert.Equal(t, 2, len(sources))
 				assert.False(t, check.IfNil(dest))
 				mergeDBCalled = true

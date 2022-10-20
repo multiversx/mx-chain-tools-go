@@ -3,16 +3,16 @@ package mock
 import (
 	"errors"
 
-	"github.com/ElrondNetwork/elrond-go/storage"
+	"github.com/ElrondNetwork/elrond-go-storage/types"
 )
 
 // PersisterCreatorStub -
 type PersisterCreatorStub struct {
-	CreatePersisterCalled func(path string) (storage.Persister, error)
+	CreatePersisterCalled func(path string) (types.Persister, error)
 }
 
 // CreatePersister -
-func (stub *PersisterCreatorStub) CreatePersister(path string) (storage.Persister, error) {
+func (stub *PersisterCreatorStub) CreatePersister(path string) (types.Persister, error) {
 	if stub.CreatePersisterCalled != nil {
 		return stub.CreatePersisterCalled(path)
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-go-storage/types"
 	"github.com/ElrondNetwork/elrond-go/storage"
 )
 
@@ -80,8 +81,8 @@ func (fdm *fullDBMerger) MergeDBs(destinationPath string, sourcePaths ...string)
 	return destPersister, nil
 }
 
-func (fdm *fullDBMerger) createSourcePersisters(sourcePaths ...string) ([]storage.Persister, error) {
-	sourcePersisters := make([]storage.Persister, 0, len(sourcePaths)-1)
+func (fdm *fullDBMerger) createSourcePersisters(sourcePaths ...string) ([]types.Persister, error) {
+	sourcePersisters := make([]types.Persister, 0, len(sourcePaths)-1)
 	for i := 1; i < len(sourcePaths); i++ {
 		srcPersister, errPersister := fdm.persisterCreator.CreatePersister(sourcePaths[i])
 		if errPersister != nil {
@@ -94,7 +95,7 @@ func (fdm *fullDBMerger) createSourcePersisters(sourcePaths ...string) ([]storag
 	return sourcePersisters, nil
 }
 
-func (fdm *fullDBMerger) closeSourcePersisters(sourcePersisters []storage.Persister) error {
+func (fdm *fullDBMerger) closeSourcePersisters(sourcePersisters []types.Persister) error {
 	var lastErrFound error
 
 	for _, persister := range sourcePersisters {

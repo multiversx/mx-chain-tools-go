@@ -17,6 +17,7 @@ import (
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/state"
+	"github.com/ElrondNetwork/elrond-go/trie/keyBuilder"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/tokensExporter/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
@@ -108,8 +109,11 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 		log.LogIfError(errNotCritical)
 	}()
 
-	ch := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
-	err = tr.GetAllLeavesOnChannel(ch, context.Background(), mainRootHash)
+	iteratorChannels := &common.TrieIteratorChannels{
+		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+		ErrChan:    make(chan error, 1),
+	}
+	err = tr.GetAllLeavesOnChannel(iteratorChannels, context.Background(), mainRootHash, keyBuilder.NewKeyBuilder())
 	if err != nil {
 		return err
 	}
@@ -126,7 +130,7 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 
 	numAccountsOnMainTrie := 0
 	addressTokensMap := make(map[string]map[string]struct{})
-	for keyValue := range ch {
+	for keyValue := range iteratorChannels.LeavesChan {
 		address, found := getAddress(keyValue)
 		if !found {
 			continue
@@ -148,6 +152,11 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 			encodedAddress := addressConverter.Encode(address)
 			addressTokensMap[encodedAddress] = esdtTokens
 		}
+	}
+
+	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	if err != nil {
+		return err
 	}
 
 	encodedSysAccAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
@@ -212,14 +221,17 @@ func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.Pubk
 		return nil, err
 	}
 
-	chLeaves := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
-	err = userAccount.DataTrie().GetAllLeavesOnChannel(chLeaves, context.Background(), rootHash)
+	iteratorChannels := &common.TrieIteratorChannels{
+		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+		ErrChan:    make(chan error, 1),
+	}
+	err = userAccount.DataTrie().GetAllLeavesOnChannel(iteratorChannels, context.Background(), rootHash, keyBuilder.NewKeyBuilder())
 	if err != nil {
 		return nil, err
 	}
 
 	esdtPrefix := []byte(core.ElrondProtectedKeyPrefix + core.ESDTKeyIdentifier)
-	for leaf := range chLeaves {
+	for leaf := range iteratorChannels.LeavesChan {
 		if !bytes.HasPrefix(leaf.Key(), esdtPrefix) {
 			continue
 		}
@@ -230,6 +242,11 @@ func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.Pubk
 		tokenName := getPrettyTokenName(tokenKey[lenESDTPrefix:])
 
 		allESDTs[tokenName] = struct{}{}
+	}
+
+	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	if err != nil {
+		return nil, err
 	}
 
 	return allESDTs, nil

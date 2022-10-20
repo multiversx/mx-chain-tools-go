@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"github.com/ElrondNetwork/elrond-go/trie/keyBuilder"
 	"io"
 	"os"
 	"path/filepath"
@@ -108,8 +109,11 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		return err
 	}
 
-	ch := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
-	err = tr.GetAllLeavesOnChannel(ch, context.Background(), mainRootHash)
+	iteratorChannels := &common.TrieIteratorChannels{
+		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+		ErrChan:    make(chan error, 1),
+	}
+	err = tr.GetAllLeavesOnChannel(iteratorChannels, context.Background(), mainRootHash, keyBuilder.NewKeyBuilder())
 	if err != nil {
 		return err
 	}
@@ -118,7 +122,7 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 	numCodeNodes := 0
 	dataTriesRootHashes := make(map[string][]byte)
 	numDataTriesLeaves := 0
-	for kv := range ch {
+	for kv := range iteratorChannels.LeavesChan {
 		numAccountsOnMainTrie++
 
 		userAccount := &state.UserAccountData{}
@@ -136,6 +140,11 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		dataTriesRootHashes[address] = userAccount.RootHash
 	}
 
+	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	if err != nil {
+		return err
+	}
+
 	log.Info("parsed main trie",
 		"num accounts", numAccountsOnMainTrie,
 		"num code nodes", numCodeNodes,
@@ -148,14 +157,22 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 	for address, dataRootHash := range dataTriesRootHashes {
 		log.Debug("iterating data trie", "address", address, "data trie root hash", dataRootHash)
 
-		chDataTrie := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
-		errGetAllLeaves := tr.GetAllLeavesOnChannel(chDataTrie, context.Background(), dataRootHash)
+		dataTrieIteratorChannels := &common.TrieIteratorChannels{
+			LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+			ErrChan:    make(chan error, 1),
+		}
+		errGetAllLeaves := tr.GetAllLeavesOnChannel(dataTrieIteratorChannels, context.Background(), dataRootHash, keyBuilder.NewDisabledKeyBuilder())
 		if errGetAllLeaves != nil {
 			return errGetAllLeaves
 		}
 
-		for range chDataTrie {
+		for range dataTrieIteratorChannels.LeavesChan {
 			numDataTriesLeaves++
+		}
+
+		err = common.GetErrorFromChanNonBlocking(dataTrieIteratorChannels.ErrChan)
+		if err != nil {
+			return err
 		}
 	}
 

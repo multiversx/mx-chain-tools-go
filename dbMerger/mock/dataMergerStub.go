@@ -1,14 +1,14 @@
 package mock
 
-import "github.com/ElrondNetwork/elrond-go/storage"
+import "github.com/ElrondNetwork/elrond-go-storage/types"
 
 // DataMergerStub -
 type DataMergerStub struct {
-	MergeDBsCalled func(dest storage.Persister, sources ...storage.Persister) error
+	MergeDBsCalled func(dest types.Persister, sources ...types.Persister) error
 }
 
 // MergeDBs -
-func (stub *DataMergerStub) MergeDBs(dest storage.Persister, sources ...storage.Persister) error {
+func (stub *DataMergerStub) MergeDBs(dest types.Persister, sources ...types.Persister) error {
 	if stub.MergeDBsCalled != nil {
 		return stub.MergeDBsCalled(dest, sources...)
 	}

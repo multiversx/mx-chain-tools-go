@@ -5,12 +5,12 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/marshal"
 	"github.com/ElrondNetwork/elrond-go/epochStart/notifier"
 	"github.com/ElrondNetwork/elrond-go/sharding"
+	storageFactory "github.com/ElrondNetwork/elrond-go/storage/factory"
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/common"
-
-	storageFactory "github.com/ElrondNetwork/elrond-go/storage/factory"
+	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 )
 
 const (
@@ -52,20 +52,22 @@ func (factory *trieFactory) CreateTrie() (*trieWrapper, error) {
 	dbConfig := getDbConfig(factory.dbPath)
 	pathManager := common.NewSimplePathManager(factory.dbPath)
 
-	args := &pruning.StorerArgs{
-		Identifier:                storageUnitIdentifier,
-		ShardCoordinator:          factory.shardCoordinator,
-		CacheConf:                 cacheConfig,
-		PathManager:               pathManager,
-		DbPath:                    "",
-		PersisterFactory:          storageFactory.NewPersisterFactory(dbConfig),
-		Notifier:                  notifier.NewManualEpochStartNotifier(),
-		OldDataCleanerProvider:    &testscommon.OldDataCleanerProviderStub{},
-		CustomDatabaseRemover:     &testscommon.CustomDatabaseRemoverStub{},
-		MaxBatchSize:              maxBatchSize,
-		NumOfEpochsToKeep:         factory.epoch + 1,
-		NumOfActivePersisters:     factory.epoch + 1,
-		StartingEpoch:             factory.epoch,
+	args := pruning.StorerArgs{
+		Identifier:             storageUnitIdentifier,
+		ShardCoordinator:       factory.shardCoordinator,
+		CacheConf:              cacheConfig,
+		PathManager:            pathManager,
+		DbPath:                 "",
+		PersisterFactory:       storageFactory.NewPersisterFactory(dbConfig),
+		Notifier:               notifier.NewManualEpochStartNotifier(),
+		OldDataCleanerProvider: &testscommon.OldDataCleanerProviderStub{},
+		CustomDatabaseRemover:  &testscommon.CustomDatabaseRemoverStub{},
+		MaxBatchSize:           maxBatchSize,
+		EpochsData: pruning.EpochArgs{
+			NumOfEpochsToKeep:     factory.epoch + 1,
+			NumOfActivePersisters: factory.epoch + 1,
+			StartingEpoch:         factory.epoch,
+		},
 		PruningEnabled:            true,
 		EnabledDbLookupExtensions: false,
 	}
@@ -75,7 +77,7 @@ func (factory *trieFactory) CreateTrie() (*trieWrapper, error) {
 		return nil, err
 	}
 
-	storageManager, err := trie.NewTrieStorageManagerWithoutPruning(db)
+	storageManager, err := trieToolsCommon.CreateStorageManager(db)
 	if err != nil {
 		return nil, err
 	}
