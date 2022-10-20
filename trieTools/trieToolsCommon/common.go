@@ -2,8 +2,6 @@ package trieToolsCommon
 
 import (
 	"fmt"
-	"github.com/ElrondNetwork/elrond-go-storage/memorydb"
-	hashesHolder "github.com/ElrondNetwork/elrond-go/trie/hashesHolder/disabled"
 	"io/ioutil"
 	"math/big"
 	"os"
@@ -12,6 +10,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go-logger/file"
+	"github.com/ElrondNetwork/elrond-go-storage/memorydb"
 	"github.com/ElrondNetwork/elrond-go-storage/storageUnit"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common"
@@ -27,6 +26,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
+	hashesHolder "github.com/ElrondNetwork/elrond-go/trie/hashesHolder/disabled"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
 )
 
