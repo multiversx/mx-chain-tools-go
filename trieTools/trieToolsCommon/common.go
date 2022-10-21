@@ -133,25 +133,28 @@ func CreatePruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Stor
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
+	epochsData := pruning.EpochArgs{
+		NumOfEpochsToKeep:     uint32(maxDBValue) + 1,
+		NumOfActivePersisters: uint32(maxDBValue) + 1,
+		StartingEpoch:         uint32(maxDBValue),
+	}
+
 	dbPath := path.Join(flags.WorkingDir, flags.DbDir)
 	args := pruning.StorerArgs{
-		Identifier:             "",
-		ShardCoordinator:       testscommon.NewMultiShardsCoordinatorMock(1),
-		CacheConf:              cacheConfig,
-		PathManager:            components.NewSimplePathManager(dbPath),
-		DbPath:                 "",
-		PersisterFactory:       factory.NewPersisterFactory(localDbConfig),
-		Notifier:               notifier.NewManualEpochStartNotifier(),
-		OldDataCleanerProvider: &testscommon.OldDataCleanerProviderStub{},
-		CustomDatabaseRemover:  disabled.NewDisabledCustomDatabaseRemover(),
-		MaxBatchSize:           45000,
-		EpochsData: pruning.EpochArgs{
-			NumOfEpochsToKeep:     uint32(maxDBValue) + 1,
-			NumOfActivePersisters: uint32(maxDBValue) + 1,
-			StartingEpoch:         uint32(maxDBValue),
-		},
+		Identifier:                "",
+		ShardCoordinator:          testscommon.NewMultiShardsCoordinatorMock(1),
+		CacheConf:                 cacheConfig,
+		PathManager:               components.NewSimplePathManager(dbPath),
+		DbPath:                    "",
+		PersisterFactory:          factory.NewPersisterFactory(localDbConfig),
+		Notifier:                  notifier.NewManualEpochStartNotifier(),
+		OldDataCleanerProvider:    &testscommon.OldDataCleanerProviderStub{},
+		CustomDatabaseRemover:     disabled.NewDisabledCustomDatabaseRemover(),
+		MaxBatchSize:              45000,
+		EpochsData:                epochsData,
 		PruningEnabled:            true,
 		EnabledDbLookupExtensions: false,
+		PersistersTracker:         pruning.NewPersistersTracker(epochsData),
 	}
 
 	return pruning.NewTriePruningStorer(args)
