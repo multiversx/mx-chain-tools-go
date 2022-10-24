@@ -190,6 +190,7 @@ func CreateTrie(storer storage.Storer) (common.Trie, error) {
 	return trie.NewTrie(tsm, Marshaller, Hasher, maxTrieLevelInMemory)
 }
 
+// CreateStorageManager creates a new trie storage manager using the given storer
 func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) {
 	tsmArgs := trie.NewTrieStorageManagerArgs{
 		MainStorer:        storer,
