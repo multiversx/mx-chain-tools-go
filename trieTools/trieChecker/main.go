@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
@@ -15,7 +13,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/state"
 	"github.com/ElrondNetwork/elrond-go/storage"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieChecker/logParser"
+	"github.com/ElrondNetwork/elrond-go/trie/keyBuilder"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
 )
@@ -101,15 +99,11 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		log.LogIfError(errNotCritical)
 	}()
 
-	// TODO remove this workaround when the GetAllLeavesOnChannel gets refactored
-	formatter := logParser.NewLoggerFormatter()
-	err = logger.AddLogObserver(io.Discard, formatter)
-	if err != nil {
-		return err
+	iteratorChannels := &common.TrieIteratorChannels{
+		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+		ErrChan:    make(chan error, 1),
 	}
-
-	ch := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
-	err = tr.GetAllLeavesOnChannel(ch, context.Background(), mainRootHash)
+	err = tr.GetAllLeavesOnChannel(iteratorChannels, context.Background(), mainRootHash, keyBuilder.NewKeyBuilder())
 	if err != nil {
 		return err
 	}
@@ -118,7 +112,7 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 	numCodeNodes := 0
 	dataTriesRootHashes := make(map[string][]byte)
 	numDataTriesLeaves := 0
-	for kv := range ch {
+	for kv := range iteratorChannels.LeavesChan {
 		numAccountsOnMainTrie++
 
 		userAccount := &state.UserAccountData{}
@@ -136,6 +130,11 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		dataTriesRootHashes[address] = userAccount.RootHash
 	}
 
+	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	if err != nil {
+		return err
+	}
+
 	log.Info("parsed main trie",
 		"num accounts", numAccountsOnMainTrie,
 		"num code nodes", numCodeNodes,
@@ -148,47 +147,32 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 	for address, dataRootHash := range dataTriesRootHashes {
 		log.Debug("iterating data trie", "address", address, "data trie root hash", dataRootHash)
 
-		chDataTrie := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
-		errGetAllLeaves := tr.GetAllLeavesOnChannel(chDataTrie, context.Background(), dataRootHash)
+		dataTrieIteratorChannels := &common.TrieIteratorChannels{
+			LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+			ErrChan:    make(chan error, 1),
+		}
+		errGetAllLeaves := tr.GetAllLeavesOnChannel(dataTrieIteratorChannels, context.Background(), dataRootHash, keyBuilder.NewDisabledKeyBuilder())
 		if errGetAllLeaves != nil {
 			return errGetAllLeaves
 		}
 
-		for range chDataTrie {
+		for range dataTrieIteratorChannels.LeavesChan {
 			numDataTriesLeaves++
+		}
+
+		err = common.GetErrorFromChanNonBlocking(dataTrieIteratorChannels.ErrChan)
+		if err != nil {
+			return err
 		}
 	}
 
-	displayMessage(
-		formatter.GetAllErrorStrings(),
-		numAccountsOnMainTrie,
-		numCodeNodes,
-		len(dataTriesRootHashes),
-		numDataTriesLeaves,
-	)
-
-	return nil
-}
-
-func displayMessage(errorStrings []string, numAccountsOnMainTrie int, numCodeNodes int, numDataTriesRootHashes int, numDataTriesLeaves int) {
-	if len(errorStrings) == 0 {
-		log.Info("parsed all tries",
-			"num accounts", numAccountsOnMainTrie,
-			"num code nodes", numCodeNodes,
-			"num data tries", numDataTriesRootHashes,
-			"num data tries leaves", numDataTriesLeaves)
-
-		return
-	}
-
-	log.Error("parsed all tries and encountered problems",
+	log.Info("parsed all tries",
 		"num accounts", numAccountsOnMainTrie,
 		"num code nodes", numCodeNodes,
-		"num data tries", numDataTriesRootHashes,
-		"num data tries leaves", numDataTriesLeaves,
-		"num problems", len(errorStrings),
-		"problems:", "\n\t"+strings.Join(errorStrings, "\n\t"),
-	)
+		"num data tries", len(dataTriesRootHashes),
+		"num data tries leaves", numDataTriesLeaves)
+
+	return nil
 }
 
 func createStorer(flags trieToolsCommon.ContextFlagsConfig, log logger.Logger) (storage.Storer, error) {

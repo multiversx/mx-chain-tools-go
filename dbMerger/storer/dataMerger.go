@@ -5,7 +5,7 @@ import (
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go/storage"
+	"github.com/ElrondNetwork/elrond-go-storage/types"
 )
 
 var log = logger.GetOrCreate("storer")
@@ -20,7 +20,7 @@ func NewDataMerger() *dataMerger {
 }
 
 // MergeDBs will iterate over all provided sources and take all key-value pairs and write them in the destination persister
-func (dm *dataMerger) MergeDBs(dest storage.Persister, sources ...storage.Persister) error {
+func (dm *dataMerger) MergeDBs(dest types.Persister, sources ...types.Persister) error {
 	err := checkArgs(dest, sources...)
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func (dm *dataMerger) MergeDBs(dest storage.Persister, sources ...storage.Persis
 	return nil
 }
 
-func checkArgs(dest storage.Persister, sources ...storage.Persister) error {
+func checkArgs(dest types.Persister, sources ...types.Persister) error {
 	if check.IfNil(dest) {
 		return fmt.Errorf("%w for the destination persister", errNilPersister)
 	}
@@ -56,7 +56,7 @@ func checkArgs(dest storage.Persister, sources ...storage.Persister) error {
 	return nil
 }
 
-func mergeDB(dest storage.Persister, source storage.Persister) (int, error) {
+func mergeDB(dest types.Persister, source types.Persister) (int, error) {
 	var foundErr error
 	numKeysCopied := 0
 	source.RangeKeys(func(key []byte, val []byte) bool {

@@ -1,7 +1,7 @@
 package storer
 
 import (
-	"github.com/ElrondNetwork/elrond-go/storage"
+	"github.com/ElrondNetwork/elrond-go-storage/types"
 	"github.com/ElrondNetwork/elrond-go/storage/leveldb"
 )
 
@@ -20,7 +20,7 @@ func NewPersisterCreator() *persisterCreator {
 }
 
 // CreatePersister will try to create a new persister instance provided the directory path
-func (creator *persisterCreator) CreatePersister(path string) (storage.Persister, error) {
+func (creator *persisterCreator) CreatePersister(path string) (types.Persister, error) {
 	return leveldb.NewDB(path, batchDelaySeconds, maxBatchSize, maxOpenFiles)
 }
 

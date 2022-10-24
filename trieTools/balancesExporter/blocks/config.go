@@ -1,7 +1,7 @@
 package blocks
 
 import (
-	"github.com/ElrondNetwork/elrond-go/storage/storageUnit"
+	"github.com/ElrondNetwork/elrond-go-storage/storageUnit"
 )
 
 func getCacheConfig() storageUnit.CacheConfig {

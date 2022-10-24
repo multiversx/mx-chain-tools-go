@@ -1,8 +1,8 @@
 package trie
 
 import (
+	"github.com/ElrondNetwork/elrond-go-storage/storageUnit"
 	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
-	"github.com/ElrondNetwork/elrond-go/storage/storageUnit"
 )
 
 func getCacheConfig() storageUnit.CacheConfig {

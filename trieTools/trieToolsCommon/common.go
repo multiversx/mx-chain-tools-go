@@ -10,9 +10,12 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go-logger/file"
+	"github.com/ElrondNetwork/elrond-go-storage/memorydb"
+	"github.com/ElrondNetwork/elrond-go-storage/storageUnit"
 	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
 	"github.com/ElrondNetwork/elrond-go/common"
 	commonDisabled "github.com/ElrondNetwork/elrond-go/common/disabled"
+	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
 	"github.com/ElrondNetwork/elrond-go/epochStart/notifier"
 	"github.com/ElrondNetwork/elrond-go/state"
 	stateFactory "github.com/ElrondNetwork/elrond-go/state/factory"
@@ -21,9 +24,9 @@ import (
 	"github.com/ElrondNetwork/elrond-go/storage/databaseremover/disabled"
 	"github.com/ElrondNetwork/elrond-go/storage/factory"
 	"github.com/ElrondNetwork/elrond-go/storage/pruning"
-	"github.com/ElrondNetwork/elrond-go/storage/storageUnit"
 	"github.com/ElrondNetwork/elrond-go/testscommon"
 	"github.com/ElrondNetwork/elrond-go/trie"
+	hashesHolder "github.com/ElrondNetwork/elrond-go/trie/hashesHolder/disabled"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
 )
 
@@ -130,8 +133,14 @@ func CreatePruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Stor
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
+	epochsData := pruning.EpochArgs{
+		NumOfEpochsToKeep:     uint32(maxDBValue) + 1,
+		NumOfActivePersisters: uint32(maxDBValue) + 1,
+		StartingEpoch:         uint32(maxDBValue),
+	}
+
 	dbPath := path.Join(flags.WorkingDir, flags.DbDir)
-	args := &pruning.StorerArgs{
+	args := pruning.StorerArgs{
 		Identifier:                "",
 		ShardCoordinator:          testscommon.NewMultiShardsCoordinatorMock(1),
 		CacheConf:                 cacheConfig,
@@ -142,11 +151,10 @@ func CreatePruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Stor
 		OldDataCleanerProvider:    &testscommon.OldDataCleanerProviderStub{},
 		CustomDatabaseRemover:     disabled.NewDisabledCustomDatabaseRemover(),
 		MaxBatchSize:              45000,
-		NumOfEpochsToKeep:         uint32(maxDBValue) + 1,
-		NumOfActivePersisters:     uint32(maxDBValue) + 1,
-		StartingEpoch:             uint32(maxDBValue),
+		EpochsData:                epochsData,
 		PruningEnabled:            true,
 		EnabledDbLookupExtensions: false,
+		PersistersTracker:         pruning.NewPersistersTracker(epochsData),
 	}
 
 	return pruning.NewTriePruningStorer(args)
@@ -174,13 +182,36 @@ func CreateTrie(storer storage.Storer) (common.Trie, error) {
 	if check.IfNil(storer) {
 		return nil, fmt.Errorf("nil storer provided")
 	}
-
-	tsm, err := trie.NewTrieStorageManagerWithoutPruning(storer)
+	tsm, err := CreateStorageManager(storer)
 	if err != nil {
 		return nil, err
 	}
 
 	return trie.NewTrie(tsm, Marshaller, Hasher, maxTrieLevelInMemory)
+}
+
+// CreateStorageManager creates a new trie storage manager using the given storer
+func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) {
+	tsmArgs := trie.NewTrieStorageManagerArgs{
+		MainStorer:        storer,
+		CheckpointsStorer: memorydb.New(),
+		Marshalizer:       Marshaller,
+		Hasher:            Hasher,
+		GeneralConfig: elrondConfig.TrieStorageManagerConfig{
+			SnapshotsBufferLen:    10,
+			SnapshotsGoroutineNum: 100,
+		},
+		CheckpointHashesHolder: hashesHolder.NewDisabledCheckpointHashesHolder(),
+		IdleProvider:           commonDisabled.NewProcessStatusHandler(),
+	}
+
+	options := trie.StorageManagerOptions{
+		PruningEnabled:     false,
+		SnapshotsEnabled:   false,
+		CheckpointsEnabled: false,
+	}
+
+	return trie.CreateTrieStorageManager(tsmArgs, options)
 }
 
 // NewAccountsAdapter will create a new accounts adapter using provided trie

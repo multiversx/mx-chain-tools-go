@@ -6,6 +6,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go-core/core"
 	"github.com/ElrondNetwork/elrond-go/common"
 	"github.com/ElrondNetwork/elrond-go/state"
+	"github.com/ElrondNetwork/elrond-go/trie/keyBuilder"
 )
 
 type trieWrapper struct {
@@ -28,15 +29,18 @@ func (tw *trieWrapper) IsRootHashAvailable(rootHash []byte) bool {
 }
 
 func (tw *trieWrapper) GetUserAccounts(rootHash []byte, predicate func(*state.UserAccountData) bool) ([]*state.UserAccountData, error) {
-	ch := make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity)
-	err := tw.trie.GetAllLeavesOnChannel(ch, context.Background(), rootHash)
+	iteratorChannels := &common.TrieIteratorChannels{
+		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+		ErrChan:    make(chan error, 1),
+	}
+	err := tw.trie.GetAllLeavesOnChannel(iteratorChannels, context.Background(), rootHash, keyBuilder.NewDisabledKeyBuilder())
 	if err != nil {
 		return nil, err
 	}
 
 	users := make([]*state.UserAccountData, 0)
 
-	for keyValue := range ch {
+	for keyValue := range iteratorChannels.LeavesChan {
 		user := &state.UserAccountData{}
 		errUnmarshal := marshaller.Unmarshal(user, keyValue.Value())
 		if errUnmarshal != nil {
@@ -47,6 +51,11 @@ func (tw *trieWrapper) GetUserAccounts(rootHash []byte, predicate func(*state.Us
 		if predicate(user) {
 			users = append(users, user)
 		}
+	}
+
+	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	if err != nil {
+		return nil, err
 	}
 
 	return users, nil
