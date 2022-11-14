@@ -10,7 +10,7 @@
         password = ""
 
     [config.indices]
-        indices-no-timestamp = ["accounts","rating", "validators", "epochinfo", "tags", "delegators"]
+        indices-no-timestamp = ["accounts","rating", "validators", "epochinfo", "tags", "delegators", "collections"]
         [config.indices.with-timestamp]
             enabled = true
             num-parallel-writes = 20
