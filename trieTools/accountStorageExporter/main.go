@@ -178,7 +178,5 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		return err
 	}
 
-	log.Info("key-value map", "value", keyValueMap)
-
 	return nil
 }
