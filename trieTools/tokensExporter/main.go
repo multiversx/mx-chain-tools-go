@@ -291,14 +291,19 @@ func getAllESDTTokens(account vmcommon.AccountHandler, systemAccount state.UserA
 			continue
 		}
 
-		allTokens = append(allTokens, accountToken{
+		item := accountToken{
 			Identifier: prettyTokenIdentifier,
 			Name:       prettyTokenName,
-			Nonce:      esdtToken.TokenMetaData.Nonce,
 			Balance:    esdtToken.Value.String(),
-			Attributes: esdtToken.TokenMetaData.Attributes,
-			Creator:    addressConverter.Encode(esdtToken.TokenMetaData.Creator),
-		})
+		}
+
+		if esdtToken.TokenMetaData != nil {
+			item.Nonce = esdtToken.TokenMetaData.Nonce
+			item.Attributes = esdtToken.TokenMetaData.Attributes
+			item.Creator = addressConverter.Encode(esdtToken.TokenMetaData.Creator)
+		}
+
+		allTokens = append(allTokens, item)
 	}
 
 	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
