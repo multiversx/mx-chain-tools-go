@@ -5,7 +5,7 @@
  "mappings": {
   "properties": {
    "data": {
-    "type": "keyword"
+    "type": "text"
    },
    "esdtValues": {
     "type": "keyword"
