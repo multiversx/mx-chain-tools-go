@@ -16,7 +16,7 @@
     "type": "keyword"
    },
    "data": {
-    "type": "keyword"
+    "type": "text"
    },
    "esdtValues": {
     "type": "keyword"
