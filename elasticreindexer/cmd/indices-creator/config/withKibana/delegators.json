@@ -1,16 +1,25 @@
 {
-	"index_patterns": [
-		"delegators-*"
-	],
-	"mappings": {
-		"properties": {
-			"activeStakeNum": {
-				"type": "double"
-			}
-		}
-	},
-	"settings": {
-		"number_of_replicas": 0,
-		"number_of_shards": 3
-	}
+ "index_patterns": [
+  "delegators-*"
+ ],
+ "mappings": {
+  "properties": {
+   "activeStake": {
+    "type": "keyword"
+   },
+   "activeStakeNum": {
+    "type": "double"
+   },
+   "address": {
+    "type": "keyword"
+   },
+   "contract": {
+    "type": "keyword"
+   }
+  }
+ },
+ "settings": {
+  "number_of_replicas": 0,
+  "number_of_shards": 3
+ }
 }

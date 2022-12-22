@@ -1,43 +1,83 @@
 {
-	"index_patterns": [
-		"accountsesdt-*"
-	],
-	"mappings": {
-		"properties": {
-			"balanceNum": {
-				"type": "double"
-			},
-			"data": {
-				"properties": {
-					"attributes": {
-						"type": "text"
-					},
-					"creator": {
-						"type": "text"
-					},
-					"metadata": {
-						"type": "text"
-					},
-					"name": {
-						"type": "text"
-					},
-					"tags": {
-						"type": "text"
-					}
-				},
-				"type": "nested"
-			},
-			"tokenNonce": {
-				"type": "double"
-			},
-           "timestamp": {
-             "type": "date",
-             "format": "epoch_second"
-           }
-		}
-	},
-	"settings": {
-		"number_of_replicas": 0,
-		"number_of_shards": 3
-	}
+ "index_patterns": [
+  "accountsesdt-*"
+ ],
+ "mappings": {
+  "properties": {
+   "address": {
+    "type": "keyword"
+   },
+   "balance": {
+    "type": "keyword"
+   },
+   "balanceNum": {
+    "type": "double"
+   },
+   "currentOwner": {
+    "type": "keyword"
+   },
+   "data": {
+    "properties": {
+     "attributes": {
+      "index": "false",
+      "type": "keyword"
+     },
+     "creator": {
+      "type": "keyword"
+     },
+     "hash": {
+      "index": "false",
+      "type": "keyword"
+     },
+     "metadata": {
+      "index": "false",
+      "type": "keyword"
+     },
+     "name": {
+      "type": "keyword"
+     },
+     "nonEmptyURIs": {
+      "type": "boolean"
+     },
+     "royalties": {
+      "index": "false",
+      "type": "long"
+     },
+     "tags": {
+      "type": "text"
+     },
+     "uris": {
+      "type": "text"
+     }
+    },
+    "type": "nested"
+   },
+   "identifier": {
+    "type": "keyword"
+   },
+   "properties": {
+    "type": "keyword"
+   },
+   "shardID": {
+    "type": "long"
+   },
+   "timestamp": {
+    "format": "epoch_second",
+    "type": "date"
+   },
+   "token": {
+    "type": "keyword"
+   },
+   "tokenNonce": {
+    "type": "long"
+   },
+   "type": {
+    "type": "keyword"
+   }
+  }
+ },
+ "settings": {
+  "number_of_replicas": 0,
+  "number_of_shards": 3
+ }
 }

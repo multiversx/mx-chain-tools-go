@@ -1,9 +1,19 @@
 {
-	"index_patterns": [
-		"epochinfo-*"
-	],
-	"settings": {
-		"number_of_replicas": 0,
-		"number_of_shards": 3
-	}
+ "index_patterns": [
+  "epochinfo-*"
+ ],
+ "mappings": {
+  "properties": {
+   "accumulatedFees": {
+    "type": "keyword"
+   },
+   "developerFees": {
+    "type": "keyword"
+   }
+  }
+ },
+ "settings": {
+  "number_of_replicas": 0,
+  "number_of_shards": 3
+ }
 }

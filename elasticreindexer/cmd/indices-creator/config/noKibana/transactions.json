@@ -1,36 +1,120 @@
 {
-	"index_patterns": [
-		"transactions-*"
-	],
-	"mappings": {
-		"properties": {
-			"gasLimit": {
-				"type": "double"
-			},
-			"gasPrice": {
-				"type": "double"
-			},
-			"nonce": {
-				"type": "double"
-			},
-			"timestamp": {
-				"format": "epoch_second",
-				"type": "date"
-			}
-		}
-	},
-	"settings": {
-		"index": {
-			"sort.field": [
-				"timestamp",
-				"nonce"
-			],
-			"sort.order": [
-				"desc",
-				"desc"
-			]
-		},
-		"number_of_replicas": 0,
-		"number_of_shards": 5
-	}
+ "index_patterns": [
+  "transactions-*"
+ ],
+ "mappings": {
+  "properties": {
+   "data": {
+    "type": "keyword"
+   },
+   "esdtValues": {
+    "type": "keyword"
+   },
+   "fee": {
+    "index": "false",
+    "type": "keyword"
+   },
+   "function": {
+    "type": "keyword"
+   },
+   "gasLimit": {
+    "index": "false",
+    "type": "long"
+   },
+   "gasPrice": {
+    "index": "false",
+    "type": "long"
+   },
+   "gasUsed": {
+    "index": "false",
+    "type": "long"
+   },
+   "hasOperations": {
+    "type": "boolean"
+   },
+   "hasScResults": {
+    "type": "boolean"
+   },
+   "initialPaidFee": {
+    "index": "false",
+    "type": "keyword"
+   },
+   "isRelayed": {
+    "type": "boolean"
+   },
+   "isScCall": {
+    "type": "boolean"
+   },
+   "miniBlockHash": {
+    "type": "keyword"
+   },
+   "nonce": {
+    "type": "long"
+   },
+   "operation": {
+    "type": "keyword"
+   },
+   "receiver": {
+    "type": "keyword"
+   },
+   "receiverShard": {
+    "type": "long"
+   },
+   "receivers": {
+    "type": "keyword"
+   },
+   "receiversShardIDs": {
+    "type": "long"
+   },
+   "round": {
+    "type": "long"
+   },
+   "searchOrder": {
+    "type": "long"
+   },
+   "sender": {
+    "type": "keyword"
+   },
+   "senderShard": {
+    "type": "long"
+   },
+   "senderUserName": {
+    "type": "keyword"
+   },
+   "signature": {
+    "index": "false",
+    "type": "keyword"
+   },
+   "status": {
+    "type": "keyword"
+   },
+   "timestamp": {
+    "format": "epoch_second",
+    "type": "date"
+   },
+   "tokens": {
+    "type": "keyword"
+   },
+   "value": {
+    "type": "keyword"
+   },
+   "version": {
+    "type": "long"
+   }
+  }
+ },
+ "settings": {
+  "index": {
+   "sort.field": [
+    "timestamp",
+    "nonce"
+   ],
+   "sort.order": [
+    "desc",
+    "desc"
+   ]
+  },
+  "number_of_replicas": 0,
+  "number_of_shards": 5
+ }
 }
