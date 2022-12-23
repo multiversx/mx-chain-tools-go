@@ -9,7 +9,7 @@
    },
    "code": {
     "index": "false",
-    "type": "keyword"
+    "type": "text"
    },
    "data": {
     "type": "text"
