@@ -14,7 +14,7 @@
      },
      "data": {
       "index": "false",
-      "type": "keyword"
+      "type": "text"
      },
      "identifier": {
       "type": "keyword"
