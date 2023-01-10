@@ -78,7 +78,7 @@
     "type": "keyword"
    },
    "receiverShard": {
-    "type": "keyword"
+    "type": "long"
    },
    "receivers": {
     "type": "keyword"
