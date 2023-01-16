@@ -28,11 +28,11 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Trie checker CLI app"
 	app.Usage = "This is the entry point for the tool that checks the trie DB"
-	app.Flags = getFlags()
+	app.Flags = trieToolsCommon.GetFlags()
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Elrond Team",
-			Email: "contact@elrond.com",
+			Name:  "The MultiversX Team",
+			Email: "contact@multiversx.com",
 		},
 	}
 
@@ -51,7 +51,7 @@ func main() {
 }
 
 func startProcess(c *cli.Context) error {
-	flagsConfig := getFlagsConfig(c)
+	flagsConfig := trieToolsCommon.GetFlagsConfig(c)
 
 	_, errLogger := trieToolsCommon.AttachFileLogger(log, logFilePrefix, flagsConfig)
 	if errLogger != nil {

@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go-logger/file"
 	"github.com/ElrondNetwork/elrond-go-storage/memorydb"
@@ -28,12 +29,18 @@ import (
 	"github.com/ElrondNetwork/elrond-go/trie"
 	hashesHolder "github.com/ElrondNetwork/elrond-go/trie/hashesHolder/disabled"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
+	"github.com/urfave/cli"
+)
+
+var (
+	log = logger.GetOrCreate("trie")
 )
 
 const (
 	defaultLogsPath      = "logs"
 	maxTrieLevelInMemory = 5
 	maxDirs              = 100
+	addressLength        = 32
 )
 
 // AttachFileLogger will attach the file logger, using provided flags
@@ -218,6 +225,12 @@ func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) 
 func NewAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 	accCreator := stateFactory.NewAccountCreator()
 	storagePruningManager := disabled2.NewDisabledStoragePruningManager()
+
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	if err != nil {
+		return nil, err
+	}
+
 	accountsAdapter, err := state.NewAccountsDB(state.ArgsAccountsDB{
 		Trie:                  trie,
 		Hasher:                Hasher,
@@ -226,6 +239,8 @@ func NewAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 		StoragePruningManager: storagePruningManager,
 		ProcessingMode:        common.Normal,
 		ProcessStatusHandler:  commonDisabled.NewProcessStatusHandler(),
+		AppStatusHandler:      commonDisabled.NewAppStatusHandler(),
+		AddressConverter:      addressConverter,
 	})
 
 	return accountsAdapter, err
@@ -241,4 +256,34 @@ func GetNumTokens(addressTokensMap map[string]map[string]struct{}) int {
 	}
 
 	return numTokensInShard
+}
+
+// GetFlags will return an array of the defined flags
+func GetFlags() []cli.Flag {
+	return []cli.Flag{
+		WorkingDirectory,
+		DbDirectory,
+		LogLevel,
+		DisableAnsiColor,
+		LogSaveFile,
+		LogWithLoggerName,
+		ProfileMode,
+		HexRootHash,
+	}
+}
+
+// GetFlagsConfig returns a populated ContextFlagsConfig
+func GetFlagsConfig(ctx *cli.Context) ContextFlagsConfig {
+	flagsConfig := ContextFlagsConfig{}
+
+	flagsConfig.WorkingDir = ctx.GlobalString(WorkingDirectory.Name)
+	flagsConfig.DbDir = ctx.GlobalString(DbDirectory.Name)
+	flagsConfig.LogLevel = ctx.GlobalString(LogLevel.Name)
+	flagsConfig.DisableAnsiColor = ctx.GlobalBool(DisableAnsiColor.Name)
+	flagsConfig.SaveLogFile = ctx.GlobalBool(LogSaveFile.Name)
+	flagsConfig.EnableLogName = ctx.GlobalBool(LogWithLoggerName.Name)
+	flagsConfig.EnablePprof = ctx.GlobalBool(ProfileMode.Name)
+	flagsConfig.HexRootHash = ctx.GlobalString(HexRootHash.Name)
+
+	return flagsConfig
 }
