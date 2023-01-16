@@ -2,14 +2,13 @@ package trieToolsCommon
 
 import (
 	"fmt"
-	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
-	"github.com/urfave/cli"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"path"
 
 	"github.com/ElrondNetwork/elrond-go-core/core/check"
+	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
 	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-go-logger/file"
 	"github.com/ElrondNetwork/elrond-go-storage/memorydb"
@@ -30,6 +29,7 @@ import (
 	"github.com/ElrondNetwork/elrond-go/trie"
 	hashesHolder "github.com/ElrondNetwork/elrond-go/trie/hashesHolder/disabled"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
+	"github.com/urfave/cli"
 )
 
 var (
