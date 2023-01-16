@@ -31,8 +31,8 @@ func main() {
 	app.Flags = trieToolsCommon.GetFlags()
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Elrond Team",
-			Email: "contact@elrond.com",
+			Name:  "The MultiversX Team",
+			Email: "contact@multiversx.com",
 		},
 	}
 
@@ -104,18 +104,13 @@ func printTrieStats(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byt
 		return err
 	}
 
-	newRootHash, err := accDb.RootHash()
-	if err != nil {
-		return err
-	}
-
 	stateStatsCollector, ok := accDb.(StateStatsCollector)
 	if !ok {
 		return fmt.Errorf("invalid type assertion")
 	}
 
-	log.Info("get stats for rootHash", "root hash", newRootHash)
-	stats, err := stateStatsCollector.GetStatsForRootHash(newRootHash)
+	log.Info("get stats for rootHash", "root hash", mainRootHash)
+	stats, err := stateStatsCollector.GetStatsForRootHash(mainRootHash)
 	if err != nil {
 		return err
 	}
