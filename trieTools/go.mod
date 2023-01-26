@@ -3,22 +3,19 @@ module github.com/multiversx/mx-chain-tools-go/trieTools
 go 1.17
 
 require (
-	github.com/multiversx/mx-chain-go v1.4.4
 	github.com/multiversx/mx-chain-core-go v1.1.30
-	github.com/multiversx/mx-chain-logger-go v1.0.10
-	github.com/multiversx/mx-chain-storage-go v1.0.4
-	github.com/multiversx/mx-chain-tools-go/elasticreindexer 859637bce901cf84eedf3eed83696ddfa3ea0e2b
+	github.com/multiversx/mx-chain-go v1.4.4
+	github.com/multiversx/mx-chain-logger-go v1.0.11
+	github.com/multiversx/mx-chain-storage-go v1.0.7
+	github.com/multiversx/mx-chain-tools-go/elasticreindexer v0.0.0-20230126133847-fccd71bf94c8
 	github.com/multiversx/mx-chain-vm-common-go v1.3.36
 	github.com/pelletier/go-toml v1.9.3
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tidwall/gjson v1.14.0
 	github.com/urfave/cli v1.22.10
 )
 
 require (
-	github.com/ElrondNetwork/concurrent-map v0.1.3 // indirect
-	github.com/multiversx/mx-chain-go-crypto v1.2.3 // indirect
-	github.com/multiversx/mx-chain-go-p2p v1.0.8 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -33,7 +30,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -41,7 +37,9 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
-	github.com/onsi/gomega v1.13.0 // indirect
+	github.com/multiversx/concurrent-map v0.1.4 // indirect
+	github.com/multiversx/mx-chain-crypto-go v1.2.5 // indirect
+	github.com/multiversx/mx-chain-p2p-go v1.0.10 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect

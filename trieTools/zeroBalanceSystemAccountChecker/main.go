@@ -14,6 +14,7 @@ import (
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 	sysAccConfig "github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/config"
+	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
 

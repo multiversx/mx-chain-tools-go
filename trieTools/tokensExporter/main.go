@@ -230,7 +230,7 @@ func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.Pubk
 		return nil, err
 	}
 
-	esdtPrefix := []byte(core.ElrondProtectedKeyPrefix + core.ESDTKeyIdentifier)
+	esdtPrefix := []byte(core.ProtectedKeyPrefix + core.ESDTKeyIdentifier)
 	for leaf := range iteratorChannels.LeavesChan {
 		if !bytes.HasPrefix(leaf.Key(), esdtPrefix) {
 			continue
