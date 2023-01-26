@@ -3,7 +3,7 @@ module github.com/ElrondNetwork/elrond-tools-go/tokensRemover
 go 1.17
 
 require (
-	github.com/ElrondNetwork/elrond-go-logger v1.0.9
+	github.com/multiversx/mx-chain-logger-go v1.0.11
 	github.com/ElrondNetwork/elrond-sdk-erdgo v1.1.2-0.20220817085202-41824b2249e5
 	github.com/ElrondNetwork/elrond-tools-go/trieTools v0.0.0-20220913084212-c356e1f153f8
 	github.com/pelletier/go-toml v1.9.3
@@ -13,9 +13,9 @@ require (
 
 require (
 	github.com/ElrondNetwork/concurrent-map v0.1.3 // indirect
-	github.com/ElrondNetwork/elrond-go v1.3.35 // indirect
-	github.com/ElrondNetwork/elrond-go-core v1.1.18 // indirect
-	github.com/ElrondNetwork/elrond-go-crypto v1.0.1 // indirect
+	github.com/multiversx/mx-chain-go v1.3.35 // indirect
+	github.com/multiversx/mx-chain-core-go v1.1.18 // indirect
+	github.com/multiversx/mx-chain-go-crypto v1.0.1 // indirect
 	github.com/ElrondNetwork/elrond-vm-common v1.3.12 // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect

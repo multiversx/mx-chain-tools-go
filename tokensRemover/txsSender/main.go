@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
 	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
 	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/txsSender/config"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )

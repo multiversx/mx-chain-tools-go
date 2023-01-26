@@ -3,10 +3,10 @@ package main
 import (
 	"os"
 
-	"github.com/ElrondNetwork/elrond-go/sharding"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/blocks"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/export"
 	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/trie"
+	"github.com/multiversx/mx-chain-go/sharding"
 	"github.com/urfave/cli"
 )
 

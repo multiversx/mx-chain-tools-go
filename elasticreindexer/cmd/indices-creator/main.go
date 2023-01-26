@@ -7,10 +7,10 @@ import (
 	"os"
 	"path"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/elastic"
 	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/reader"
+	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )

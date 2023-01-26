@@ -1,10 +1,10 @@
 package trieToolsCommon
 
 import (
-	"github.com/ElrondNetwork/elrond-go-core/hashing/blake2b"
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	"github.com/ElrondNetwork/elrond-go-storage/storageUnit"
-	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
+	"github.com/multiversx/mx-chain-core-go/hashing/blake2b"
+	"github.com/multiversx/mx-chain-core-go/marshal"
+	elrondConfig "github.com/multiversx/mx-chain-go/config"
+	"github.com/multiversx/mx-chain-storage-go/storageUnit"
 )
 
 var (

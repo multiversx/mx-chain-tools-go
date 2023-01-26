@@ -3,10 +3,10 @@ module github.com/ElrondNetwork/elrond-tools-go/trieTools
 go 1.17
 
 require (
-	github.com/ElrondNetwork/elrond-go v1.4.1-0.20221223085700-a3ca9d094137
-	github.com/ElrondNetwork/elrond-go-core v1.1.28
-	github.com/ElrondNetwork/elrond-go-logger v1.0.10
-	github.com/ElrondNetwork/elrond-go-storage v1.0.4
+	github.com/multiversx/mx-chain-go v1.4.1-0.20221223085700-a3ca9d094137
+	github.com/multiversx/mx-chain-core-go v1.1.28
+	github.com/multiversx/mx-chain-logger-go v1.0.10
+	github.com/multiversx/mx-chain-storage-go v1.0.4
 	github.com/ElrondNetwork/elrond-tools-go/elasticreindexer v0.0.0-20220822122240-fd32ce986e4c
 	github.com/ElrondNetwork/elrond-vm-common v1.3.31
 	github.com/pelletier/go-toml v1.9.3
@@ -17,8 +17,8 @@ require (
 
 require (
 	github.com/ElrondNetwork/concurrent-map v0.1.3 // indirect
-	github.com/ElrondNetwork/elrond-go-crypto v1.2.3 // indirect
-	github.com/ElrondNetwork/elrond-go-p2p v1.0.8 // indirect
+	github.com/multiversx/mx-chain-go-crypto v1.2.3 // indirect
+	github.com/multiversx/mx-chain-go-p2p v1.0.8 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

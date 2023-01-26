@@ -1,8 +1,8 @@
 package trie
 
 import (
-	"github.com/ElrondNetwork/elrond-go-storage/storageUnit"
-	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
+	elrondConfig "github.com/multiversx/mx-chain-go/config"
+	"github.com/multiversx/mx-chain-storage-go/storageUnit"
 )
 
 func getCacheConfig() storageUnit.CacheConfig {
