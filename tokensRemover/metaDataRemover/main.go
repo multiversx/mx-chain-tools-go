@@ -8,6 +8,7 @@ import (
 	"github.com/multiversx/mx-chain-tools-go/tokensRemover/metaDataRemover/config"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
+	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
 

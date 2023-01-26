@@ -9,7 +9,7 @@ import (
 
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
-	elrondFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
+	nodeFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
 	"github.com/multiversx/mx-chain-go/common"
 	commonDisabled "github.com/multiversx/mx-chain-go/common/disabled"
 	elrondConfig "github.com/multiversx/mx-chain-go/config"
@@ -44,8 +44,8 @@ const (
 )
 
 // AttachFileLogger will attach the file logger, using provided flags
-func AttachFileLogger(log logger.Logger, logFilePrefix string, flagsConfig ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
-	var fileLogging elrondFactory.FileLoggingHandler
+func AttachFileLogger(log logger.Logger, logFilePrefix string, flagsConfig ContextFlagsConfig) (nodeFactory.FileLoggingHandler, error) {
+	var fileLogging nodeFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
 		fileLogging, err = file.NewFileLogging(file.ArgsFileLogging{

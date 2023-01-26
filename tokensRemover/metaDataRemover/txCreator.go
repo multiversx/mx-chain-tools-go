@@ -10,12 +10,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/interactors"
+	"github.com/multiversx/mx-chain-crypto-go/signing"
+	"github.com/multiversx/mx-chain-crypto-go/signing/ed25519"
 	"github.com/multiversx/mx-chain-tools-go/tokensRemover/metaDataRemover/config"
+	"github.com/multiversx/mx-sdk-go/blockchain"
+	"github.com/multiversx/mx-sdk-go/blockchain/cryptoProvider"
+	"github.com/multiversx/mx-sdk-go/builders"
+	"github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/multiversx/mx-sdk-go/interactors"
 )
 
 func createShardTxs(
@@ -29,18 +32,18 @@ func createShardTxs(
 			len(shardPemsDataMap), len(shardTxsDataMap))
 	}
 
-	args := blockchain.ArgsElrondProxy{
+	args := blockchain.ArgsProxy{
 		ProxyURL:            cfg.ProxyUrl,
 		CacheExpirationTime: time.Minute,
 		EntityType:          core.Proxy,
 	}
 
-	proxy, err := blockchain.NewElrondProxy(args)
+	proxy, err := blockchain.NewProxy(args)
 	if err != nil {
 		return err
 	}
 
-	txBuilder, err := builders.NewTxBuilder(blockchain.NewTxSigner())
+	txBuilder, err := builders.NewTxBuilder(cryptoProvider.NewSigner())
 	if err != nil {
 		return err
 	}
@@ -110,11 +113,14 @@ func (tc *txCreator) createTxs(
 		return nil, err
 	}
 
+	suite := ed25519.NewEd25519()
+	keyGen := signing.NewKeyGenerator(suite)
+	holder, _ := cryptoProvider.NewCryptoComponentsHolder(keyGen, pemData.secretKey)
 	txs := make([]*data.Transaction, 0, len(txsData))
 	for _, txData := range txsData {
 		transactionArguments.Data = txData
 		transactionArguments.GasLimit = tc.computeGasLimit(uint64(len(txData))) + additionalGasLimit
-		tx, err := tc.txInteractor.ApplySignatureAndGenerateTx(pemData.secretKey, *transactionArguments)
+		tx, err := tc.txInteractor.ApplySignatureAndGenerateTx(holder, *transactionArguments)
 		if err != nil {
 			return nil, err
 		}
