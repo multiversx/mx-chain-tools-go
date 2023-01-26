@@ -7,7 +7,7 @@ require (
 	github.com/multiversx/mx-chain-go v1.4.4
 	github.com/multiversx/mx-chain-logger-go v1.0.11
 	github.com/multiversx/mx-chain-storage-go v1.0.7
-	github.com/multiversx/mx-chain-tools-go/elasticreindexer v0.0.0-20230126133847-fccd71bf94c8
+	github.com/multiversx/mx-chain-tools-go/elasticreindexer v0.0.0-20230126140838-57dd2ccd973d
 	github.com/multiversx/mx-chain-vm-common-go v1.3.36
 	github.com/pelletier/go-toml v1.9.3
 	github.com/stretchr/testify v1.8.1

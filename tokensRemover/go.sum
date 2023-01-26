@@ -526,8 +526,8 @@ github.com/multiversx/mx-chain-p2p-go v1.0.10/go.mod h1:j9Ueo2ptCnL7TQvQg6KS/KWA
 github.com/multiversx/mx-chain-storage-go v1.0.7 h1:UqLo/OLTD3IHiE/TB/SEdNRV1GG2f1R6vIP5ehHwCNw=
 github.com/multiversx/mx-chain-storage-go v1.0.7/go.mod h1:gtKoV32Cg2Uy8deHzF8Ud0qAl0zv92FvWgPSYIP0Zmg=
 github.com/multiversx/mx-chain-tools-go/elasticreindexer v0.0.0-20230126133847-fccd71bf94c8/go.mod h1:MZOaddPsvsd5CIN44MKXbikd88Hw/VOfms1RMzN8OcM=
-github.com/multiversx/mx-chain-tools-go/trieTools v0.0.0-20230126134454-a6ebda276482 h1:gJ3jLX5IvPKCAthFr9Sn+lZVBdyOb9qKYS6NCsCDdsQ=
-github.com/multiversx/mx-chain-tools-go/trieTools v0.0.0-20230126134454-a6ebda276482/go.mod h1:XhE3UCALallWUr8RhqGiE1T4GUNXYKECd+qteQDqrHI=
+github.com/multiversx/mx-chain-tools-go/trieTools v0.0.0-20230126140838-57dd2ccd973d h1:ANR9h6KLxxWsoRmgG+5wOvpyy6F7ciY1kOKPbIneQtg=
+github.com/multiversx/mx-chain-tools-go/trieTools v0.0.0-20230126140838-57dd2ccd973d/go.mod h1:bTw6zy7/oi3giXMOgha3vSCsYeYR0LBKcAsOnB32k1I=
 github.com/multiversx/mx-chain-vm-common-go v1.3.34/go.mod h1:sZ2COLCxvf2GxAAJHGmGqWybObLtFuk2tZUyGqnMXE8=
 github.com/multiversx/mx-chain-vm-common-go v1.3.36 h1:9TViMK+vqTHss9cnGKtzOWzsxI/LWIetAYzrgf4H/w0=
 github.com/multiversx/mx-chain-vm-common-go v1.3.36/go.mod h1:sZ2COLCxvf2GxAAJHGmGqWybObLtFuk2tZUyGqnMXE8=

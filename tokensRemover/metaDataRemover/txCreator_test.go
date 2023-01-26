@@ -68,8 +68,7 @@ func TestTxCreator_CreateTxs(t *testing.T) {
 
 	txIdx := 0
 	txInteractor := &mocks.TransactionInteractorStub{
-		ApplySignatureAndGenerateTxCalled: func(skBytes []byte, arg data.ArgCreateTransaction) (*data.Transaction, error) {
-			require.Equal(t, sk, skBytes)
+		ApplySignatureAndGenerateTxCalled: func(cryptoHolder core.CryptoComponentsHolder, arg data.ArgCreateTransaction) (*data.Transaction, error) {
 			require.Equal(t, data.ArgCreateTransaction{
 				Nonce:    nonce,
 				Value:    "0",

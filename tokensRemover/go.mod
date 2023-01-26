@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/multiversx/mx-chain-logger-go v1.0.11
-	github.com/multiversx/mx-chain-tools-go/trieTools v0.0.0-20230126134454-a6ebda276482
+	github.com/multiversx/mx-chain-tools-go/trieTools v0.0.0-20230126140838-57dd2ccd973d
 	github.com/multiversx/mx-sdk-go v1.2.3
 	github.com/pelletier/go-toml v1.9.3
 	github.com/stretchr/testify v1.8.1
@@ -27,7 +27,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -42,7 +41,6 @@ require (
 	github.com/multiversx/mx-chain-p2p-go v1.0.10 // indirect
 	github.com/multiversx/mx-chain-storage-go v1.0.7 // indirect
 	github.com/multiversx/mx-chain-vm-common-go v1.3.36 // indirect
-	github.com/onsi/gomega v1.13.0 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
