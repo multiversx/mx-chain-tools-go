@@ -10,8 +10,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/accountStorageExporter/config"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
@@ -19,6 +17,8 @@ import (
 	"github.com/multiversx/mx-chain-go/state"
 	"github.com/multiversx/mx-chain-go/trie/keyBuilder"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/accountStorageExporter/config"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
 )
 

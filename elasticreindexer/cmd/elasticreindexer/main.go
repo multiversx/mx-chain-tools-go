@@ -4,9 +4,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/process"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/config"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/process"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )

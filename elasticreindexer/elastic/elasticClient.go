@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/config"
 	"github.com/tidwall/gjson"
 )
 

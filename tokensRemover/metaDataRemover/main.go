@@ -4,11 +4,10 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/metaDataRemover/config"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 	logger "github.com/multiversx/mx-chain-logger-go"
-	"github.com/pelletier/go-toml"
+	"github.com/multiversx/mx-chain-tools-go/tokensRemover/metaDataRemover/config"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 	"github.com/urfave/cli"
 )
 

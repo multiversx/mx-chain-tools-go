@@ -1,4 +1,4 @@
-module github.com/ElrondNetwork/elrond-tools-go/elasticreindexer
+module github.com/multiversx/mx-chain-tools-go/elasticreindexer
 
 go 1.13
 

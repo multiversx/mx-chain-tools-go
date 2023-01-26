@@ -3,7 +3,7 @@ package mocks
 import (
 	"io"
 
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 )
 
 // FileHandlerStub -

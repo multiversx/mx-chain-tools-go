@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/common"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/export"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/balancesExporter/common"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/balancesExporter/export"
 	"github.com/urfave/cli"
 )
 

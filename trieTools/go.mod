@@ -1,14 +1,14 @@
-module github.com/ElrondNetwork/elrond-tools-go/trieTools
+module github.com/multiversx/mx-chain-tools-go/trieTools
 
 go 1.17
 
 require (
-	github.com/multiversx/mx-chain-go v1.4.1-0.20221223085700-a3ca9d094137
-	github.com/multiversx/mx-chain-core-go v1.1.28
+	github.com/multiversx/mx-chain-go v1.4.4
+	github.com/multiversx/mx-chain-core-go v1.1.30
 	github.com/multiversx/mx-chain-logger-go v1.0.10
 	github.com/multiversx/mx-chain-storage-go v1.0.4
-	github.com/ElrondNetwork/elrond-tools-go/elasticreindexer v0.0.0-20220822122240-fd32ce986e4c
-	github.com/ElrondNetwork/elrond-vm-common v1.3.31
+	github.com/multiversx/mx-chain-tools-go/elasticreindexer 859637bce901cf84eedf3eed83696ddfa3ea0e2b
+	github.com/multiversx/mx-chain-vm-common-go v1.3.36
 	github.com/pelletier/go-toml v1.9.3
 	github.com/stretchr/testify v1.8.0
 	github.com/tidwall/gjson v1.14.0

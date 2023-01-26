@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	elrondFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
@@ -29,6 +28,7 @@ import (
 	"github.com/multiversx/mx-chain-logger-go/file"
 	"github.com/multiversx/mx-chain-storage-go/memorydb"
 	"github.com/multiversx/mx-chain-storage-go/storageUnit"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon/components"
 	"github.com/urfave/cli"
 )
 

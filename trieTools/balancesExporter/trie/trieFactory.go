@@ -1,8 +1,6 @@
 package trie
 
 import (
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/balancesExporter/common"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
 	"github.com/multiversx/mx-chain-core-go/hashing/blake2b"
 	"github.com/multiversx/mx-chain-core-go/marshal"
 	"github.com/multiversx/mx-chain-go/epochStart/notifier"
@@ -11,6 +9,8 @@ import (
 	"github.com/multiversx/mx-chain-go/storage/pruning"
 	"github.com/multiversx/mx-chain-go/testscommon"
 	"github.com/multiversx/mx-chain-go/trie"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/balancesExporter/common"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 )
 
 const (
