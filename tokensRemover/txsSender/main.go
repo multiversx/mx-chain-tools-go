@@ -5,11 +5,11 @@ import (
 	"os"
 	"time"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/blockchain"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
-	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/txsSender/config"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/tokensRemover/txsSender/config"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
+	"github.com/multiversx/mx-sdk-go/blockchain"
+	"github.com/multiversx/mx-sdk-go/core"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
@@ -63,13 +63,13 @@ func startProcess(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	args := blockchain.ArgsElrondProxy{
+	args := blockchain.ArgsProxy{
 		ProxyURL:            cfg.ProxyUrl,
 		CacheExpirationTime: time.Minute,
 		EntityType:          core.Proxy,
 	}
 
-	proxy, err := blockchain.NewElrondProxy(args)
+	proxy, err := blockchain.NewProxy(args)
 	if err != nil {
 		return err
 	}

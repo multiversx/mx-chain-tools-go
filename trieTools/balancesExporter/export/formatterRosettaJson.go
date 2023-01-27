@@ -3,7 +3,7 @@ package export
 import (
 	"encoding/json"
 
-	"github.com/ElrondNetwork/elrond-go/state"
+	"github.com/multiversx/mx-chain-go/state"
 )
 
 type rosettaBalance struct {

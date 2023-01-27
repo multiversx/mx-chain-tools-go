@@ -4,9 +4,9 @@ import (
 	"io"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/mocks"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/mocks"
 	"github.com/stretchr/testify/require"
 )
 

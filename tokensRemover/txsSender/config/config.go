@@ -1,6 +1,6 @@
 package config
 
-import "github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+import "github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 
 // ContextFlagsTxsSender is the flags config for txs sender tool
 type ContextFlagsTxsSender struct {

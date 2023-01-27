@@ -1,6 +1,6 @@
 package mock
 
-import "github.com/ElrondNetwork/elrond-go-storage/types"
+import "github.com/multiversx/mx-chain-storage-go/types"
 
 // DataMergerStub -
 type DataMergerStub struct {

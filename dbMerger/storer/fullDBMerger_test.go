@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	"github.com/ElrondNetwork/elrond-go-storage/types"
-	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/mock"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-storage-go/types"
+	"github.com/multiversx/mx-chain-tools-go/dbmerger/mock"
 	"github.com/stretchr/testify/assert"
 )
 

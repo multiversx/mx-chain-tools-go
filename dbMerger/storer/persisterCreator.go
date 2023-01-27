@@ -1,8 +1,8 @@
 package storer
 
 import (
-	"github.com/ElrondNetwork/elrond-go-storage/types"
-	"github.com/ElrondNetwork/elrond-go/storage/leveldb"
+	"github.com/multiversx/mx-chain-storage-go/leveldb"
+	"github.com/multiversx/mx-chain-storage-go/types"
 )
 
 const (

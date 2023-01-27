@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
+	"github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
 )
 
 type proxyProvider interface {
@@ -17,7 +17,7 @@ type proxyProvider interface {
 }
 
 type transactionInteractor interface {
-	ApplySignatureAndGenerateTx(skBytes []byte, arg data.ArgCreateTransaction) (*data.Transaction, error)
+	ApplySignatureAndGenerateTx(cryptoHolder core.CryptoComponentsHolder, arg data.ArgCreateTransaction) (*data.Transaction, error)
 }
 
 type pemProvider interface {

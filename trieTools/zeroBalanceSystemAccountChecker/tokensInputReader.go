@@ -7,9 +7,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ElrondNetwork/elrond-go-core/marshal"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
+	"github.com/multiversx/mx-chain-core-go/marshal"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
 )
 
 const (

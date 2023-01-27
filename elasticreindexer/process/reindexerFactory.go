@@ -3,8 +3,8 @@ package process
 import (
 	"errors"
 
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/elastic"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/config"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/elastic"
 )
 
 // CreateReindexer will create the source and destination elastic handlers and create a reindexer based on them

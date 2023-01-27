@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/process/mock"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/process/mock"
 	"github.com/stretchr/testify/require"
 )
 
