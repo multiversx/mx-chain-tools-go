@@ -1,7 +1,7 @@
 package trie
 
 import (
-	elrondConfig "github.com/multiversx/mx-chain-go/config"
+	nodeConfig "github.com/multiversx/mx-chain-go/config"
 	"github.com/multiversx/mx-chain-storage-go/storageUnit"
 )
 
@@ -13,8 +13,8 @@ func getCacheConfig() storageUnit.CacheConfig {
 	}
 }
 
-func getDbConfig(filePath string) elrondConfig.DBConfig {
-	return elrondConfig.DBConfig{
+func getDbConfig(filePath string) nodeConfig.DBConfig {
+	return nodeConfig.DBConfig{
 		FilePath:          filePath,
 		Type:              "LvlDBSerial",
 		BatchDelaySeconds: 2,

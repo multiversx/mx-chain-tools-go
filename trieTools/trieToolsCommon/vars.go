@@ -3,7 +3,7 @@ package trieToolsCommon
 import (
 	"github.com/multiversx/mx-chain-core-go/hashing/blake2b"
 	"github.com/multiversx/mx-chain-core-go/marshal"
-	elrondConfig "github.com/multiversx/mx-chain-go/config"
+	nodeConfig "github.com/multiversx/mx-chain-go/config"
 	"github.com/multiversx/mx-chain-storage-go/storageUnit"
 )
 
@@ -18,7 +18,7 @@ var (
 		Capacity:    500000,
 		SizeInBytes: 314572800, // 300MB
 	}
-	dbConfig = elrondConfig.DBConfig{
+	dbConfig = nodeConfig.DBConfig{
 		Type:              "LvlDBSerial",
 		BatchDelaySeconds: 2,
 		MaxBatchSize:      45000,

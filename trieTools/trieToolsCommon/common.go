@@ -12,7 +12,7 @@ import (
 	nodeFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
 	"github.com/multiversx/mx-chain-go/common"
 	commonDisabled "github.com/multiversx/mx-chain-go/common/disabled"
-	elrondConfig "github.com/multiversx/mx-chain-go/config"
+	nodeConfig "github.com/multiversx/mx-chain-go/config"
 	"github.com/multiversx/mx-chain-go/epochStart/notifier"
 	"github.com/multiversx/mx-chain-go/state"
 	stateFactory "github.com/multiversx/mx-chain-go/state/factory"
@@ -204,7 +204,7 @@ func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) 
 		CheckpointsStorer: memorydb.New(),
 		Marshalizer:       Marshaller,
 		Hasher:            Hasher,
-		GeneralConfig: elrondConfig.TrieStorageManagerConfig{
+		GeneralConfig: nodeConfig.TrieStorageManagerConfig{
 			SnapshotsBufferLen:    10,
 			SnapshotsGoroutineNum: 100,
 		},
