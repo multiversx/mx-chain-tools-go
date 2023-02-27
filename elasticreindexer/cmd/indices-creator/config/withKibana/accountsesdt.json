@@ -69,7 +69,7 @@
     "type": "keyword"
    },
    "tokenNonce": {
-    "type": "long"
+    "type": "double"
    },
    "type": {
     "type": "keyword"

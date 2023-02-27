@@ -30,7 +30,7 @@
     "type": "keyword"
    },
    "tokenNonce": {
-    "type": "long"
+    "type": "double"
    }
   }
  },
