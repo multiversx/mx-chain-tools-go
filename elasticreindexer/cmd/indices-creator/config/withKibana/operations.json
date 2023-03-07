@@ -133,6 +133,12 @@
    },
    "version": {
     "type": "long"
+   },
+   "valueNum": {
+    "type": "double"
+   },
+   "esdtValuesNum": {
+    "type": "double"
    }
   }
  },
