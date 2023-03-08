@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ElrondNetwork/elrond-go/state"
+	"github.com/multiversx/mx-chain-go/state"
 )
 
 type plainBalance struct {

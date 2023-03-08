@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/config"
 )
 
 type interval struct {

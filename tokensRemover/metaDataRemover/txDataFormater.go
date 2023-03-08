@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/hex"
 
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/builders"
+	"github.com/multiversx/mx-sdk-go/builders"
 )
 
 const esdtDeleteMetadataFunction = "ESDTDeleteMetadata"

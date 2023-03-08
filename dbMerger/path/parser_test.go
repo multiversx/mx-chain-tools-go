@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/mock"
+	"github.com/multiversx/mx-chain-tools-go/dbmerger/mock"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go-logger/file"
-	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/path"
-	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/storer"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-logger-go/file"
+	"github.com/multiversx/mx-chain-tools-go/dbmerger/path"
+	"github.com/multiversx/mx-chain-tools-go/dbmerger/storer"
 	"github.com/urfave/cli"
 )
 
@@ -83,8 +83,8 @@ func main() {
 	}
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Elrond Team",
-			Email: "contact@elrond.com",
+			Name:  "The MultiversX Team",
+			Email: "contact@multiversx.com",
 		},
 	}
 

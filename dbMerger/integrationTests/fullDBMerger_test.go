@@ -3,8 +3,8 @@ package integrationTests
 import (
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/path"
-	"github.com/ElrondNetwork/elrond-tools-go/dbmerger/storer"
+	"github.com/multiversx/mx-chain-tools-go/dbmerger/path"
+	"github.com/multiversx/mx-chain-tools-go/dbmerger/storer"
 	"github.com/stretchr/testify/assert"
 )
 

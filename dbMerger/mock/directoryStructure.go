@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
 const pathSeparator = "/"

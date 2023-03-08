@@ -1,7 +1,7 @@
 package storer
 
 import (
-	"github.com/ElrondNetwork/elrond-go-storage/types"
+	"github.com/multiversx/mx-chain-storage-go/types"
 )
 
 // DataMerger specify the operations supported by a component able to merge data between persisters

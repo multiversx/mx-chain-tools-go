@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
-	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/metaDataRemover/mocks"
+	"github.com/multiversx/mx-chain-tools-go/tokensRemover/metaDataRemover/mocks"
+	"github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
 
