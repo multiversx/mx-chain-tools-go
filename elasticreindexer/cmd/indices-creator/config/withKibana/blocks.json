@@ -120,16 +120,16 @@
     }
    },
    "gasPenalized": {
-    "type": "long"
+    "type": "double"
    },
    "gasProvided": {
-    "type": "long"
+    "type": "double"
    },
    "gasRefunded": {
-    "type": "long"
+    "type": "double"
    },
    "maxGasLimit": {
-    "type": "long"
+    "type": "double"
    },
    "miniBlocksDetails": {
     "properties": {
@@ -185,15 +185,15 @@
      },
      "gasProvided": {
       "index": "false",
-      "type": "long"
+      "type": "double"
      },
      "gasRefunded": {
       "index": "false",
-      "type": "long"
+      "type": "double"
      },
      "penalized": {
       "index": "false",
-      "type": "long"
+      "type": "double"
      },
      "rootHash": {
       "index": "false",

@@ -14,8 +14,7 @@
     "type": "double"
    },
    "nonce": {
-    "index": "false",
-    "type": "long"
+    "type": "double"
    },
    "shardID": {
     "type": "long"

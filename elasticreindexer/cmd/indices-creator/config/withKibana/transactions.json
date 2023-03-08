@@ -19,15 +19,15 @@
    },
    "gasLimit": {
     "index": "false",
-    "type": "long"
+    "type": "double"
    },
    "gasPrice": {
     "index": "false",
-    "type": "long"
+    "type": "double"
    },
    "gasUsed": {
     "index": "false",
-    "type": "long"
+    "type": "double"
    },
    "hasOperations": {
     "type": "boolean"
