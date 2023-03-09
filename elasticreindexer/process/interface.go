@@ -12,6 +12,7 @@ type ElasticClientHandler interface {
 		handlerFunc func(responseBytes []byte) error,
 	) error
 	GetCount(index string) (uint64, error)
+	GetCountWithBody(index string, body []byte) (uint64, error)
 	DoesAliasExist(alias string) bool
 	DoBulkRequest(buff *bytes.Buffer, index string) error
 	DoesIndexExist(index string) bool
@@ -23,4 +24,5 @@ type ElasticClientHandler interface {
 type ReindexerHandler interface {
 	Process(overwrite bool, skipMappings bool, indices ...string) error
 	ProcessIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error
+	GetCountsForInterval(index string, start, stop int64) (uint64, uint64, error)
 }

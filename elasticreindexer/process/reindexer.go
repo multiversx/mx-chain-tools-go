@@ -188,12 +188,28 @@ func (r *reindexer) ProcessIndexWithTimestamp(index string, overwrite bool, skip
 	}
 
 	scrollRequestHandlerFunc := r.createScrollRequestHandlerFunction(count, index)
-	err = r.sourceElastic.DoScrollRequestAllDocuments(index, getWithTimestamp(start, stop).Bytes(), scrollRequestHandlerFunc)
+	err = r.sourceElastic.DoScrollRequestAllDocuments(index, getWithTimestamp(start, stop, true, true).Bytes(), scrollRequestHandlerFunc)
 	if err != nil {
 		return fmt.Errorf("%w while r.sourceElastic.DoScrollRequestAllDocuments", err)
 	}
 
 	return nil
+}
+
+// GetCountsForInterval will return the counts from source and destination client based on the provided intervals
+func (r *reindexer) GetCountsForInterval(index string, start, stop int64) (uint64, uint64, error) {
+	body := getWithTimestamp(start, stop, false, false).Bytes()
+
+	countFromSource, err := r.sourceElastic.GetCountWithBody(index, body)
+	if err != nil {
+		return 0, 0, err
+	}
+	countFromDestination, err := r.destinationElastic.GetCountWithBody(index, body)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return countFromSource, countFromDestination, nil
 }
 
 func (r *reindexer) createScrollRequestHandlerFunction(count *uint64, index string) func([]byte) error {
