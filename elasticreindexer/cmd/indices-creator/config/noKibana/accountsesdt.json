@@ -53,7 +53,7 @@
     "type": "nested"
    },
    "identifier": {
-    "type": "keyword"
+    "type": "text"
    },
    "properties": {
     "type": "keyword"

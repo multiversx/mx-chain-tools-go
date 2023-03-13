@@ -93,7 +93,7 @@
     "type": "date"
    },
    "tokens": {
-    "type": "keyword"
+    "type": "text"
    },
    "value": {
     "type": "keyword"

@@ -15,6 +15,23 @@
    },
    "contract": {
     "type": "keyword"
+   },
+   "unDelegateInfo": {
+    "properties": {
+     "id": {
+      "type": "keyword"
+     },
+     "timestamp": {
+      "format": "epoch_second",
+      "type": "date"
+     },
+     "value": {
+      "type": "keyword"
+     },
+     "valueNum": {
+      "type": "double"
+     }
+    }
    }
   }
  },

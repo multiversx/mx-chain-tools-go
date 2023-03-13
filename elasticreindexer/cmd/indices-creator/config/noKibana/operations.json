@@ -123,7 +123,7 @@
     "type": "date"
    },
    "tokens": {
-    "type": "keyword"
+    "type": "text"
    },
    "type": {
     "type": "keyword"
