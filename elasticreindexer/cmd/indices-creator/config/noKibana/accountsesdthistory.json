@@ -27,7 +27,7 @@
     "type": "date"
    },
    "token": {
-    "type": "keyword"
+    "type": "text"
    },
    "tokenNonce": {
     "type": "double"
