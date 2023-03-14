@@ -114,7 +114,7 @@
         "format": "epoch_second"
       },
       "token": {
-        "type": "text"
+        "type": "keyword"
       },
       "type": {
         "type": "keyword"
