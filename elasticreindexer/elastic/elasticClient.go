@@ -80,8 +80,23 @@ func (esc *esClient) GetMultiple(index string, requests []string) ([]byte, error
 
 // GetCount returns the total number of documents available in the provided index
 func (esc *esClient) GetCount(index string) (uint64, error) {
+	return esc.getCount(index, nil)
+}
+
+func (esc *esClient) GetCountWithBody(index string, body []byte) (uint64, error) {
+	return esc.getCount(index, body)
+}
+
+func (esc *esClient) getCount(index string, body []byte) (uint64, error) {
+	options := make([]func(*esapi.CountRequest), 0)
+	options = append(options, esc.client.Count.WithIndex(index))
+
+	if body != nil {
+		options = append(options, esc.client.Count.WithBody(bytes.NewBuffer(body)))
+	}
+
 	res, err := esc.client.Count(
-		esc.client.Count.WithIndex(index),
+		options...,
 	)
 	if err != nil {
 		return 0, err
