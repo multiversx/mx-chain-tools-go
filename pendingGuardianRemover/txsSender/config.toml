@@ -1,0 +1,6 @@
+[API]
+    NetworkAddress = "https://testnet-api.multiversx.com"
+
+[TxSender]
+    TxsFile = "../txs.json"
+    DelayBetweenSendsInSec = 5

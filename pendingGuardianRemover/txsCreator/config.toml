@@ -1,0 +1,16 @@
+[API]
+    NetworkAddress = "https://testnet-api.multiversx.com"
+
+[TxGen]
+    NumOfTransactions = 1000
+    ServiceUID        = "ServiceID"
+    ChainID           = "T"
+    GasPrice          = 1000000000
+    GasLimit          = 300000
+
+[TxSaver]
+    OutputFile = "../txs.json"
+
+[Keys]
+    UserPEMFile     = "keys/user.pem"
+    GuardianPEMFile = "keys/guardian.pem"
