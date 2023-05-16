@@ -111,7 +111,7 @@ func (sender *txSender) sendNextTransaction(ctx context.Context) {
 func (sender *txSender) hasPendingGuardian(ctx context.Context) bool {
 	guardianData, err := sender.httpClient.GetGuardianData(ctx, sender.senderAddress)
 	if err != nil {
-		return false
+		return true // force tx in case of error
 	}
 
 	if check.IfNilReflect(guardianData) {
