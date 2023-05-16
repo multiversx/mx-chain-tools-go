@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	expectedErr = errors.New("expected error")
+var expectedErr = errors.New("expected error")
 
-	userCryptoHolder = &testsCommon.CryptoComponentsHolderStub{
+func createMockCryptoComponentsHodlers() (core.CryptoComponentsHolder, core.CryptoComponentsHolder) {
+	userCryptoHolder := &testsCommon.CryptoComponentsHolderStub{
 		GetPublicKeyCalled: func() crypto.PublicKey {
 			return &testsCommon.PublicKeyStub{
 				ToByteArrayCalled: func() ([]byte, error) {
@@ -31,7 +31,7 @@ var (
 			return "provided user"
 		},
 	}
-	guardianCryptoHolder = &testsCommon.CryptoComponentsHolderStub{
+	guardianCryptoHolder := &testsCommon.CryptoComponentsHolderStub{
 		GetPublicKeyCalled: func() crypto.PublicKey {
 			return &testsCommon.PublicKeyStub{
 				ToByteArrayCalled: func() ([]byte, error) {
@@ -43,7 +43,9 @@ var (
 			return "provided guardian"
 		},
 	}
-)
+
+	return userCryptoHolder, guardianCryptoHolder
+}
 
 func TestNewTxGenerator(t *testing.T) {
 	t.Parallel()
@@ -143,6 +145,7 @@ func TestTxGenerator_GenerateTxs(t *testing.T) {
 	t.Run("ApplyUserSignatureAndGenerateTx error should error", func(t *testing.T) {
 		t.Parallel()
 
+		userCryptoHolder, guardianCryptoHolder := createMockCryptoComponentsHodlers()
 		gen, _ := NewTxGenerator(
 			&mock.TxBuilderStub{
 				ApplyUserSignatureAndGenerateTxCalled: func(cryptoHolder core.CryptoComponentsHolder, arg data.ArgCreateTransaction) (*data.Transaction, error) {
@@ -165,6 +168,7 @@ func TestTxGenerator_GenerateTxs(t *testing.T) {
 	t.Run("ApplyGuardianSignature error should error", func(t *testing.T) {
 		t.Parallel()
 
+		userCryptoHolder, guardianCryptoHolder := createMockCryptoComponentsHodlers()
 		gen, _ := NewTxGenerator(
 			&mock.TxBuilderStub{
 				ApplyGuardianSignatureCalled: func(cryptoHolderGuardian core.CryptoComponentsHolder, tx *data.Transaction) error {
@@ -187,6 +191,7 @@ func TestTxGenerator_GenerateTxs(t *testing.T) {
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
+		userCryptoHolder, guardianCryptoHolder := createMockCryptoComponentsHodlers()
 		userBytes, _ := guardianCryptoHolder.GetPublicKey().ToByteArray()
 		expectedTxData := []byte("SetGuardian@" + hex.EncodeToString(userBytes) + "@" + hex.EncodeToString([]byte("ServiceID")))
 		providedTx := &data.Transaction{
