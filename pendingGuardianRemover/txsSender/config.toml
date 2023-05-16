@@ -3,4 +3,4 @@
 
 [TxSender]
     TxsFile = "../txs.json"
-    DelayBetweenSendsInSec = 5
+    DelayBetweenSendsInSec = 600
