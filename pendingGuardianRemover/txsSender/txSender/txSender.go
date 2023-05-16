@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/pendingGuardianRemover"
 	"github.com/multiversx/mx-sdk-go/data"
@@ -67,6 +68,11 @@ func (sender *txSender) sendTransactions(ctx context.Context) {
 }
 
 func (sender *txSender) sendNextTransaction(ctx context.Context) {
+	if !sender.hasPendingGuardian(ctx) {
+		log.Debug("account does not have pending guardian, skipping SetGuardian transaction...")
+		return
+	}
+
 	currentNonce, err := sender.getAccountNonce(ctx)
 	if err != nil {
 		log.Warn("failed to get account", "address", sender.senderAddress, "error", err.Error())
@@ -100,6 +106,24 @@ func (sender *txSender) sendNextTransaction(ctx context.Context) {
 	}
 
 	log.Debug("transaction sent", "hash", hash)
+}
+
+func (sender *txSender) hasPendingGuardian(ctx context.Context) bool {
+	guardianData, err := sender.httpClient.GetGuardianData(ctx, sender.senderAddress)
+	if err != nil {
+		return false
+	}
+
+	if check.IfNilReflect(guardianData) {
+		log.Warn("received nil guardian data")
+		return false
+	}
+
+	if check.IfNilReflect(guardianData.PendingGuardian) {
+		return false
+	}
+
+	return true
 }
 
 func (sender *txSender) getAccountNonce(ctx context.Context) (uint64, error) {
