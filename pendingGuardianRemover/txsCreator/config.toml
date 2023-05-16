@@ -6,7 +6,7 @@
     ServiceUID        = "ServiceID"
     ChainID           = "T"
     GasPrice          = 1000000000
-    GasLimit          = 300000
+    GasLimit          = 500000
 
 [TxSaver]
     OutputFile = "../txs.json"

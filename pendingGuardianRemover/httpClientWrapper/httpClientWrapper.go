@@ -2,7 +2,6 @@ package httpClientWrapper
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,6 +18,16 @@ const (
 	getGuardianDataEndpointFormat = "address/%s/guardian-data"
 	sendTransactionEndpoint       = "transaction/send"
 )
+
+type sendSingleTxResponseData struct {
+	TxHash string `json:"txHash"`
+}
+
+type sendSingleTxResponse struct {
+	Data  sendSingleTxResponseData `json:"data"`
+	Error string                   `json:"error"`
+	Code  string                   `json:"code"`
+}
 
 type httpClientWrapper struct {
 	httpClient pendingGuardianRemover.HttpClient
@@ -82,11 +91,17 @@ func (hcw *httpClientWrapper) SendTransaction(ctx context.Context, txBuff []byte
 		return "", err
 	}
 
-	if code != http.StatusOK {
+	if code != http.StatusOK && code != http.StatusCreated {
 		return "", fmt.Errorf("status code is not ok, received %d with buff %s", code, buff)
 	}
 
-	return hex.EncodeToString(buff), nil
+	resp := &sendSingleTxResponse{}
+	err = json.Unmarshal(buff, resp)
+	if err != nil {
+		return "", err
+	}
+
+	return resp.Data.TxHash, nil
 }
 
 func (hcw *httpClientWrapper) getData(ctx context.Context, endpoint string) ([]byte, error) {

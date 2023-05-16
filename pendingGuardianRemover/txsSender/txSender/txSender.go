@@ -81,7 +81,7 @@ func (sender *txSender) sendTransactions(ctx context.Context) {
 
 func (sender *txSender) sendNextTransaction(ctx context.Context) {
 	if !sender.hasPendingGuardian(ctx) {
-		log.Debug("account does not have pending guardian, skipping SetGuardian transaction...")
+		log.Warn("account does not have pending guardian, skipping SetGuardian transaction...")
 		return
 	}
 
@@ -117,7 +117,7 @@ func (sender *txSender) sendNextTransaction(ctx context.Context) {
 		return
 	}
 
-	log.Debug("transaction sent", "hash", hash)
+	log.Info("transaction sent", "hash", hash)
 }
 
 func (sender *txSender) hasPendingGuardian(ctx context.Context) bool {
