@@ -3,7 +3,9 @@ package txGenerator
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-tools-go/pendingGuardianRemover"
 	"github.com/multiversx/mx-chain-tools-go/pendingGuardianRemover/txsCreator/config"
 	"github.com/multiversx/mx-sdk-go/core"
@@ -27,7 +29,18 @@ func NewTxGenerator(
 	config config.TxGeneratorConfig,
 ) (*txGenerator, error) {
 
-	// todo add nil checks
+	if check.IfNil(txBuilder) {
+		return nil, pendingGuardianRemover.ErrNilTXBuilder
+	}
+	if check.IfNil(userCryptoHolder) {
+		return nil, fmt.Errorf("%w for user", pendingGuardianRemover.ErrNilCryptoHolder)
+	}
+	if check.IfNil(guardianCryptoHolder) {
+		return nil, fmt.Errorf("%w for guardian", pendingGuardianRemover.ErrNilCryptoHolder)
+	}
+	if check.IfNil(httpClient) {
+		return nil, pendingGuardianRemover.ErrNilHttpClient
+	}
 
 	return &txGenerator{
 		txBuilder:            txBuilder,

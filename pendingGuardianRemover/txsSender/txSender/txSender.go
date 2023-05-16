@@ -3,6 +3,7 @@ package txSender
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -12,6 +13,8 @@ import (
 )
 
 var log = logger.GetOrCreate("sender")
+
+const minDelayBetweenSends = time.Second
 
 type txSender struct {
 	httpClient        pendingGuardianRemover.HttpClientWrapper
@@ -28,7 +31,16 @@ func NewTxSender(
 	txsMap map[uint64]*data.Transaction,
 ) (*txSender, error) {
 
-	// todo add nil checks
+	if check.IfNil(httpClient) {
+		return nil, pendingGuardianRemover.ErrNilHttpClient
+	}
+	if delayBetweenSends < minDelayBetweenSends {
+		return nil, fmt.Errorf("%w for delayBetweenSends, received %f, min expected %f",
+			pendingGuardianRemover.ErrInvalidValue, delayBetweenSends.Seconds(), minDelayBetweenSends.Seconds())
+	}
+	if len(txsMap) == 0 {
+		return nil, fmt.Errorf("%w, got empty transactions map", pendingGuardianRemover.ErrInvalidValue)
+	}
 
 	senderAddr := ""
 	for _, tx := range txsMap {
