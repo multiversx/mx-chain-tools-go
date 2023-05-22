@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -8,12 +9,20 @@ import (
 
 	"github.com/multiversx/mx-chain-core-go/core"
 	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-logger-go/file"
 	"github.com/multiversx/mx-chain-tools-go/pendingGuardianRemover/httpClientWrapper"
 	"github.com/multiversx/mx-chain-tools-go/pendingGuardianRemover/txsFileHandler"
 	"github.com/multiversx/mx-chain-tools-go/pendingGuardianRemover/txsSender/config"
 	"github.com/multiversx/mx-chain-tools-go/pendingGuardianRemover/txsSender/txSender"
 	"github.com/multiversx/mx-sdk-go/core/http"
 	"github.com/urfave/cli"
+)
+
+const (
+	defaultLogsPath  = "logs"
+	logFilePrefix    = "txs-sender"
+	logMaxSizeInMB   = 1024
+	logLifeSpanInSec = 86400
 )
 
 var log = logger.GetOrCreate("main")
@@ -33,6 +42,17 @@ var (
 		Usage: "The path for the main configuration file. This TOML file contain the main " +
 			"configurations such as storage setups, epoch duration and so on.",
 		Value: "config.toml",
+	}
+	// workingDirectory defines a flag for the path for the working directory.
+	workingDirectory = cli.StringFlag{
+		Name:  "working-directory",
+		Usage: "This flag specifies the `directory` where the node will store logs.",
+		Value: "",
+	}
+	// logSaveFile is used when the log output needs to be logged in a file
+	logSaveFile = cli.BoolFlag{
+		Name:  "log-save",
+		Usage: "Boolean option for enabling log saving. If set, it will automatically save all the logs into a file.",
 	}
 )
 
@@ -61,6 +81,11 @@ func main() {
 
 func startProcess(ctx *cli.Context) error {
 	flags := getFlagsConfig(ctx)
+
+	err := attachLoggers(flags)
+	if err != nil {
+		return err
+	}
 
 	cfg, err := loadConfig(flags.ConfigurationFile)
 	if err != nil {
@@ -97,6 +122,33 @@ func startProcess(ctx *cli.Context) error {
 	return sender.Close()
 }
 
+func attachLoggers(flags config.ContextFlagsConfig) error {
+	logLevelFlagValue := flags.LogLevel
+	err := logger.SetLogLevel(logLevelFlagValue)
+	if err != nil {
+		return err
+	}
+
+	if flags.SaveLogFile {
+		args := file.ArgsFileLogging{
+			WorkingDir:      flags.WorkingDir,
+			DefaultLogsPath: defaultLogsPath,
+			LogFilePrefix:   logFilePrefix,
+		}
+		fileLogging, err := file.NewFileLogging(args)
+		if err != nil {
+			return fmt.Errorf("%w creating a log file", err)
+		}
+
+		err = fileLogging.ChangeFileLifeSpan(time.Second*time.Duration(logLifeSpanInSec), logMaxSizeInMB)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func loadConfig(filepath string) (config.Configs, error) {
 	cfg := config.Configs{}
 	err := core.LoadTomlFile(&cfg, filepath)
@@ -111,6 +163,8 @@ func getFlags() []cli.Flag {
 	return []cli.Flag{
 		logLevel,
 		configurationFile,
+		workingDirectory,
+		logSaveFile,
 	}
 }
 
@@ -119,6 +173,8 @@ func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfig {
 
 	flagsConfig.LogLevel = ctx.GlobalString(logLevel.Name)
 	flagsConfig.ConfigurationFile = ctx.GlobalString(configurationFile.Name)
+	flagsConfig.WorkingDir = ctx.GlobalString(workingDirectory.Name)
+	flagsConfig.SaveLogFile = ctx.GlobalBool(logSaveFile.Name)
 
 	return flagsConfig
 }

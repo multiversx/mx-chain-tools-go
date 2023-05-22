@@ -21,4 +21,6 @@ type TxSenderConfig struct {
 type ContextFlagsConfig struct {
 	LogLevel          string
 	ConfigurationFile string
+	WorkingDir        string
+	SaveLogFile       bool
 }
