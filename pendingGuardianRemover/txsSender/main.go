@@ -46,7 +46,7 @@ var (
 	// workingDirectory defines a flag for the path for the working directory.
 	workingDirectory = cli.StringFlag{
 		Name:  "working-directory",
-		Usage: "This flag specifies the `directory` where the node will store databases and logs.",
+		Usage: "This flag specifies the `directory` where the node will store logs.",
 		Value: "",
 	}
 	// logSaveFile is used when the log output needs to be logged in a file
