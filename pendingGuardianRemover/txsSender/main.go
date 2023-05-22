@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultLogsPath  = "logs"
-	logFilePrefix    = "multi-factor-auth-go-service"
+	logFilePrefix    = "txs-sender"
 	logMaxSizeInMB   = 1024
 	logLifeSpanInSec = 86400
 )
