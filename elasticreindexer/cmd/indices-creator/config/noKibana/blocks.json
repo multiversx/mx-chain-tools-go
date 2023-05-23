@@ -52,7 +52,8 @@
       "index": "false",
       "type": "keyword"
      }
-    }
+    },
+    "type": "nested"
    },
    "epochStartShardsData": {
     "properties": {
@@ -99,7 +100,8 @@
         "index": "false",
         "type": "keyword"
        }
-      }
+      },
+      "type": "nested"
      },
      "rootHash": {
       "index": "false",
@@ -117,7 +119,8 @@
       "index": "false",
       "type": "long"
      }
-    }
+    },
+    "type": "nested"
    },
    "gasPenalized": {
     "type": "double"
@@ -145,7 +148,8 @@
       "index": "false",
       "type": "long"
      }
-    }
+    },
+    "type": "nested"
    },
    "miniBlocksHashes": {
     "type": "keyword"
@@ -199,7 +203,8 @@
       "index": "false",
       "type": "keyword"
      }
-    }
+    },
+    "type": "nested"
    },
    "searchOrder": {
     "type": "long"
