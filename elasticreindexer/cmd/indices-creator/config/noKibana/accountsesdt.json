@@ -37,20 +37,24 @@
       "type": "keyword"
      },
      "nonEmptyURIs": {
-      "type": "boolean"
+      "type": "boolean",
+      "isArray": true
      },
      "royalties": {
       "index": "false",
       "type": "long"
      },
      "tags": {
-      "type": "text"
+      "type": "text",
+      "isArray": true
      },
      "uris": {
-      "type": "text"
+      "type": "text",
+      "isArray": true
      }
     },
-    "type": "nested"
+    "type": "nested",
+    "isObject": true
    },
    "identifier": {
     "type": "text"

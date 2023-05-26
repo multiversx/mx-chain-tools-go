@@ -31,7 +31,8 @@
           "valueNum": {
             "type": "double"
           }
-        }
+        },
+        "isObject": true
       }
     }
   },

@@ -22,6 +22,7 @@
       },
       "ownersHistory": {
         "type": "nested",
+        "isObject": true,
         "properties": {
           "address": {
             "type": "keyword"
@@ -75,10 +76,12 @@
             "type": "boolean",
             "index": false
           }
-        }
+        },
+        "isObject": true
       },
       "roles": {
         "type": "nested",
+        "isObject": true,
         "properties": {
           "ESDTRoleLocalBurn": {
             "type": "keyword"

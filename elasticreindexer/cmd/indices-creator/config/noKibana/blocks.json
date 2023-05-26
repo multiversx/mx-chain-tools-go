@@ -52,7 +52,8 @@
       "index": "false",
       "type": "keyword"
      }
-    }
+    },
+    "isObject": true
    },
    "epochStartShardsData": {
     "properties": {
@@ -99,7 +100,8 @@
         "index": "false",
         "type": "keyword"
        }
-      }
+      },
+      "isObject": true
      },
      "rootHash": {
       "index": "false",
@@ -117,7 +119,8 @@
       "index": "false",
       "type": "long"
      }
-    }
+    },
+    "isObject": true
    },
    "gasPenalized": {
     "type": "double"
@@ -145,7 +148,8 @@
       "index": "false",
       "type": "long"
      }
-    }
+    },
+    "isObject": true
    },
    "miniBlocksHashes": {
     "type": "keyword"
@@ -199,7 +203,8 @@
       "index": "false",
       "type": "keyword"
      }
-    }
+    },
+    "isObject": true
    },
    "searchOrder": {
     "type": "long"
@@ -228,7 +233,8 @@
    },
    "validators": {
     "index": "false",
-    "type": "long"
+    "type": "long",
+    "isArray": true
    }
   }
  },

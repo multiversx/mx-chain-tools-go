@@ -23,7 +23,8 @@
       "type": "text"
      }
     },
-    "type": "nested"
+    "type": "nested",
+    "isObject": true
    },
    "originalTxHash": {
     "type": "keyword"

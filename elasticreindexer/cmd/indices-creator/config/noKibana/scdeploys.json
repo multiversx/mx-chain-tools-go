@@ -27,7 +27,8 @@
       "type": "keyword"
      }
     },
-    "type": "nested"
+    "type": "nested",
+    "isObject": true
    }
   }
  },
