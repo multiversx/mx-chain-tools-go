@@ -28,7 +28,8 @@
      }
     },
     "type": "nested",
-    "isObject": true
+    "isObject": true,
+    "isArray": true
    }
   }
  },

@@ -19,11 +19,16 @@
     "type": "text"
    },
    "esdtValues": {
-    "type": "keyword"
+    "type": "keyword",
+    "isArray": true
    },
    "fee": {
     "index": "false",
     "type": "keyword"
+   },
+   "feeNum": {
+    "index": "false",
+    "type": "double"
    },
    "function": {
     "type": "keyword"
@@ -44,6 +49,9 @@
     "type": "boolean"
    },
    "hasScResults": {
+    "type": "boolean"
+   },
+   "hasLogs": {
     "type": "boolean"
    },
    "initialPaidFee": {
@@ -81,10 +89,12 @@
     "type": "long"
    },
    "receivers": {
-    "type": "keyword"
+    "type": "keyword",
+    "isArray": true
    },
    "receiversShardIDs": {
-    "type": "long"
+    "type": "long",
+    "isArray": true
    },
    "relayedValue": {
     "index": "false",
@@ -123,7 +133,8 @@
     "type": "date"
    },
    "tokens": {
-    "type": "text"
+    "type": "text",
+    "isArray": true
    },
    "type": {
     "type": "keyword"
@@ -138,7 +149,16 @@
     "type": "double"
    },
    "esdtValuesNum": {
-    "type": "double"
+    "type": "double",
+    "isArray": true
+   },
+   "guardian": {
+    "index": false,
+    "type": "keyword"
+   },
+   "guardianSignature": {
+    "index": false,
+    "type": "keyword"
    }
   }
  },

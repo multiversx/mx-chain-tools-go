@@ -37,8 +37,11 @@
       "type": "keyword"
      },
      "nonEmptyURIs": {
-      "type": "boolean",
-      "isArray": true
+      "type": "boolean"
+     },
+     "whiteListedStorage": {
+      "index": "false",
+      "type": "boolean"
      },
      "royalties": {
       "index": "false",
@@ -77,6 +80,14 @@
    },
    "type": {
     "type": "keyword"
+   },
+   "frozen": {
+    "index": "false",
+    "type": "boolean"
+   },
+   "paused": {
+    "index": "false",
+    "type": "boolean"
    }
   }
  },

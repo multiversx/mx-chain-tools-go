@@ -17,7 +17,8 @@
     "type": "long"
    },
    "signersIndexes": {
-    "type": "long"
+    "type": "long",
+    "isArray": true
    },
    "timestamp": {
     "format": "epoch_second",

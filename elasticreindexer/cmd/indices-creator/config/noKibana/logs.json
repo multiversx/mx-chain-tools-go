@@ -20,11 +20,17 @@
       "type": "keyword"
      },
      "topics": {
-      "type": "text"
+      "type": "text",
+      "isArray": true
+     },
+     "order": {
+      "index": "false",
+      "type": "long"
      }
     },
     "type": "nested",
-    "isObject": true
+    "isObject": true,
+    "isArray": true
    },
    "originalTxHash": {
     "type": "keyword"

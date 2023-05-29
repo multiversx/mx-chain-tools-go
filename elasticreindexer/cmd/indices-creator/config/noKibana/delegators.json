@@ -10,6 +10,11 @@
       "activeStakeNum": {
         "type": "double"
       },
+      "timestamp": {
+        "format": "epoch_second",
+        "index": "false",
+        "type": "date"
+      },
       "address": {
         "type": "keyword"
       },
