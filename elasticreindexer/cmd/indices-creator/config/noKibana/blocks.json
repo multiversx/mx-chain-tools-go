@@ -101,7 +101,8 @@
         "type": "keyword"
        }
       },
-      "isObject": true
+      "isObject": true,
+      "isArray": true
      },
      "rootHash": {
       "index": "false",
@@ -120,7 +121,8 @@
       "type": "long"
      }
     },
-    "isObject": true
+    "isObject": true,
+    "isArray": true
    },
    "gasPenalized": {
     "type": "double"
@@ -144,21 +146,50 @@
       "index": "false",
       "type": "long"
      },
+     "senderShard": {
+      "index": "false",
+      "type": "long"
+     },
+     "receiverShard": {
+      "index": "false",
+      "type": "long"
+     },
      "mbIndex": {
       "index": "false",
       "type": "long"
+     },
+     "type": {
+      "index": "false",
+      "type": "keyword"
+     },
+     "procType": {
+      "index": "false",
+      "type": "keyword"
+     },
+     "txsHashes": {
+      "index": "false",
+      "type": "keyword",
+      "isArray": true
+     },
+     "executionOrderTxsIndices": {
+      "index": "false",
+      "type": "long",
+      "isArray": true
      }
     },
-    "isObject": true
+    "isObject": true,
+    "isArray": true
    },
    "miniBlocksHashes": {
-    "type": "keyword"
+    "type": "keyword",
+    "isArray": true
    },
    "nonce": {
     "type": "long"
    },
    "notarizedBlocksHashes": {
-    "type": "keyword"
+    "type": "keyword",
+    "isArray": true
    },
    "notarizedTxsCount": {
     "index": "false",

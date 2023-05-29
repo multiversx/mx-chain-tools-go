@@ -15,7 +15,8 @@
     "type": "text"
    },
    "esdtValues": {
-    "type": "keyword"
+    "type": "keyword",
+    "isArray": true
    },
    "function": {
     "type": "keyword"
@@ -29,6 +30,9 @@
     "type": "double"
    },
    "hasOperations": {
+    "type": "boolean"
+   },
+   "hasLogs": {
     "type": "boolean"
    },
    "miniBlockHash": {
@@ -56,10 +60,12 @@
     "type": "long"
    },
    "receivers": {
-    "type": "keyword"
+    "type": "keyword",
+    "isArray": true
    },
    "receiversShardIDs": {
-    "type": "long"
+    "type": "long",
+    "isArray": true
    },
    "relayedValue": {
     "index": "false",
@@ -82,7 +88,8 @@
     "type": "date"
    },
    "tokens": {
-    "type": "text"
+    "type": "text",
+    "isArray": true
    },
    "value": {
     "type": "keyword"
@@ -91,7 +98,8 @@
     "type": "double"
    },
    "esdtValuesNum": {
-    "type": "double"
+    "type": "double",
+    "isArray": true
    }
   }
  },
