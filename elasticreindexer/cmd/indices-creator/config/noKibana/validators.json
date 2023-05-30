@@ -5,7 +5,8 @@
  "mappings": {
   "properties": {
    "publicKeys": {
-    "type": "keyword"
+    "type": "keyword",
+    "isArray": true
    }
   }
  },
