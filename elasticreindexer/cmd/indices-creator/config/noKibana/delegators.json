@@ -37,7 +37,8 @@
             "type": "double"
           }
         },
-        "isObject": true
+        "isObject": true,
+        "isArray": true
       }
     }
   },

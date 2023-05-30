@@ -7,6 +7,9 @@
    "address": {
     "type": "keyword"
    },
+   "userName": {
+    "type": "keyword"
+   },
    "balance": {
     "type": "keyword"
    },
@@ -27,11 +30,19 @@
     "index": false,
     "type": "keyword"
    },
+   "developerRewardsNum": {
+    "index": false,
+    "type": "double"
+   },
    "totalBalanceWithStake": {
     "type": "keyword"
    },
    "totalBalanceWithStakeNum": {
     "type": "double"
+   },
+   "currentOwner": {
+    "index": false,
+    "type": "keyword"
    }
   }
  },
