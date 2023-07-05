@@ -7,38 +7,45 @@ import (
 	"os"
 	"path"
 
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-go-logger/file"
-	"github.com/ElrondNetwork/elrond-go-storage/memorydb"
-	"github.com/ElrondNetwork/elrond-go-storage/storageUnit"
-	elrondFactory "github.com/ElrondNetwork/elrond-go/cmd/node/factory"
-	"github.com/ElrondNetwork/elrond-go/common"
-	commonDisabled "github.com/ElrondNetwork/elrond-go/common/disabled"
-	elrondConfig "github.com/ElrondNetwork/elrond-go/config"
-	"github.com/ElrondNetwork/elrond-go/epochStart/notifier"
-	"github.com/ElrondNetwork/elrond-go/state"
-	stateFactory "github.com/ElrondNetwork/elrond-go/state/factory"
-	disabled2 "github.com/ElrondNetwork/elrond-go/state/storagePruningManager/disabled"
-	"github.com/ElrondNetwork/elrond-go/storage"
-	"github.com/ElrondNetwork/elrond-go/storage/databaseremover/disabled"
-	"github.com/ElrondNetwork/elrond-go/storage/factory"
-	"github.com/ElrondNetwork/elrond-go/storage/pruning"
-	"github.com/ElrondNetwork/elrond-go/testscommon"
-	"github.com/ElrondNetwork/elrond-go/trie"
-	hashesHolder "github.com/ElrondNetwork/elrond-go/trie/hashesHolder/disabled"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon/components"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
+	nodeFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
+	"github.com/multiversx/mx-chain-go/common"
+	commonDisabled "github.com/multiversx/mx-chain-go/common/disabled"
+	nodeConfig "github.com/multiversx/mx-chain-go/config"
+	"github.com/multiversx/mx-chain-go/epochStart/notifier"
+	"github.com/multiversx/mx-chain-go/state"
+	stateFactory "github.com/multiversx/mx-chain-go/state/factory"
+	disabled2 "github.com/multiversx/mx-chain-go/state/storagePruningManager/disabled"
+	"github.com/multiversx/mx-chain-go/storage"
+	"github.com/multiversx/mx-chain-go/storage/databaseremover/disabled"
+	"github.com/multiversx/mx-chain-go/storage/factory"
+	"github.com/multiversx/mx-chain-go/storage/pruning"
+	"github.com/multiversx/mx-chain-go/testscommon"
+	"github.com/multiversx/mx-chain-go/trie"
+	hashesHolder "github.com/multiversx/mx-chain-go/trie/hashesHolder/disabled"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-logger-go/file"
+	"github.com/multiversx/mx-chain-storage-go/memorydb"
+	"github.com/multiversx/mx-chain-storage-go/storageUnit"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon/components"
+	"github.com/urfave/cli"
+)
+
+var (
+	log = logger.GetOrCreate("trie")
 )
 
 const (
 	defaultLogsPath      = "logs"
 	maxTrieLevelInMemory = 5
 	maxDirs              = 100
+	addressLength        = 32
 )
 
 // AttachFileLogger will attach the file logger, using provided flags
-func AttachFileLogger(log logger.Logger, logFilePrefix string, flagsConfig ContextFlagsConfig) (elrondFactory.FileLoggingHandler, error) {
-	var fileLogging elrondFactory.FileLoggingHandler
+func AttachFileLogger(log logger.Logger, logFilePrefix string, flagsConfig ContextFlagsConfig) (nodeFactory.FileLoggingHandler, error) {
+	var fileLogging nodeFactory.FileLoggingHandler
 	var err error
 	if flagsConfig.SaveLogFile {
 		fileLogging, err = file.NewFileLogging(file.ArgsFileLogging{
@@ -197,7 +204,7 @@ func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) 
 		CheckpointsStorer: memorydb.New(),
 		Marshalizer:       Marshaller,
 		Hasher:            Hasher,
-		GeneralConfig: elrondConfig.TrieStorageManagerConfig{
+		GeneralConfig: nodeConfig.TrieStorageManagerConfig{
 			SnapshotsBufferLen:    10,
 			SnapshotsGoroutineNum: 100,
 		},
@@ -218,6 +225,12 @@ func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) 
 func NewAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 	accCreator := stateFactory.NewAccountCreator()
 	storagePruningManager := disabled2.NewDisabledStoragePruningManager()
+
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	if err != nil {
+		return nil, err
+	}
+
 	accountsAdapter, err := state.NewAccountsDB(state.ArgsAccountsDB{
 		Trie:                  trie,
 		Hasher:                Hasher,
@@ -226,6 +239,8 @@ func NewAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
 		StoragePruningManager: storagePruningManager,
 		ProcessingMode:        common.Normal,
 		ProcessStatusHandler:  commonDisabled.NewProcessStatusHandler(),
+		AppStatusHandler:      commonDisabled.NewAppStatusHandler(),
+		AddressConverter:      addressConverter,
 	})
 
 	return accountsAdapter, err
@@ -241,4 +256,34 @@ func GetNumTokens(addressTokensMap map[string]map[string]struct{}) int {
 	}
 
 	return numTokensInShard
+}
+
+// GetFlags will return an array of the defined flags
+func GetFlags() []cli.Flag {
+	return []cli.Flag{
+		WorkingDirectory,
+		DbDirectory,
+		LogLevel,
+		DisableAnsiColor,
+		LogSaveFile,
+		LogWithLoggerName,
+		ProfileMode,
+		HexRootHash,
+	}
+}
+
+// GetFlagsConfig returns a populated ContextFlagsConfig
+func GetFlagsConfig(ctx *cli.Context) ContextFlagsConfig {
+	flagsConfig := ContextFlagsConfig{}
+
+	flagsConfig.WorkingDir = ctx.GlobalString(WorkingDirectory.Name)
+	flagsConfig.DbDir = ctx.GlobalString(DbDirectory.Name)
+	flagsConfig.LogLevel = ctx.GlobalString(LogLevel.Name)
+	flagsConfig.DisableAnsiColor = ctx.GlobalBool(DisableAnsiColor.Name)
+	flagsConfig.SaveLogFile = ctx.GlobalBool(LogSaveFile.Name)
+	flagsConfig.EnableLogName = ctx.GlobalBool(LogWithLoggerName.Name)
+	flagsConfig.EnablePprof = ctx.GlobalBool(ProfileMode.Name)
+	flagsConfig.HexRootHash = ctx.GlobalString(HexRootHash.Name)
+
+	return flagsConfig
 }

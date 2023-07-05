@@ -37,4 +37,4 @@ for full flags list, launch the binary with the following parameter
 
 ## Audience
 
-This tool should be as generic as possible, and it shouldn't have any custom code related to Elrond instances.
+This tool should be as generic as possible, and it shouldn't have any custom code related to node instances.

@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/elastic"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
-	"github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
-	sysAccConfig "github.com/ElrondNetwork/elrond-tools-go/trieTools/zeroBalanceSystemAccountChecker/config"
+	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/config"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/elastic"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/common"
+	sysAccConfig "github.com/multiversx/mx-chain-tools-go/trieTools/zeroBalanceSystemAccountChecker/config"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
@@ -32,8 +32,8 @@ func main() {
 	app.Flags = getFlags()
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Elrond Team",
-			Email: "contact@elrond.com",
+			Name:  "The MultiversX Team",
+			Email: "contact@multiversx.com",
 		},
 	}
 

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/config"
 )
 
 type interval struct {
@@ -97,7 +97,17 @@ func (rmw *reindexerMultiWrite) reindexBasedOnIntervals(
 	for idx, interv := range intervals {
 		go func(startTime, stopTime int64, idx int, w *sync.WaitGroup) {
 			defer func() {
-				log.Info("done", "interval nr", idx)
+				time.Sleep(time.Second)
+				countSource, countDestination, err := rmw.reindexerClient.GetCountsForInterval(index, startTime, stopTime)
+				if err != nil {
+					log.Warn("cannot get count", "interval nr", idx, "index", index, "error", err)
+				}
+
+				if countSource != countDestination {
+					log.Warn("counts are not equals", "interval nr", idx, "count source", countSource, "count destination", countDestination)
+				}
+
+				log.Info("done", "interval nr", idx, "count source", countSource, "count destination", countDestination)
 				w.Done()
 			}()
 

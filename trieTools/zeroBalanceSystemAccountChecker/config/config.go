@@ -1,6 +1,6 @@
 package config
 
-import "github.com/ElrondNetwork/elrond-tools-go/trieTools/trieToolsCommon"
+import "github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 
 // ContextFlagsZeroBalanceSysAccChecker holds all flags required for zeroBalanceSystemAccountChecker tool
 type ContextFlagsZeroBalanceSysAccChecker struct {

@@ -1,31 +1,38 @@
 {
-	"index_patterns": [
-		"accounts-*"
-	],
-	"mappings": {
-		"properties": {
-			"address": {
-				"type": "text"
-			},
-			"balance": {
-				"type": "text"
-			},
-			"balanceNum": {
-				"type": "double"
-			},
-			"nonce": {
-				"type": "double"
-			},
-			"totalBalanceWithStake": {
-				"type": "text"
-			},
-			"totalBalanceWithStakeNum": {
-				"type": "double"
-			}
-		}
-	},
-	"settings": {
-		"number_of_replicas": 0,
-		"number_of_shards": 3
-	}
+ "index_patterns": [
+  "accounts-*"
+ ],
+ "mappings": {
+  "properties": {
+   "address": {
+    "type": "keyword"
+   },
+   "balance": {
+    "type": "keyword"
+   },
+   "balanceNum": {
+    "type": "double"
+   },
+   "nonce": {
+    "type": "double"
+   },
+   "shardID": {
+    "type": "long"
+   },
+   "timestamp": {
+    "format": "epoch_second",
+    "type": "date"
+   },
+   "totalBalanceWithStake": {
+    "type": "keyword"
+   },
+   "totalBalanceWithStakeNum": {
+    "type": "double"
+   }
+  }
+ },
+ "settings": {
+  "number_of_replicas": 0,
+  "number_of_shards": 3
+ }
 }

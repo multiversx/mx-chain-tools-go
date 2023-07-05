@@ -3,7 +3,7 @@ package export
 import (
 	"strings"
 
-	"github.com/ElrondNetwork/elrond-go-core/core/pubkeyConverter"
+	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 )
 
 const (

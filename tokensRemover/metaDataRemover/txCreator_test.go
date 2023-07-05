@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/core"
-	"github.com/ElrondNetwork/elrond-sdk-erdgo/data"
-	"github.com/ElrondNetwork/elrond-tools-go/tokensRemover/metaDataRemover/mocks"
+	"github.com/multiversx/mx-chain-tools-go/tokensRemover/metaDataRemover/mocks"
+	"github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,8 +68,7 @@ func TestTxCreator_CreateTxs(t *testing.T) {
 
 	txIdx := 0
 	txInteractor := &mocks.TransactionInteractorStub{
-		ApplySignatureAndGenerateTxCalled: func(skBytes []byte, arg data.ArgCreateTransaction) (*data.Transaction, error) {
-			require.Equal(t, sk, skBytes)
+		ApplySignatureAndGenerateTxCalled: func(cryptoHolder core.CryptoComponentsHolder, arg data.ArgCreateTransaction) (*data.Transaction, error) {
 			require.Equal(t, data.ArgCreateTransaction{
 				Nonce:    nonce,
 				Value:    "0",

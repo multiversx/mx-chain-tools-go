@@ -1,2 +1,2 @@
-# elrond-tools-go
-Elrond tools written in GO 
+# mx-chain-tools-go
+MultiversX tools written in GO 

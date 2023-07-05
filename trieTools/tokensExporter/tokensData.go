@@ -3,10 +3,10 @@ package main
 import (
 	"math/big"
 
-	"github.com/ElrondNetwork/elrond-go-core/core"
-	"github.com/ElrondNetwork/elrond-go-core/data/esdt"
-	"github.com/ElrondNetwork/elrond-go/state"
-	vmcommon "github.com/ElrondNetwork/elrond-vm-common"
+	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/data/esdt"
+	"github.com/multiversx/mx-chain-go/state"
+	vmcommon "github.com/multiversx/mx-chain-vm-common-go"
 )
 
 func GetESDTNFTTokenOnDestination(
@@ -20,7 +20,7 @@ func GetESDTNFTTokenOnDestination(
 		Value: big.NewInt(0),
 		Type:  uint32(core.Fungible),
 	}
-	marshaledData, err := accnt.RetrieveValue(esdtNFTTokenKey)
+	marshaledData, _, err := accnt.RetrieveValue(esdtNFTTokenKey)
 	if err != nil || len(marshaledData) == 0 {
 		return esdtData, true, nil
 	}
@@ -70,7 +70,7 @@ func getESDTDigitalTokenDataFromSystemAccount(
 ) (*esdt.ESDigitalToken, error) {
 	userAcc := systemAccount.(vmcommon.UserAccountHandler)
 
-	marshaledData, err := userAcc.AccountDataHandler().RetrieveValue(tokenKey)
+	marshaledData, _, err := userAcc.AccountDataHandler().RetrieveValue(tokenKey)
 	if err != nil || len(marshaledData) == 0 {
 		return nil, nil
 	}
