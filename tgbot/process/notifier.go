@@ -51,10 +51,9 @@ func NewBalanceNotifier(cfg config.BotConfig) (*notifier, error) {
 		balanceThreshold:   balanceThreshold,
 		checkIntervalInMin: cfg.General.CheckIntervalInMin,
 		notificationStep:   cfg.General.NotificationStep,
-
-		telegramBotKey:  cfg.Telegram.ApiKey,
-		telegramGroupID: cfg.Telegram.GroupID,
-		safeCloser:      closing.NewSafeChanCloser(),
+		telegramBotKey:     cfg.Telegram.ApiKey,
+		telegramGroupID:    cfg.Telegram.GroupID,
+		safeCloser:         closing.NewSafeChanCloser(),
 	}, nil
 }
 
@@ -133,6 +132,6 @@ func (n *notifier) notifyOnTG(currentBalance *big.Int) {
 
 // Close will close the notifier
 func (n *notifier) Close() error {
-	defer n.safeCloser.Close()
+	n.safeCloser.Close()
 	return nil
 }
