@@ -5,18 +5,22 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"time"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-tools-go/tgbot/config"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/tgbot/config"
 )
 
 var log = logger.GetOrCreate("process")
 
 type notifier struct {
-	gatewayURL         string
+	gatewayURL  string
+	explorerURL string
+
 	address            string
+	label              string
 	balanceThreshold   *big.Int
 	checkIntervalInMin int
 	notificationStep   int
@@ -28,21 +32,23 @@ type notifier struct {
 	counter  int
 }
 
-func NewBalanceNotifier(cfg *config.GeneralConfig) (*notifier, error) {
-	balanceThreshold, ok := big.NewInt(0).SetString(cfg.BotConfig.General.BalanceThreshold, 10)
+func NewBalanceNotifier(cfg config.BotConfig) (*notifier, error) {
+	balanceThreshold, ok := big.NewInt(0).SetString(cfg.General.BalanceThreshold, 10)
 	if !ok {
 		return nil, errors.New("invalid balance threshold")
 	}
 
 	return &notifier{
-		gatewayURL:         cfg.BotConfig.General.GatewayURL,
-		address:            cfg.BotConfig.General.Address,
+		explorerURL:        cfg.General.ExplorerUrl,
+		gatewayURL:         cfg.General.GatewayURL,
+		address:            cfg.General.Address,
+		label:              cfg.General.Label,
 		balanceThreshold:   balanceThreshold,
-		checkIntervalInMin: cfg.BotConfig.General.CheckIntervalInMin,
-		notificationStep:   cfg.BotConfig.General.NotificationStep,
+		checkIntervalInMin: cfg.General.CheckIntervalInMin,
+		notificationStep:   cfg.General.NotificationStep,
 
-		telegramBotKey:  cfg.BotConfig.Telegram.ApiKey,
-		telegramGroupID: cfg.BotConfig.Telegram.GroupID,
+		telegramBotKey:  cfg.Telegram.ApiKey,
+		telegramGroupID: cfg.Telegram.GroupID,
 	}, nil
 }
 
@@ -86,14 +92,27 @@ func (n *notifier) checkBalanceAndNotifyIfNeeded() {
 }
 
 func (n *notifier) notifyOnTG(currentBalance *big.Int) {
-	message := fmt.Sprintf(`⚠<a href="%s">Hot wallet </a> balance is below threshold (<i>%s</i>).
+	message := fmt.Sprintf(`⚠<a href="%s"> %s </a> balance is below threshold (<i>%s</i>).
 🚨 Current balance: <b> %s </b>`,
-		fmt.Sprintf("https://explorer.elrond.com/accounts/%s", n.address),
+		fmt.Sprintf("%s/accounts/%s", n.explorerURL, n.address),
+		n.label,
 		beautifyAmount(n.balanceThreshold.String()),
 		beautifyAmount(currentBalance.String()))
 
-	message = url.QueryEscape(message)
-	urlreq := fmt.Sprintf(`https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s&parse_mode=HTML&disable_web_page_preview=true`, n.telegramBotKey, n.telegramGroupID, message)
+	urlreq := fmt.Sprintf(
+		`https://api.telegram.org/bot%s/sendMessage?chat_id=%s&text=%s&parse_mode=HTML&disable_web_page_preview=true`,
+		n.telegramBotKey,
+		n.telegramGroupID,
+		url.QueryEscape(message),
+	)
 
-	_, _ = http.Get(urlreq)
+	res, err := http.Get(urlreq)
+	if err != nil {
+		log.Warn("cannot send message on telegram", "error", err)
+	}
+
+	if res.StatusCode >= 400 {
+		b, _ := httputil.DumpResponse(res, true)
+		log.Warn(string(b))
+	}
 }

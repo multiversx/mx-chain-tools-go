@@ -3,10 +3,12 @@ package main
 import (
 	"io/ioutil"
 	"os"
+	"os/signal"
+	"syscall"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-tools-go/tgbot/config"
-	"github.com/ElrondNetwork/elrond-tools-go/tgbot/process"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/tgbot/config"
+	"github.com/multiversx/mx-chain-tools-go/tgbot/process"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
@@ -41,8 +43,8 @@ func main() {
 	app.Usage = "This is the entry point for balance notifier tool"
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Elrond Team",
-			Email: "contact@elrond.com",
+			Name:  "The Multiversx Team",
+			Email: "contact@multiversx.com",
 		},
 	}
 
@@ -55,20 +57,28 @@ func main() {
 	}
 }
 
-func startTelegramBot(c *cli.Context) {
+func startTelegramBot(_ *cli.Context) {
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Error("cannot load configuration", "error", err)
 		return
 	}
 
-	notifier, err := process.NewBalanceNotifier(cfg)
-	if err != nil {
-		log.Error("cannot start balance notifier", "error", err)
-		return
-	}
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	notifier.StartNotifier()
+	for _, botCfg := range cfg.BotConfigs {
+		notifier, errC := process.NewBalanceNotifier(botCfg)
+		if errC != nil {
+			log.Error("cannot start balance notifier", "error", errC)
+			return
+		}
+
+		go notifier.StartNotifier()
+	}
+	// TODO add close method
+
+	<-interrupt
 }
 
 func loadConfig() (*config.GeneralConfig, error) {

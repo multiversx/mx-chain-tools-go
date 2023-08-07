@@ -1,7 +1,9 @@
-[config]
+[[config]]
     [config.general]
-        gatewayURL = ""
+        explorerURL = "" # url of the multiversx explorer
+        gatewayURL = "" # url of the multiversx gateway
         address = ""
+        label = "Hot wallet 1"
         balanceThreshold = "100000000000000000000000" # 100k EGLD
         checkIntervalInMin = 30
         notificationStep = 8 # num times to skip notifying if the balance check issue persists

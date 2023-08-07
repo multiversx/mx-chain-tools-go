@@ -1,16 +1,10 @@
-module github.com/ElrondNetwork/elrond-tools-go/tgbot
+module github.com/multiversx/mx-chain-tools-go/tgbot
 
 go 1.15
 
 require (
-	github.com/ElrondNetwork/elrond-go-logger v1.0.5
-	github.com/ElrondNetwork/elrond-sdk-erdgo v1.0.4
-	github.com/pelletier/go-toml v1.9.4
-	github.com/urfave/cli v1.22.5
+	github.com/multiversx/mx-chain-logger-go v1.0.11
+	github.com/multiversx/mx-sdk-go v1.3.4
+	github.com/pelletier/go-toml v1.9.4 // indirect
+	github.com/urfave/cli v1.22.10
 )
-
-replace github.com/ElrondNetwork/arwen-wasm-vm/v1_2 v1.2.30 => github.com/ElrondNetwork/arwen-wasm-vm v1.2.30
-
-replace github.com/ElrondNetwork/arwen-wasm-vm/v1_3 v1.3.30 => github.com/ElrondNetwork/arwen-wasm-vm v1.3.30
-
-replace github.com/ElrondNetwork/arwen-wasm-vm/v1_4 v1.4.14 => github.com/ElrondNetwork/arwen-wasm-vm v1.4.14
