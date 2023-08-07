@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/closing"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/tgbot/config"
 )
@@ -30,6 +32,8 @@ type notifier struct {
 
 	notified bool
 	counter  int
+
+	safeCloser core.SafeCloser
 }
 
 func NewBalanceNotifier(cfg config.BotConfig) (*notifier, error) {
@@ -49,6 +53,7 @@ func NewBalanceNotifier(cfg config.BotConfig) (*notifier, error) {
 
 		telegramBotKey:  cfg.Telegram.ApiKey,
 		telegramGroupID: cfg.Telegram.GroupID,
+		safeCloser:      closing.NewSafeChanCloser(),
 	}, nil
 }
 
@@ -56,9 +61,16 @@ func (n *notifier) StartNotifier() {
 	n.checkBalanceAndNotifyIfNeeded()
 
 	checkInterval := time.Duration(n.checkIntervalInMin) * time.Minute
+	timer := time.NewTimer(checkInterval)
+	defer timer.Stop()
+
 	for {
+		timer.Reset(checkInterval)
 		select {
-		case <-time.After(checkInterval):
+		case <-n.safeCloser.ChanClose():
+			log.Info("closed", "address", n.label)
+			return
+		case <-timer.C:
 			n.checkBalanceAndNotifyIfNeeded()
 		}
 	}
@@ -115,4 +127,10 @@ func (n *notifier) notifyOnTG(currentBalance *big.Int) {
 		b, _ := httputil.DumpResponse(res, true)
 		log.Warn(string(b))
 	}
+}
+
+// Close will close the notifier
+func (n *notifier) Close() error {
+	defer n.safeCloser.Close()
+	return nil
 }

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/tgbot/config"
@@ -57,28 +59,36 @@ func main() {
 	}
 }
 
-func startTelegramBot(_ *cli.Context) {
+func startTelegramBot(_ *cli.Context) error {
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Error("cannot load configuration", "error", err)
-		return
+		return nil
 	}
 
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	var notifiers []io.Closer
 	for _, botCfg := range cfg.BotConfigs {
 		notifier, errC := process.NewBalanceNotifier(botCfg)
 		if errC != nil {
 			log.Error("cannot start balance notifier", "error", errC)
-			return
+			return nil
 		}
+		notifiers = append(notifiers, notifier)
 
 		go notifier.StartNotifier()
 	}
-	// TODO add close method
 
 	<-interrupt
+	log.Info("closing app at user's signal")
+	for _, notifier := range notifiers {
+		_ = notifier.Close()
+	}
+
+	time.Sleep(1 * time.Millisecond)
+	return nil
 }
 
 func loadConfig() (*config.GeneralConfig, error) {
