@@ -1,0 +1,38 @@
+{
+ "index_patterns": [
+  "receipts-*"
+ ],
+ "mappings": {
+  "properties": {
+   "data": {
+    "type": "keyword"
+   },
+   "sender": {
+    "type": "keyword"
+   },
+   "timestamp": {
+    "format": "epoch_second",
+    "type": "date"
+   },
+   "txHash": {
+    "type": "keyword"
+   },
+   "value": {
+    "index": "false",
+    "type": "keyword"
+   }
+  }
+ },
+ "settings": {
+  "index": {
+   "sort.field": [
+    "timestamp"
+   ],
+   "sort.order": [
+    "desc"
+   ]
+  },
+  "number_of_replicas": 0,
+  "number_of_shards": 3
+ }
+}

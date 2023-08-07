@@ -25,6 +25,11 @@ func (e *ElasticClientStub) GetMapping(index string) (*bytes.Buffer, error) {
 	return nil, nil
 }
 
+// GetCountWithBody -
+func (e *ElasticClientStub) GetCountWithBody(_ string, _ []byte) (uint64, error) {
+	return 0, nil
+}
+
 // CreateIndexWithMapping -
 func (e *ElasticClientStub) CreateIndexWithMapping(targetIndex string, body *bytes.Buffer) error {
 	if e.CreateIndexWithMappingCalled != nil {

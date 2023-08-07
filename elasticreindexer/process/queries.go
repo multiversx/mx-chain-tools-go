@@ -29,6 +29,36 @@ func getAll() *bytes.Buffer {
 	return &encoded
 }
 
+func getWithTimestamp(start, stop int64, withSource bool, withSortAsc bool) *bytes.Buffer {
+	obj := object{
+		"query": object{
+			"range": object{
+				"timestamp": object{
+					"gte": start,
+					"lte": stop,
+				},
+			},
+		},
+	}
+
+	if withSortAsc {
+		obj["sort"] = []interface{}{
+			object{
+				"timestamp": object{
+					"order": "asc",
+				},
+			},
+		}
+	}
+	if withSource {
+		obj["_source"] = true
+	}
+
+	encoded, _ := encodeQuery(obj)
+
+	return &encoded
+}
+
 type generalElasticResponse struct {
 	Hits struct {
 		Hits []struct {

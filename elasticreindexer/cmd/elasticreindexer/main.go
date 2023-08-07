@@ -4,9 +4,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/process"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/config"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/process"
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli"
 )
@@ -20,6 +20,11 @@ var (
 	overwriteFlag = cli.BoolFlag{
 		Name:  "overwrite",
 		Usage: "If set, the reindexing tool will skip the creation of the index and mapping and will overwrite any existing data.",
+	}
+	// skipMappingsFlag defines a bool flag for skipping the copying of the source's mapping into the destination
+	skipMappingsFlag = cli.BoolFlag{
+		Name:  "skip-mappings",
+		Usage: "If set, the reindexing tool will skip the copying of the mappings",
 	}
 )
 
@@ -47,11 +52,12 @@ func main() {
 	app.Usage = "This is the entry point for Elasticsearch reindexing tool"
 	app.Flags = []cli.Flag{
 		overwriteFlag,
+		skipMappingsFlag,
 	}
 	app.Authors = []cli.Author{
 		{
-			Name:  "The Elrond Team",
-			Email: "contact@elrond.com",
+			Name:  "The MultiversX Team",
+			Email: "contact@multiversx.com",
 		},
 	}
 
@@ -77,7 +83,20 @@ func startReindexing(ctx *cli.Context) {
 		return
 	}
 
-	err = reindexer.Process(ctx.Bool(overwriteFlag.Name))
+	multiWriteReindexer, err := process.NewReindexerMultiWrite(reindexer, cfg.Indexers.IndicesConfig)
+	if err != nil {
+		log.Error("cannot create multi-write reindexer", "error", err)
+		return
+	}
+
+	skipMappings := ctx.Bool(skipMappingsFlag.Name)
+	err = multiWriteReindexer.ProcessNoTimestamp(ctx.Bool(overwriteFlag.Name), skipMappings)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	err = multiWriteReindexer.ProcessWithTimestamp(ctx.Bool(overwriteFlag.Name), skipMappings)
 	if err != nil {
 		log.Error(err.Error())
 		return

@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync/atomic"
 
-	"github.com/ElrondNetwork/elrond-go-core/core/check"
-	logger "github.com/ElrondNetwork/elrond-go-logger"
+	"github.com/multiversx/mx-chain-core-go/core/check"
+	logger "github.com/multiversx/mx-chain-logger-go"
 )
 
 var (
 	errNilElasticHandler = errors.New("nil elastic handler")
-	errEmptyIndicesList  = errors.New("empty indices list to reindex")
 	log                  = logger.GetOrCreate("process")
 )
 
@@ -32,9 +32,6 @@ func newReindexer(sourceElastic ElasticClientHandler, destinationElastic Elastic
 	if check.IfNil(destinationElastic) {
 		return nil, fmt.Errorf("%w for destination", errNilElasticHandler)
 	}
-	if len(indices) == 0 {
-		return nil, errEmptyIndicesList
-	}
 
 	return &reindexer{
 		sourceElastic:      sourceElastic,
@@ -44,9 +41,18 @@ func newReindexer(sourceElastic ElasticClientHandler, destinationElastic Elastic
 }
 
 // Process will handle the reindexing from source Elastic client to destination Elastic client
-func (r *reindexer) Process(overwrite bool) error {
-	for _, index := range r.indices {
-		err := r.processIndex(index, overwrite)
+func (r *reindexer) Process(overwrite bool, skipMappings bool, indices ...string) error {
+	providedIndices := indices
+	if len(providedIndices) == 0 {
+		providedIndices = r.indices
+	}
+
+	for _, index := range providedIndices {
+		if index == "" {
+			continue
+		}
+
+		err := r.processIndex(index, overwrite, skipMappings)
 		if err != nil {
 			return err
 		}
@@ -55,13 +61,13 @@ func (r *reindexer) Process(overwrite bool) error {
 	return nil
 }
 
-func (r *reindexer) processIndex(index string, overwrite bool) error {
+func (r *reindexer) processIndex(index string, overwrite bool, skipMappings bool) error {
 	originalSourceCount, err := r.sourceElastic.GetCount(index)
 	if err != nil {
 		return fmt.Errorf("%w while getting the source count for index %s", err, index)
 	}
 
-	err = r.copyMappingIfNecessary(index, overwrite)
+	err = r.copyMappingIfNecessary(index, overwrite, skipMappings)
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}
@@ -86,7 +92,11 @@ func (r *reindexer) processIndex(index string, overwrite bool) error {
 	return nil
 }
 
-func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool) error {
+func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMappings bool) error {
+	if skipMappings {
+		return nil
+	}
+
 	indexWithSuffix := index + indexSuffix
 
 	aliasExists := r.destinationElastic.DoesAliasExist(index)
@@ -160,7 +170,7 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	for id, source := range resultsMap {
 		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, id, "\n"))
 
-		err := buffSlice.PutData(meta, source)
+		err = buffSlice.PutData(meta, source)
 		if err != nil {
 			return nil, err
 		}
@@ -168,4 +178,54 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	}
 
 	return buffSlice.Buffers(), nil
+}
+
+// ProcessIndexWithTimestamp will handle the reindexing from source Elastic client to destination Elastic client based on the provided interval
+func (r *reindexer) ProcessIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error {
+	err := r.copyMappingIfNecessary(index, overwrite, skipMappings)
+	if err != nil {
+		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
+	}
+
+	scrollRequestHandlerFunc := r.createScrollRequestHandlerFunction(count, index)
+	err = r.sourceElastic.DoScrollRequestAllDocuments(index, getWithTimestamp(start, stop, true, true).Bytes(), scrollRequestHandlerFunc)
+	if err != nil {
+		return fmt.Errorf("%w while r.sourceElastic.DoScrollRequestAllDocuments", err)
+	}
+
+	return nil
+}
+
+// GetCountsForInterval will return the counts from source and destination client based on the provided intervals
+func (r *reindexer) GetCountsForInterval(index string, start, stop int64) (uint64, uint64, error) {
+	body := getWithTimestamp(start, stop, false, false).Bytes()
+
+	countFromSource, err := r.sourceElastic.GetCountWithBody(index, body)
+	if err != nil {
+		return 0, 0, err
+	}
+	countFromDestination, err := r.destinationElastic.GetCountWithBody(index, body)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return countFromSource, countFromDestination, nil
+}
+
+func (r *reindexer) createScrollRequestHandlerFunction(count *uint64, index string) func([]byte) error {
+	return func(responseBytes []byte) error {
+		atomic.AddUint64(count, 1)
+		dataBuffers, errP := prepareDataForIndexing(responseBytes, index, int(atomic.LoadUint64(count)))
+		if errP != nil {
+			return fmt.Errorf("%w while preparing data for indexing", errP)
+		}
+
+		for i := 0; i < len(dataBuffers); i++ {
+			err := r.destinationElastic.DoBulkRequest(dataBuffers[i], index)
+			if err != nil {
+				return fmt.Errorf("%w while r.destinationElastic.DoBulkRequest", err)
+			}
+		}
+		return nil
+	}
 }

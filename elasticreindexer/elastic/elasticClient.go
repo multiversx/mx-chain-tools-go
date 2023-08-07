@@ -8,22 +8,24 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
-	"net/url"
 	"time"
 
-	logger "github.com/ElrondNetwork/elrond-go-logger"
-	"github.com/ElrondNetwork/elrond-tools-go/elasticreindexer/config"
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	logger "github.com/multiversx/mx-chain-logger-go"
+	"github.com/multiversx/mx-chain-tools-go/elasticreindexer/config"
 	"github.com/tidwall/gjson"
 )
 
 var (
 	log                  = logger.GetOrCreate("elastic")
-	httpStatusesForRetry = []int{429, 502, 503, 504}
+	httpStatusesForRetry = []int{http.StatusTooManyRequests, http.StatusBadGateway, http.StatusInternalServerError, http.StatusServiceUnavailable, http.StatusGatewayTimeout}
 )
 
-const stepDelayBetweenRequests = 500 * time.Millisecond
+const (
+	stepDelayBetweenRequests = 500 * time.Millisecond
+	numRetriesBackOff        = 10
+)
 
 type esClient struct {
 	client *elasticsearch.Client
@@ -46,7 +48,7 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 			log.Info("elastic: retry backoff", "attempt", i, "sleep duration", d)
 			return d
 		},
-		MaxRetries: 5,
+		MaxRetries: numRetriesBackOff,
 	})
 	if err != nil {
 		return nil, err
@@ -58,10 +60,43 @@ func NewElasticClient(cfg config.ElasticInstanceConfig) (*esClient, error) {
 	}, nil
 }
 
+// GetMultiple queries a multi search and returns the responses
+func (esc *esClient) GetMultiple(index string, requests []string) ([]byte, error) {
+	var query string
+	for _, request := range requests {
+		query += "{}\n" + request + "\n"
+	}
+
+	res, err := esc.client.Msearch(
+		bytes.NewBuffer([]byte(query)),
+		esc.client.Msearch.WithIndex(index),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return getBytesFromResponse(res)
+}
+
 // GetCount returns the total number of documents available in the provided index
 func (esc *esClient) GetCount(index string) (uint64, error) {
+	return esc.getCount(index, nil)
+}
+
+func (esc *esClient) GetCountWithBody(index string, body []byte) (uint64, error) {
+	return esc.getCount(index, body)
+}
+
+func (esc *esClient) getCount(index string, body []byte) (uint64, error) {
+	options := make([]func(*esapi.CountRequest), 0)
+	options = append(options, esc.client.Count.WithIndex(index))
+
+	if body != nil {
+		options = append(options, esc.client.Count.WithBody(bytes.NewBuffer(body)))
+	}
+
 	res, err := esc.client.Count(
-		esc.client.Count.WithIndex(index),
+		options...,
 	)
 	if err != nil {
 		return 0, err
@@ -97,10 +132,31 @@ func (esc *esClient) GetMapping(index string) (*bytes.Buffer, error) {
 
 // CreateIndexWithMapping will create an index with the provided
 func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buffer) error {
+	operations := make([]func(*esapi.IndicesCreateRequest), 0)
+	if body != nil {
+		operations = append(operations, esc.client.Indices.Create.WithBody(body))
+	}
+
 	res, err := esc.client.Indices.Create(
 		targetIndex,
-		esc.client.Indices.Create.WithBody(body),
+		operations...,
 	)
+	if err != nil {
+		return err
+	}
+
+	defer closeBody(res)
+
+	if res.IsError() {
+		return fmt.Errorf("%s", res.String())
+	}
+
+	return nil
+}
+
+// PutIndexTemplate creates an elasticsearch index template
+func (esc *esClient) PutIndexTemplate(templateName string, body *bytes.Buffer) error {
+	res, err := esc.client.Indices.PutTemplate(templateName, body)
 	if err != nil {
 		return err
 	}
@@ -124,47 +180,20 @@ func (esc *esClient) DoesIndexExist(index string) bool {
 	return exists(res, err)
 }
 
-// DoesAliasExist returns true if an index alias already exists
-func (esc *esClient) DoesAliasExist(alias string) bool {
-	aliasRoute := fmt.Sprintf(
-		"/_alias/%s",
-		alias,
-	)
+// DoesTemplateExist checks whether a template is already created
+func (esc *esClient) DoesTemplateExist(index string) bool {
+	res, err := esc.client.Indices.ExistsTemplate([]string{index})
 
-	req := newRequest(http.MethodHead, aliasRoute, nil)
-
-	res, err := esc.client.Transport.Perform(req)
-	if err != nil {
-		log.Warn("elasticClient.AliasExists",
-			"error performing request", err.Error())
-		return false
-	}
-
-	response := &esapi.Response{
-		StatusCode: res.StatusCode,
-		Body:       res.Body,
-		Header:     res.Header,
-	}
-
-	return exists(response, nil)
+	return exists(res, err)
 }
 
-func newRequest(method, path string, body *bytes.Buffer) *http.Request {
-	r := http.Request{
-		Method:     method,
-		URL:        &url.URL{Path: path},
-		Proto:      "HTTP/1.1",
-		ProtoMajor: 1,
-		ProtoMinor: 1,
-		Header:     make(http.Header),
-	}
+// DoesAliasExist returns true if an index alias already exists
+func (esc *esClient) DoesAliasExist(alias string) bool {
+	res, err := esc.client.Indices.ExistsAlias(
+		[]string{alias},
+	)
 
-	if body != nil {
-		r.Body = ioutil.NopCloser(body)
-		r.ContentLength = int64(body.Len())
-	}
-
-	return &r
+	return exists(res, err)
 }
 
 func exists(res *esapi.Response, err error) bool {
