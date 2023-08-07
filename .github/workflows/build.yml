@@ -26,6 +26,7 @@ jobs:
 
       - name: Build
         run: |
+          cd ${GITHUB_WORKSPACE}/tgbot/cmd/bot && go build .
           cd ${GITHUB_WORKSPACE}/dbMerger/cmd/generalDBMerger && go build .
           cd ${GITHUB_WORKSPACE}/elasticreindexer/cmd/elasticreindexer && go build .
           cd ${GITHUB_WORKSPACE}/elasticreindexer/cmd/indices-creator && go build .
