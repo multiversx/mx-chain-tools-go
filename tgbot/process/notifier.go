@@ -36,6 +36,7 @@ type notifier struct {
 	safeCloser core.SafeCloser
 }
 
+// NewBalanceNotifier will create a new instance of notifier
 func NewBalanceNotifier(cfg config.BotConfig) (*notifier, error) {
 	balanceThreshold, ok := big.NewInt(0).SetString(cfg.General.BalanceThreshold, 10)
 	if !ok {
@@ -57,6 +58,7 @@ func NewBalanceNotifier(cfg config.BotConfig) (*notifier, error) {
 	}, nil
 }
 
+// StartNotifier will start the balance notifier
 func (n *notifier) StartNotifier() {
 	n.checkBalanceAndNotifyIfNeeded()
 

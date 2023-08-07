@@ -11,6 +11,7 @@ import (
 	"github.com/multiversx/mx-sdk-go/data"
 )
 
+// GetAddressBalance will return the balance of the provided address
 func GetAddressBalance(gatewayURL string, address string) (*big.Int, error) {
 	proxy, err := blockchain.NewProxy(blockchain.ArgsProxy{
 		ProxyURL:            gatewayURL,
