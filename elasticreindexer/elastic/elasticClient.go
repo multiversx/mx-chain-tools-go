@@ -159,7 +159,14 @@ func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buff
 
 // PutIndexTemplate creates an elasticsearch index template
 func (esc *esClient) PutIndexTemplate(templateName string, body *bytes.Buffer) error {
-	res, err := esc.client.Indices.PutIndexTemplate(templateName, body)
+	var res *esapi.Response
+	var err error
+	if templateName == "logs" {
+		res, err = esc.client.Indices.PutTemplate(templateName, body)
+	} else {
+		res, err = esc.client.Indices.PutIndexTemplate(templateName, body)
+	}
+
 	if err != nil {
 		return err
 	}

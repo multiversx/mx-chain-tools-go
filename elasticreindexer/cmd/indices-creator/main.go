@@ -167,7 +167,7 @@ func createIndies(cfg *Cfg, indexTemplateMap map[string]*bytes.Buffer) error {
 }
 
 func createPoliciesIfEnabled(cfg *Cfg, pathToPolicies string) error {
-	if cfg.ClusterConfig.Policies.Enable {
+	if !cfg.ClusterConfig.Policies.Enable {
 		return nil
 	}
 
