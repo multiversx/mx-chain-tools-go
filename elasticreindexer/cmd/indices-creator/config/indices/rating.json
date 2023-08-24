@@ -1,16 +1,18 @@
 {
- "index_patterns": [
-  "rating-*"
- ],
- "mappings": {
-  "properties": {
-   "rating": {
-    "type": "double"
-   }
+  "index_patterns": [
+    "rating-*"
+  ],
+  "template": {
+    "settings": {
+      "number_of_replicas": 0,
+      "number_of_shards": 1
+    },
+    "mappings": {
+      "properties": {
+        "rating": {
+          "type": "double"
+        }
+      }
+    }
   }
- },
- "settings": {
-  "number_of_replicas": 0,
-  "number_of_shards": 1
- }
 }

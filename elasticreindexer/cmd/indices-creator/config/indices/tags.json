@@ -1,19 +1,21 @@
 {
- "index_patterns": [
-  "tags-*"
- ],
- "mappings": {
-  "properties": {
-   "count": {
-    "type": "long"
-   },
-   "tag": {
-    "type": "keyword"
-   }
+  "index_patterns": [
+    "tags-*"
+  ],
+  "template": {
+    "settings": {
+      "number_of_replicas": 0,
+      "number_of_shards": 3
+    },
+    "mappings": {
+      "properties": {
+        "count": {
+          "type": "long"
+        },
+        "tag": {
+          "type": "keyword"
+        }
+      }
+    }
   }
- },
- "settings": {
-  "number_of_replicas": 0,
-  "number_of_shards": 3
- }
 }

@@ -1,16 +1,18 @@
 {
- "index_patterns": [
-  "validators-*"
- ],
- "mappings": {
-  "properties": {
-   "publicKeys": {
-    "type": "keyword"
-   }
+  "index_patterns": [
+    "validators-*"
+  ],
+  "template": {
+    "settings": {
+      "number_of_replicas": 0,
+      "number_of_shards": 1
+    },
+    "mappings": {
+      "properties": {
+        "publicKeys": {
+          "type": "keyword"
+        }
+      }
+    }
   }
- },
- "settings": {
-  "number_of_replicas": 0,
-  "number_of_shards": 1
- }
 }

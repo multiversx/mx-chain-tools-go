@@ -2,14 +2,14 @@
   "index_patterns": [
     "accountsesdthistory-*"
   ],
-  "mappings": {
-    "template": {
-      "settings": {
-        "index.lifecycle.name": "accountsesdthistory-policy",
-        "index.lifecycle.rollover_alias": "accountsesdthistory",
-        "number_of_replicas": 0,
-        "number_of_shards": 5
-      },
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "accountsesdthistory-policy",
+      "index.lifecycle.rollover_alias": "accountsesdthistory",
+      "number_of_replicas": 0,
+      "number_of_shards": 5
+    },
+    "mappings": {
       "properties": {
         "address": {
           "type": "keyword"

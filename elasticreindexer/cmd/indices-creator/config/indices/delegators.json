@@ -2,41 +2,43 @@
   "index_patterns": [
     "delegators-*"
   ],
-  "mappings": {
-    "properties": {
-      "activeStake": {
-        "type": "keyword"
-      },
-      "activeStakeNum": {
-        "type": "double"
-      },
-      "address": {
-        "type": "keyword"
-      },
-      "contract": {
-        "type": "keyword"
-      },
-      "unDelegateInfo": {
-        "properties": {
-          "id": {
-            "type": "keyword"
-          },
-          "timestamp": {
-            "format": "epoch_second",
-            "type": "date"
-          },
-          "value": {
-            "type": "keyword"
-          },
-          "valueNum": {
-            "type": "double"
+  "template": {
+    "settings": {
+      "number_of_replicas": 0,
+      "number_of_shards": 3
+    },
+    "mappings": {
+      "properties": {
+        "activeStake": {
+          "type": "keyword"
+        },
+        "activeStakeNum": {
+          "type": "double"
+        },
+        "address": {
+          "type": "keyword"
+        },
+        "contract": {
+          "type": "keyword"
+        },
+        "unDelegateInfo": {
+          "properties": {
+            "id": {
+              "type": "keyword"
+            },
+            "timestamp": {
+              "format": "epoch_second",
+              "type": "date"
+            },
+            "value": {
+              "type": "keyword"
+            },
+            "valueNum": {
+              "type": "double"
+            }
           }
         }
       }
     }
-  },
-  "settings": {
-    "number_of_replicas": 0,
-    "number_of_shards": 3
   }
 }
