@@ -1,0 +1,45 @@
+{
+  "index_patterns": [
+    "logs-*"
+  ],
+  "template": {
+    "settings": {
+      "number_of_replicas": 0,
+      "number_of_shards": 3,
+      "index.lifecycle.name": "logs-policy",
+      "index.lifecycle.rollover_alias": "logs"
+    },
+    "mappings": {
+      "properties": {
+        "address": {
+          "type": "keyword"
+        },
+        "events": {
+          "properties": {
+            "address": {
+              "type": "keyword"
+            },
+            "data": {
+              "index": "false",
+              "type": "text"
+            },
+            "identifier": {
+              "type": "keyword"
+            },
+            "topics": {
+              "type": "text"
+            }
+          },
+          "type": "nested"
+        },
+        "originalTxHash": {
+          "type": "keyword"
+        },
+        "timestamp": {
+          "format": "epoch_second",
+          "type": "date"
+        }
+      }
+    }
+  }
+}

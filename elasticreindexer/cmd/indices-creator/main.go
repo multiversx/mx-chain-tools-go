@@ -95,13 +95,13 @@ func createIndexesAndMappings(ctx *cli.Context) {
 		pathToMappings = path.Join(cfgPath, "withKibana")
 	}
 
-	indexesMappings, _, err := reader.GetElasticTemplatesAndPolicies(pathToMappings, cfg.ClusterConfig.EnabledIndices)
+	indexTemplateMap, indexPolicyMap, err := reader.GetElasticTemplatesAndPolicies(pathToMappings, cfg.ClusterConfig.EnabledIndices)
 	if err != nil {
 		log.Error("cannot load templates", "error", err.Error())
 		return
 	}
 
-	err = createIndies(cfg, indexesMappings)
+	err = createIndies(cfg, indexTemplateMap, indexPolicyMap)
 	if err != nil {
 		log.Error("cannot create templates", "error", err.Error())
 		return
@@ -110,7 +110,7 @@ func createIndexesAndMappings(ctx *cli.Context) {
 	log.Info("all indices were created")
 }
 
-func createIndies(cfg *Cfg, indexesMappings map[string]*bytes.Buffer) error {
+func createIndies(cfg *Cfg, indexTemplateMap, indexPolicyMap map[string]*bytes.Buffer) error {
 	databaseClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
 		URL:      cfg.ClusterConfig.URL,
 		Username: cfg.ClusterConfig.Username,
@@ -120,7 +120,7 @@ func createIndies(cfg *Cfg, indexesMappings map[string]*bytes.Buffer) error {
 		return err
 	}
 
-	for index, indexData := range indexesMappings {
+	for index, indexData := range indexTemplateMap {
 		doesTemplateExists := databaseClient.DoesTemplateExist(index)
 		if !doesTemplateExists {
 			errCheck := databaseClient.PutIndexTemplate(index, indexData)
@@ -151,7 +151,22 @@ func createIndies(cfg *Cfg, indexesMappings map[string]*bytes.Buffer) error {
 
 			log.Info("databaseClient.PutAlias", "index", index)
 		}
+	}
 
+	for index, policy := range indexPolicyMap {
+		indexWithSuffix := fmt.Sprintf("%s-%s", index, "000001")
+		err = databaseClient.SetWriteIndexTrue(index, indexWithSuffix)
+		if err != nil {
+			return fmt.Errorf("databaseClient.SetWriteIndexTrue index: %s, error: %w", index, err)
+		}
+
+		policyName := fmt.Sprintf("%s-%s", index, "policy")
+		err = databaseClient.PutPolicy(policyName, policy)
+		if err != nil {
+			return fmt.Errorf("databaseClient.PutPolicy index: %s, error: %w", index, err)
+		}
+
+		log.Info("databaseClient.PutPolicy", "index", index)
 	}
 
 	return nil
