@@ -83,7 +83,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Error(err.Error())
+		log.Error("cannot run app", "error", err)
 		os.Exit(1)
 	}
 
@@ -93,7 +93,7 @@ func createIndexesAndMappings(ctx *cli.Context) {
 	cfgPath := ctx.String(configPath.Name)
 	cfg, err := loadConfigFile(cfgPath)
 	if err != nil {
-		log.Error("cannot load config file", "error", err.Error())
+		log.Error("cannot load config file", "error", err)
 		return
 	}
 
@@ -101,13 +101,13 @@ func createIndexesAndMappings(ctx *cli.Context) {
 
 	indexTemplateMap, err := reader.GetElasticTemplates(pathToMappings, cfg.ClusterConfig.EnabledIndices)
 	if err != nil {
-		log.Error("cannot load templates", "error", err.Error())
+		log.Error("cannot load templates", "error", err)
 		return
 	}
 
 	err = createIndies(cfg, indexTemplateMap)
 	if err != nil {
-		log.Error("cannot create indices", "error", err.Error())
+		log.Error("cannot create indices", "error", err)
 		return
 	}
 
