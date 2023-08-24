@@ -4,29 +4,22 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 )
 
-// GetElasticTemplatesAndPolicies will return elastic templates and policies
-func GetElasticTemplatesAndPolicies(filePath string, indexes []string) (map[string]*bytes.Buffer, map[string]*bytes.Buffer, error) {
+// GetElasticTemplates will return elastic templates
+func GetElasticTemplates(filePath string, indexes []string) (map[string]*bytes.Buffer, error) {
 	indexTemplates := make(map[string]*bytes.Buffer)
-	indexPolicies := make(map[string]*bytes.Buffer)
 	var err error
 
 	for _, index := range indexes {
 		indexTemplates[index], err = getDataFromByIndex(filePath, index)
 		if err != nil {
-			return nil, nil, err
-		}
-
-		indexPolicies[index], err = getDataFromByIndex(path.Join(filePath, "policies"), index)
-		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 	}
 
-	return indexTemplates, indexPolicies, nil
+	return indexTemplates, nil
 }
 
 func getDataFromByIndex(path string, index string) (*bytes.Buffer, error) {

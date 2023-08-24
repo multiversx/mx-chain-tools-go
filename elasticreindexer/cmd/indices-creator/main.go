@@ -15,15 +15,22 @@ import (
 	"github.com/urfave/cli"
 )
 
-const configFileName = "cluster.toml"
+const (
+	indicesFolder  = "indices"
+	policiesFolder = "policies"
+	configFileName = "cluster.toml"
+)
 
 type Cfg struct {
 	ClusterConfig struct {
 		URL            string   `toml:"url"`
 		Username       string   `toml:"username"`
 		Password       string   `toml:"password"`
-		UseKibana      bool     `toml:"use-kibana"`
 		EnabledIndices []string `toml:"enabled-indices"`
+		Policies       struct {
+			Enable            bool     `toml:"enable"`
+			IndicesWithPolicy []string `toml:"indices-with-policy"`
+		} `toml:"policies"`
 	} `toml:"config"`
 }
 
@@ -90,27 +97,30 @@ func createIndexesAndMappings(ctx *cli.Context) {
 		return
 	}
 
-	pathToMappings := path.Join(cfgPath, "noKibana")
-	if cfg.ClusterConfig.UseKibana {
-		pathToMappings = path.Join(cfgPath, "withKibana")
-	}
+	pathToMappings := path.Join(cfgPath, indicesFolder)
 
-	indexTemplateMap, indexPolicyMap, err := reader.GetElasticTemplatesAndPolicies(pathToMappings, cfg.ClusterConfig.EnabledIndices)
+	indexTemplateMap, err := reader.GetElasticTemplates(pathToMappings, cfg.ClusterConfig.EnabledIndices)
 	if err != nil {
 		log.Error("cannot load templates", "error", err.Error())
 		return
 	}
 
-	err = createIndies(cfg, indexTemplateMap, indexPolicyMap)
+	err = createIndies(cfg, indexTemplateMap)
 	if err != nil {
-		log.Error("cannot create templates", "error", err.Error())
+		log.Error("cannot create indices", "error", err.Error())
 		return
+	}
+
+	pathToPolicies := path.Join(pathToMappings, policiesFolder)
+	err = createPoliciesIfEnabled(cfg, pathToPolicies)
+	if err != nil {
+		log.Error("cannot create indices policies", "error", err)
 	}
 
 	log.Info("all indices were created")
 }
 
-func createIndies(cfg *Cfg, indexTemplateMap, indexPolicyMap map[string]*bytes.Buffer) error {
+func createIndies(cfg *Cfg, indexTemplateMap map[string]*bytes.Buffer) error {
 	databaseClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
 		URL:      cfg.ClusterConfig.URL,
 		Username: cfg.ClusterConfig.Username,
@@ -151,6 +161,28 @@ func createIndies(cfg *Cfg, indexTemplateMap, indexPolicyMap map[string]*bytes.B
 
 			log.Info("databaseClient.PutAlias", "index", index)
 		}
+	}
+
+	return nil
+}
+
+func createPoliciesIfEnabled(cfg *Cfg, pathToPolicies string) error {
+	if cfg.ClusterConfig.Policies.Enable {
+		return nil
+	}
+
+	databaseClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
+		URL:      cfg.ClusterConfig.URL,
+		Username: cfg.ClusterConfig.Username,
+		Password: cfg.ClusterConfig.Password,
+	})
+	if err != nil {
+		return err
+	}
+
+	indexPolicyMap, err := reader.GetElasticTemplates(pathToPolicies, cfg.ClusterConfig.Policies.IndicesWithPolicy)
+	if err != nil {
+		return err
 	}
 
 	for index, policy := range indexPolicyMap {
