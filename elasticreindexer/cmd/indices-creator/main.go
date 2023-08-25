@@ -191,6 +191,7 @@ func createPoliciesIfEnabled(cfg *Cfg, pathToPolicies string) error {
 		if err != nil {
 			return fmt.Errorf("databaseClient.SetWriteIndexTrue index: %s, error: %w", index, err)
 		}
+		log.Info("databaseClient.SetWriteIndexTrue", "index", index)
 
 		policyName := fmt.Sprintf("%s-%s", index, "policy")
 		err = databaseClient.PutPolicy(policyName, policy)
