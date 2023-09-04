@@ -4,6 +4,8 @@
   ],
   "template": {
     "settings": {
+      "index.lifecycle.name": "receipts-policy",
+      "index.lifecycle.rollover_alias": "receipts",
       "index.sort.field": [
         "timestamp"
       ],

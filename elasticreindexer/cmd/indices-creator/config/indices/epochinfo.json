@@ -4,6 +4,8 @@
  ],
  "template": {
   "settings": {
+   "index.lifecycle.name": "epochinfo-policy",
+   "index.lifecycle.rollover_alias": "epochinfo",
    "number_of_replicas": 0,
    "number_of_shards": 3
   },
