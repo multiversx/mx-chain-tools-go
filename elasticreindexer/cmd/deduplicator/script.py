@@ -33,7 +33,6 @@ def compare_indices(es_client: ElasticClient, index1: str, index2: str):
         if doc_id_1 in ids_idx2:
             duplicated_ids[doc_id_1] = {}
 
-    # prin duplicated ids
     print("duplicated", "idx1", index1, "idx2", index2, "num", len(duplicated_ids))
 
 

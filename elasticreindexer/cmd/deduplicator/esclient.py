@@ -42,7 +42,7 @@ class ElasticClient:
                 index=index_name,
                 query=search_query,
                 size=9999,
-                scroll="5m"  # Scroll time for fetching documents
+                scroll="5m"
             )
             ids = {}
             for result in results:
