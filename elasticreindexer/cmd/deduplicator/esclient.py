@@ -7,9 +7,9 @@ class ElasticClient:
         self.url = url
         self.username = user
         self.password = password
-        self.es_client = self.create_elasticsearch_client()
+        self.es_client = self.__create_elasticsearch_client()
 
-    def create_elasticsearch_client(self) -> Elasticsearch | None:
+    def __create_elasticsearch_client(self) -> Elasticsearch | None:
         try:
             es = Elasticsearch([self.url], http_auth=(self.username, self.password))
             if es.ping():
