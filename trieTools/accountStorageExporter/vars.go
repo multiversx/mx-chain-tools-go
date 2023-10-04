@@ -6,6 +6,5 @@ import (
 
 var (
 	log             = logger.GetOrCreate("main")
-	outputFileName  = "output.json"
 	outputFilePerms = 0644
 )

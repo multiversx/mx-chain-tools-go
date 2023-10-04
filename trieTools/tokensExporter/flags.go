@@ -12,6 +12,16 @@ var (
 		Usage: "This flag specifies where the output will be stored. It consists of a map<address, tokens>",
 		Value: "output.json",
 	}
+
+	flagContracts = cli.BoolFlag{
+		Name: "contracts",
+	}
+
+	flagTokens = cli.StringSliceFlag{
+		Name:  "tokens",
+		Usage: "Specifies the symbols of enabled custom currencies (i.e. ESDT identifiers).",
+		Value: &cli.StringSlice{},
+	}
 )
 
 func getFlags() []cli.Flag {
@@ -25,6 +35,8 @@ func getFlags() []cli.Flag {
 		trieToolsCommon.ProfileMode,
 		trieToolsCommon.HexRootHash,
 		outfile,
+		flagContracts,
+		flagTokens,
 	}
 }
 
@@ -39,6 +51,8 @@ func getFlagsConfig(ctx *cli.Context) config.ContextFlagsTokensExporter {
 	flagsConfig.EnablePprof = ctx.GlobalBool(trieToolsCommon.ProfileMode.Name)
 	flagsConfig.HexRootHash = ctx.GlobalString(trieToolsCommon.HexRootHash.Name)
 	flagsConfig.Outfile = ctx.GlobalString(outfile.Name)
+	flagsConfig.ExportContracts = ctx.GlobalBool(flagContracts.Name)
+	flagsConfig.Tokens = ctx.GlobalStringSlice(flagTokens.Name)
 
 	return flagsConfig
 }

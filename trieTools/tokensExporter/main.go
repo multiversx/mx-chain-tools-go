@@ -10,10 +10,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
+	"github.com/multiversx/mx-chain-core-go/marshal"
 	"github.com/multiversx/mx-chain-go/common"
 	"github.com/multiversx/mx-chain-go/state"
 	"github.com/multiversx/mx-chain-go/trie/keyBuilder"
@@ -25,11 +27,15 @@ import (
 )
 
 const (
-	logFilePrefix   = "accounts-tokens-exporter"
-	rootHashLength  = 32
-	addressLength   = 32
-	outputFilePerms = 0644
+	logFilePrefix                    = "accounts-tokens-exporter"
+	rootHashLength                   = 32
+	addressLength                    = 32
+	outputFilePerms                  = 0644
+	trieLeavesChannelDefaultCapacity = 100
 )
+
+var marshaller = &marshal.GogoProtoMarshalizer{}
+var addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(32, log)
 
 func main() {
 	app := cli.NewApp()
@@ -89,11 +95,6 @@ func startProcess(c *cli.Context) error {
 }
 
 func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, maxDBValue int) error {
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
-	if err != nil {
-		return err
-	}
-
 	db, err := trieToolsCommon.CreatePruningStorer(flags.ContextFlagsConfig, maxDBValue)
 	if err != nil {
 		return err
@@ -110,9 +111,12 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 	}()
 
 	iteratorChannels := &common.TrieIteratorChannels{
-		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+		LeavesChan: make(chan core.KeyValueHolder, trieLeavesChannelDefaultCapacity),
 		ErrChan:    make(chan error, 1),
 	}
+
+	log.Info("Roothash", "roothash", mainRootHash)
+
 	err = tr.GetAllLeavesOnChannel(iteratorChannels, context.Background(), mainRootHash, keyBuilder.NewKeyBuilder())
 	if err != nil {
 		return err
@@ -128,29 +132,64 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 		return err
 	}
 
+	systemAccount, err := accDb.GetExistingAccount(vmcommon.SystemAccountAddress)
+	if err != nil {
+		return err
+	}
+
+	castedSystemAccount, ok := systemAccount.(state.UserAccountHandler)
+	if !ok {
+		return fmt.Errorf("cannot cast system account")
+	}
+
 	numAccountsOnMainTrie := 0
-	addressTokensMap := make(map[string]map[string]struct{})
+	root := exportedRoot{
+		RootHash: hex.EncodeToString(mainRootHash),
+	}
 	for keyValue := range iteratorChannels.LeavesChan {
+		numAccountsOnMainTrie++
+
+		if numAccountsOnMainTrie%1000 == 0 {
+			fmt.Println(numAccountsOnMainTrie)
+		}
+
+		if bytes.Equal(keyValue.Key(), vmcommon.SystemAccountAddress) {
+			continue
+		}
+
+		isContract := core.IsSmartContractAddress(keyValue.Key())
+		if flags.ExportContracts && !isContract {
+			continue
+		}
+		if !flags.ExportContracts && isContract {
+			continue
+		}
+
 		address, found := getAddress(keyValue)
 		if !found {
 			continue
 		}
-
-		numAccountsOnMainTrie++
 
 		account, errGetAccount := accDb.GetExistingAccount(address)
 		if errGetAccount != nil {
 			return errGetAccount
 		}
 
-		esdtTokens, errGetESDT := getAllESDTTokens(account, addressConverter)
+		esdtTokens, errGetESDT := getAllESDTTokens(account, castedSystemAccount, flags.Tokens)
 		if errGetESDT != nil {
 			return errGetESDT
 		}
 
 		if len(esdtTokens) > 0 {
 			encodedAddress := addressConverter.Encode(address)
-			addressTokensMap[encodedAddress] = esdtTokens
+
+			exportedAccount := exportedAccount{
+				Address: encodedAddress,
+				Pubkey:  hex.EncodeToString(address),
+				Tokens:  esdtTokens,
+			}
+
+			root.Accounts = append(root.Accounts, exportedAccount)
 		}
 	}
 
@@ -159,19 +198,8 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 		return err
 	}
 
-	encodedSysAccAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
-	log.Info("parsed main trie",
-		"num accounts", numAccountsOnMainTrie,
-		"num accounts with tokens", len(addressTokensMap),
-		"num tokens in all accounts", trieToolsCommon.GetNumTokens(addressTokensMap),
-		"num tokens in system account address", len(addressTokensMap[encodedSysAccAddress]))
-
-	_, found := addressTokensMap[encodedSysAccAddress]
-	if !found {
-		log.Warn(fmt.Sprintf("system account address(%s) not found, input dbs might be incomplete/corrupted", encodedSysAccAddress))
-	}
-
-	return saveResult(addressTokensMap, flags.Outfile)
+	root.NumAccounts = len(root.Accounts)
+	return saveResult(root, flags.Outfile)
 }
 
 func getAddress(kv core.KeyValueHolder) ([]byte, bool) {
@@ -182,14 +210,15 @@ func getAddress(kv core.KeyValueHolder) ([]byte, bool) {
 		return nil, false
 	}
 	if len(userAccount.RootHash) == 0 {
+		// No data, no tokens.
 		return nil, false
 	}
 
 	return kv.Key(), true
 }
 
-func saveResult(addressTokensMap map[string]map[string]struct{}, outfile string) error {
-	jsonBytes, err := json.MarshalIndent(addressTokensMap, "", " ")
+func saveResult(addressTokensMap interface{}, outfile string) error {
+	jsonBytes, err := json.MarshalIndent(addressTokensMap, "", "   ")
 	if err != nil {
 		return err
 	}
@@ -204,16 +233,16 @@ func saveResult(addressTokensMap map[string]map[string]struct{}, outfile string)
 	return nil
 }
 
-func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.PubkeyConverter) (map[string]struct{}, error) {
+func getAllESDTTokens(account vmcommon.AccountHandler, systemAccount state.UserAccountHandler, tokensOfInterest []string) ([]accountToken, error) {
 	userAccount, ok := account.(state.UserAccountHandler)
 	if !ok {
 		return nil, fmt.Errorf("could not convert account to user account, address = %s",
-			pubKeyConverter.Encode(account.AddressBytes()))
+			addressConverter.Encode(account.AddressBytes()))
 	}
 
-	allESDTs := make(map[string]struct{})
+	allTokens := make([]accountToken, 0)
 	if check.IfNil(userAccount.DataTrie()) {
-		return allESDTs, nil
+		return allTokens, nil
 	}
 
 	rootHash, err := userAccount.DataTrie().RootHash()
@@ -239,9 +268,42 @@ func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.Pubk
 		// TODO: Try to unmarshal it when the new meta data storage model will be live
 		tokenKey := leaf.Key()
 		lenESDTPrefix := len(esdtPrefix)
-		tokenName := getPrettyTokenName(tokenKey[lenESDTPrefix:])
+		prettyTokenIdentifier, prettyTokenName := getPrettyTokenName(tokenKey[lenESDTPrefix:])
+		tokenID, nonce := common.ExtractTokenIDAndNonceFromTokenStorageKey(tokenKey[lenESDTPrefix:])
 
-		allESDTs[tokenName] = struct{}{}
+		var isTokenOfInterest = false
+
+		for _, tokenOfInterest := range tokensOfInterest {
+			if strings.HasPrefix(prettyTokenIdentifier, tokenOfInterest) {
+				isTokenOfInterest = true
+				break
+			}
+		}
+
+		if !isTokenOfInterest {
+			continue
+		}
+
+		esdtTokenKey := []byte(core.ProtectedKeyPrefix + core.ESDTKeyIdentifier + string(tokenID))
+		esdtToken, _, err := GetESDTNFTTokenOnDestination(userAccount, esdtTokenKey, nonce, systemAccount)
+		if err != nil {
+			log.Warn("cannot get ESDT token", "token name", prettyTokenIdentifier, "error", err)
+			continue
+		}
+
+		item := accountToken{
+			Identifier: prettyTokenIdentifier,
+			Name:       prettyTokenName,
+			Balance:    esdtToken.Value.String(),
+		}
+
+		if esdtToken.TokenMetaData != nil {
+			item.Nonce = esdtToken.TokenMetaData.Nonce
+			item.Attributes = esdtToken.TokenMetaData.Attributes
+			item.Creator = addressConverter.Encode(esdtToken.TokenMetaData.Creator)
+		}
+
+		allTokens = append(allTokens, item)
 	}
 
 	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
@@ -249,21 +311,26 @@ func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.Pubk
 		return nil, err
 	}
 
-	return allESDTs, nil
+	return allTokens, nil
 }
 
-func getPrettyTokenName(tokenName []byte) string {
+func getPrettyTokenName(tokenName []byte) (string, string) {
 	token, nonce := common.ExtractTokenIDAndNonceFromTokenStorageKey(tokenName)
+	rebuiltName := ""
 	if nonce != 0 {
 		tokens := bytes.Split(token, []byte("-"))
+
+		rebuiltName = string(tokens[0]) + "-" + string(tokens[1])
 
 		token = append(tokens[0], []byte("-")...)          // ticker-
 		token = append(token, tokens[1]...)                // ticker-randSequence
 		token = append(token, []byte("-")...)              // ticker-randSequence-
 		token = append(token, getPrettyHexNonce(nonce)...) // ticker-randSequence-nonce
+	} else {
+		rebuiltName = string(token)
 	}
 
-	return string(token)
+	return string(token), rebuiltName
 }
 
 func getPrettyHexNonce(nonce uint64) []byte {

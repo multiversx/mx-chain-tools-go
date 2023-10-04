@@ -13,6 +13,13 @@ var (
 		Usage: "This flag specifies the bech32 address to fetch the storage for",
 		Value: "",
 	}
+
+	// outfile defines a flag that specifies the name of the file to write the storage to
+	outfile = cli.StringFlag{
+		Name:  "outfile",
+		Usage: "This flag specifies the name of the file to write the storage to",
+		Value: "",
+	}
 )
 
 func getFlags() []cli.Flag {
@@ -26,6 +33,7 @@ func getFlags() []cli.Flag {
 		trieToolsCommon.ProfileMode,
 		trieToolsCommon.HexRootHash,
 		address,
+		outfile,
 	}
 }
 
@@ -41,6 +49,7 @@ func getFlagsConfig(ctx *cli.Context) config.ContextFlagsConfigAddr {
 	flagsConfig.EnablePprof = ctx.GlobalBool(trieToolsCommon.ProfileMode.Name)
 	flagsConfig.HexRootHash = ctx.GlobalString(trieToolsCommon.HexRootHash.Name)
 	flagsConfig.Address = ctx.GlobalString(address.Name)
+	flagsConfig.OutputFileName = ctx.GlobalString(outfile.Name)
 
 	return flagsConfig
 }
