@@ -173,7 +173,7 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		return err
 	}
 
-	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
+	err = ioutil.WriteFile(flags.OutputFileName, jsonBytes, fs.FileMode(outputFilePerms))
 	if err != nil {
 		return err
 	}
