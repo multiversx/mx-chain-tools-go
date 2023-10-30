@@ -5,24 +5,30 @@
  "mappings": {
   "properties": {
    "blockWasProposed": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if a block was proposed and executed in this round."
    },
    "epoch": {
-    "type": "long"
+    "type": "long",
+    "description": "The epoch the round belongs to."
    },
    "round": {
-    "type": "long"
+    "type": "long",
+    "description": "The number of the round."
    },
    "shardId": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard the round belongs to."
    },
    "signersIndexes": {
     "type": "long",
-    "isArray": true
+    "isArray": true,
+    "description": "An array that contains the indices of the validators that should sign the block from this round."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp of the round."
    }
   }
  },

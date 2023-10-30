@@ -140,7 +140,8 @@
     "isArray": true
    },
    "type": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "It can be `normal` in case of a transaction and `unsigned` in case of a smart contract result."
    },
    "value": {
     "type": "keyword"

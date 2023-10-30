@@ -5,30 +5,38 @@
  "mappings": {
   "properties": {
    "address": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address in bech32 encoding. Should be equal to the _id field."
    },
    "userName": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The herotag the address possesses."
    },
    "balance": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of EGLD the address possesses. It is a string that also includes the number of decimals. Example: \"1500000000000000000\" (equivalent to 1.5 EGLD)."
    },
    "balanceNum": {
-    "type": "double"
+    "type": "double",
+    "description": "The amount of EGLD the address possesses, in a numeric format. Example: 1.5."
    },
    "nonce": {
-    "type": "double"
+    "type": "double",
+    "description": "The sequence number of the address."
    },
    "shardID": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard of the account."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The last moment when the address balance was changed."
    },
    "developerRewards": {
     "index": false,
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The developerRewards represents the fees that were accumulated after all the smart contract calls. They can be claimed by the owner."
    },
    "developerRewardsNum": {
     "index": false,
@@ -42,7 +50,8 @@
    },
    "currentOwner": {
     "index": false,
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address in a bech32 format of the current owner of the smart contract. This field is populated only for the smart contract addresses."
    }
   }
  },

@@ -5,13 +5,16 @@
  "mappings": {
   "properties": {
    "address": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address in bech32 encoding."
    },
    "balance": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of ESDT token the address possesses. It includes the number of decimals."
    },
    "balanceNum": {
-    "type": "double"
+    "type": "double",
+    "description": "The amount of ESDT tokens the address possesses, in a numeric format."
    },
    "currentOwner": {
     "type": "keyword"
@@ -20,10 +23,12 @@
     "properties": {
      "attributes": {
       "index": "false",
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The attributes of the token."
      },
      "creator": {
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The bech32 encoded address of the token's creator."
      },
      "hash": {
       "index": "false",
@@ -37,11 +42,13 @@
       "type": "keyword"
      },
      "nonEmptyURIs": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "True if the token has non empty uris."
      },
      "whiteListedStorage": {
       "index": "false",
-      "type": "boolean"
+      "type": "boolean",
+      "description": "True if the token has white-listed storage. An NFT/SFT has white-listed storage if the URI belongs to one of the allowed decentralized storage services, such as IPFS or Pinata."
      },
      "royalties": {
       "index": "false",
@@ -53,14 +60,17 @@
      },
      "uris": {
       "type": "text",
-      "isArray": true
+      "isArray": true,
+      "description": "A list of URIs."
      }
     },
     "type": "nested",
-    "isObject": true
+    "isObject": true,
+    "description": "A structure that contains extra data about a token, such as the creator of an NFT."
    },
    "identifier": {
-    "type": "text"
+    "type": "text",
+    "description": "The identifier field consists of `token` field and the `nonce` field hex encoded (example: `TOKEN-01abdc-01`)."
    },
    "properties": {
     "type": "keyword"
@@ -70,20 +80,25 @@
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp when the address balance was changed."
    },
    "token": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The name of the token."
    },
    "tokenNonce": {
-    "type": "double"
+    "type": "double",
+    "description": "The sequence number of the token. This field is empty in the case of `FungibleESDT`."
    },
    "type": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The type of the ESDT token. It can be `FungibleESDT`, `NonFungibleESDT`, `SemiFungibleESDT`, or `MetaESDT`."
    },
    "frozen": {
     "index": "false",
-    "type": "boolean"
+    "type": "boolean",
+    "description": "The frozen field is set to true when the address possesses a current ESDT token that is in a frozen state."
    },
    "paused": {
     "index": "false",

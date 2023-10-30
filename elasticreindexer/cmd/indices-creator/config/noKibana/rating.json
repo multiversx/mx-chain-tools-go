@@ -5,7 +5,8 @@
  "mappings": {
   "properties": {
    "rating": {
-    "type": "double"
+    "type": "double",
+    "description": "The rating of the validator, which can be in the [0, 100] range."
    }
   }
  },

@@ -5,39 +5,48 @@
  "mappings": {
   "properties": {
    "address": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address in bech32 encoding. It can be the address of the smart contract that generated the log or the address of the receiver address of the transaction."
    },
    "events": {
     "properties": {
      "address": {
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The address in bech32 encoding. It can be the address of the smart contract that generated the event or the address of the receiver address of the transaction."
      },
      "data": {
       "index": "false",
-      "type": "text"
+      "type": "text",
+      "description": "The data field can contain information added by the smart contract that generated the event."
      },
      "identifier": {
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The identifier of the event."
      },
      "topics": {
       "type": "text",
-      "isArray": true
+      "isArray": true,
+      "description": "A list with extra information. They don't have a specific order because the smart contract is free to log anything that could be helpful."
      },
      "order": {
       "index": "false",
-      "type": "long"
+      "type": "long",
+      "description": "The index of the event indicating the execution order."
      }
     },
     "type": "nested",
     "isObject": true,
-    "isArray": true
+    "isArray": true,
+    "description": "A list of events."
    },
    "originalTxHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The hash of the initial transaction."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp of the block in which the log was generated."
    }
   }
  },

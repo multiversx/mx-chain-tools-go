@@ -5,33 +5,41 @@
  "mappings": {
   "properties": {
    "procTypeD": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The processing type at the destination shard. It can be `Normal` or `Scheduled`."
    },
    "procTypeS": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The processing type at the source shard. It can be `Normal` or `Scheduled`."
    },
    "receiverBlockHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The hash (hex encoded) of the destination block in which the miniblock was included."
    },
    "receiverShard": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard ID of the destination block."
    },
    "reserved": {
     "index": "false",
     "type": "keyword"
    },
    "senderBlockHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The hash (hex encoded) of the source block in which the miniblock was included."
    },
    "senderShard": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard ID of the source block."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp of the block in which the miniblock was executed."
    },
    "type": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The type of the miniblock. It can be `TxBlock` (if it contains transactions) or `SmartContractResultBlock` (if it contains smart contracts results)."
    }
   }
  },

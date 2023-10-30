@@ -5,10 +5,12 @@
  "mappings": {
   "properties": {
    "count": {
-    "type": "long"
+    "type": "long",
+    "description": "The number of NFTs with the current tag."
    },
    "tag": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The tag in an alphanumeric format."
    }
   }
  },

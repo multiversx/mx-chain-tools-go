@@ -5,10 +5,12 @@
  "mappings": {
   "properties": {
    "accumulatedFees": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The accumulated fees that were payed in the epoch."
    },
    "developerFees": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The developer fees that were accumulated in the epoch."
    }
   }
  },

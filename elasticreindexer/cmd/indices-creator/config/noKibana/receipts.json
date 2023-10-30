@@ -5,21 +5,26 @@
  "mappings": {
   "properties": {
    "data": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "A message with the reason why the receipt was generated."
    },
    "sender": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The sender of the transaction that generated the receipt."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp of the block in which the receipt was generated."
    },
    "txHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The hash of the transaction that generated the receipt."
    },
    "value": {
     "index": "false",
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of EGLD that was refunded/penalized from the transaction fee."
    }
   }
  },

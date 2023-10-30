@@ -5,94 +5,120 @@
  "mappings": {
   "properties": {
    "callType": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The type of smart contract call that is done through the smart contract result."
    },
    "code": {
     "index": "false",
-    "type": "text"
+    "type": "text",
+    "description": "The code holds the code of the smart contract result."
    },
    "data": {
-    "type": "text"
+    "type": "text",
+    "description": "Additional information for a smart contract result. It can contain a simple message, a function call, an ESDT transfer payload, and so on."
    },
    "esdtValues": {
     "type": "keyword",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of ESDT values that are transferred based on the data field."
    },
    "function": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The name of the function that is called in case of a smart contract call."
    },
    "gasLimit": {
     "index": "false",
-    "type": "double"
+    "type": "double",
+    "description": "The maximum gas units the sender is willing to pay for."
    },
    "gasPrice": {
     "index": "false",
-    "type": "double"
+    "type": "double",
+    "description": "The amount to be paid for each gas unit."
    },
    "hasOperations": {
     "type": "boolean"
    },
    "hasLogs": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the transaction has logs."
    },
    "miniBlockHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The hash of the miniblock in which the smart contract result was included."
    },
    "nonce": {
-    "type": "long"
+    "type": "long",
+    "description": "The transaction sequence number."
    },
    "operation": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The operation of the smart contract result based on the data field."
    },
    "originalSender": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The sender's address of the original transaction."
    },
    "originalTxHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The originalTxHash holds the hex encoded hash of the transaction that generated the smart contract result."
    },
    "prevTxHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The prevTxHash holds the hex encoded hash of the previous transaction."
    },
    "receiver": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The destination address of the smart contract result."
    },
    "receiverShard": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard ID of the receiver address."
    },
    "receivers": {
     "type": "keyword",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of receiver addresses in case of ESDTNFTTransfer or MultiESDTTransfer."
    },
    "receiversShardIDs": {
     "type": "long",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of receiver addresses' shard IDs."
    },
    "relayedValue": {
     "index": "false",
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of EGLD to be transferred via the inner transaction's sender."
    },
    "relayerAddr": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address of the relayer."
    },
    "returnMessage": {
-    "type": "text"
+    "type": "text",
+    "description": "The message that is returned by a smart contract in case of an error."
    },
    "sender": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address of the smart contract result sender."
    },
    "senderShard": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard ID of the sender address."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp of the block in which the smart contract result was executed."
    },
    "tokens": {
     "type": "text",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of ESDT tokens that are transferred based on the data field. The indices from the `tokens` list are linked to the indices from `esdtValues` list."
    },
    "value": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of EGLD to be sent from the sender to the receiver."
    },
    "valueNum": {
     "type": "double"

@@ -6,54 +6,67 @@
   "properties": {
    "accumulatedFees": {
     "index": "false",
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The accumulated fees that were payed in the block."
    },
    "developerFees": {
     "index": "false",
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The developer fees that were accumulated in the block."
    },
    "epoch": {
-    "type": "long"
+    "type": "long",
+    "description": "The epoch when the block was proposed and executed."
    },
    "epochStartBlock": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the current block is an epoch-start block."
    },
    "epochStartInfo": {
     "properties": {
      "nodePrice": {
       "index": "false",
-      "type": "keyword"
+      "type": "keyword",
+      "description": "EGLD amount required to run a validator."
      },
      "prevEpochStartHash": {
       "index": "false",
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The hash of the previous epoch start block."
      },
      "prevEpochStartRound": {
       "index": "false",
-      "type": "long"
+      "type": "long",
+      "description": "The round of the previous epoch start block."
      },
      "rewardsForProtocolSustainability": {
       "index": "false",
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The amount of rewards for the protocol sustainability address."
      },
      "rewardsPerBlock": {
       "index": "false",
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The amount of EGLD rewards per block."
      },
      "totalNewlyMinted": {
       "index": "false",
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The amount of the newly minted EGLD."
      },
      "totalSupply": {
       "index": "false",
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The EGLD supply."
      },
      "totalToDistribute": {
       "index": "false",
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The amount of EGLD that will be distributed to validators/delegators."
      }
     },
-    "isObject": true
+    "isObject": true,
+    "description": "A structure that contains economic data, such as total supply."
    },
    "epochStartShardsData": {
     "properties": {
@@ -122,19 +135,24 @@
      }
     },
     "isObject": true,
-    "isArray": true
+    "isArray": true,
+    "description": "An array of structures that contains epoch-start data for each shard, such as pending miniblocks."
    },
    "gasPenalized": {
-    "type": "double"
+    "type": "double",
+    "description": "The total gas that was penalized in the block."
    },
    "gasProvided": {
-    "type": "double"
+    "type": "double",
+    "description": "The total gas that was provided in the block."
    },
    "gasRefunded": {
-    "type": "double"
+    "type": "double",
+    "description": "The total gas that was refunded in the block."
    },
    "maxGasLimit": {
-    "type": "double"
+    "type": "double",
+    "description": "The total gas that can be provided in the block."
    },
    "miniBlocksDetails": {
     "properties": {
@@ -178,35 +196,44 @@
      }
     },
     "isObject": true,
-    "isArray": true
+    "isArray": true,
+    "description": "An array of structures indicating processing details of the miniblocks, such as the index of the first processed transaction."
    },
    "miniBlocksHashes": {
     "type": "keyword",
-    "isArray": true
+    "isArray": true,
+    "description": "An array of the miniblock hashes (hexadecimal encoded) that were included in the block."
    },
    "nonce": {
-    "type": "long"
+    "type": "long",
+    "description": "The sequence number of the block (block height)."
    },
    "notarizedBlocksHashes": {
     "type": "keyword",
-    "isArray": true
+    "isArray": true,
+    "description": "The hashes of the blocks that were notarized in the current block."
    },
    "notarizedTxsCount": {
     "index": "false",
-    "type": "long"
+    "type": "long",
+    "description": "The number of transactions that were notarized in the block."
    },
    "prevHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The hash of the previous block."
    },
    "proposer": {
-    "type": "long"
+    "type": "long",
+    "description": "The index of the validator that proposed the block."
    },
    "pubKeyBitmap": {
     "index": "false",
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The pub key bitmap."
    },
    "round": {
-    "type": "long"
+    "type": "long",
+    "description": "The round when the block was proposed and executed."
    },
    "scheduledData": {
     "properties": {
@@ -235,37 +262,45 @@
       "type": "keyword"
      }
     },
-    "isObject": true
+    "isObject": true,
+    "description": "A structure that contains data about the scheduled execution."
    },
    "searchOrder": {
     "type": "long"
    },
    "shardId": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard this block belongs to."
    },
    "size": {
     "index": "false",
-    "type": "long"
+    "type": "long",
+    "description": "The size of the block in bytes."
    },
    "sizeTxs": {
     "index": "false",
-    "type": "long"
+    "type": "long",
+    "description": "The size of the block's transactions in bytes."
    },
    "stateRootHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The trie's state root hash when the block was proposed and executed."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp when the block was proposed and executed."
    },
    "txCount": {
     "index": "false",
-    "type": "long"
+    "type": "long",
+    "description": "The number of transactions that were executed in the block."
    },
    "validators": {
     "index": "false",
     "type": "long",
-    "isArray": true
+    "isArray": true,
+    "description": "An array that contains the indices of the validators that signed the block."
    }
   }
  },

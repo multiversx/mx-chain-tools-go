@@ -6,7 +6,8 @@
   "properties": {
    "publicKeys": {
     "type": "keyword",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of all validators' public keys from an epoch and a shard."
    }
   }
  },

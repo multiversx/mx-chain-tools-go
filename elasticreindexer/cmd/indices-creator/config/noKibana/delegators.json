@@ -1,49 +1,58 @@
 {
-  "index_patterns": [
-    "delegators-*"
-  ],
-  "mappings": {
+ "index_patterns": [
+  "delegators-*"
+ ],
+ "mappings": {
+  "properties": {
+   "activeStake": {
+    "type": "keyword",
+    "description": "The EGLD amount of the active stake (not undelegated nor unbondable)."
+   },
+   "activeStakeNum": {
+    "type": "double",
+    "description": "The EGLD amount of the active stake (not undelegated nor unbondable), in a numeric format. Example: 1.5."
+   },
+   "timestamp": {
+    "format": "epoch_second",
+    "index": "false",
+    "type": "date",
+    "description": "The last moment of an interaction with the delegation contract."
+   },
+   "address": {
+    "type": "keyword",
+    "description": "The address in bech32 encoding of the delegator."
+   },
+   "contract": {
+    "type": "keyword",
+    "description": "The bech32 encoded address of the staking provider contract to whom it was delegated to."
+   },
+   "unDelegateInfo": {
     "properties": {
-      "activeStake": {
-        "type": "keyword"
-      },
-      "activeStakeNum": {
-        "type": "double"
-      },
-      "timestamp": {
-        "format": "epoch_second",
-        "index": "false",
-        "type": "date"
-      },
-      "address": {
-        "type": "keyword"
-      },
-      "contract": {
-        "type": "keyword"
-      },
-      "unDelegateInfo": {
-        "properties": {
-          "id": {
-            "type": "keyword"
-          },
-          "timestamp": {
-            "format": "epoch_second",
-            "type": "date"
-          },
-          "value": {
-            "type": "keyword"
-          },
-          "valueNum": {
-            "type": "double"
-          }
-        },
-        "isObject": true,
-        "isArray": true
-      }
-    }
-  },
-  "settings": {
-    "number_of_replicas": 0,
-    "number_of_shards": 3
+     "id": {
+      "type": "keyword"
+     },
+     "timestamp": {
+      "format": "epoch_second",
+      "type": "date",
+      "description": "The timestamp when the unDelegation operation was done."
+     },
+     "value": {
+      "type": "keyword",
+      "description": "The EGLD amount that was undelegated."
+     },
+     "valueNum": {
+      "type": "double",
+      "description": "The EGLD amount that was undelegated, in a numeric format (example: 1.5)."
+     }
+    },
+    "isObject": true,
+    "isArray": true,
+    "description": "The unDelegateInfo contains a list with data about the unDelegated values."
+   }
   }
+ },
+ "settings": {
+  "number_of_replicas": 0,
+  "number_of_shards": 3
+ }
 }

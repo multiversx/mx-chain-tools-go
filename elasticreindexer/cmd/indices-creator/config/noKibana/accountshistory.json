@@ -5,23 +5,29 @@
  "mappings": {
   "properties": {
    "address": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address in bech32 encoding."
    },
    "balance": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of EGLD the address possesses. It is a string that also includes the number of decimals. Example: \"1500000000000000000\" (equivalent to 1.5 EGLD)."
    },
    "isSender": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the address was the sender when the balance has changed."
    },
    "isSmartContract": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the address is a smart contract address."
    },
    "shardID": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard of the account."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp when the address balance was changed."
    }
   }
  },

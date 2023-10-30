@@ -5,31 +5,38 @@
  "mappings": {
   "properties": {
    "deployTxHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The deployTxHash holds the hex encoded hash of the transaction that deployed the smart contract."
    },
    "deployer": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address in bech32 encoding of the smart contract deployer."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp of the block in which the smart contract was deployed."
    },
    "upgrades": {
     "properties": {
      "timestamp": {
       "format": "epoch_second",
-      "type": "date"
+      "type": "date",
+      "description": "The timestamp of the block in which the smart contract was upgraded."
      },
      "upgradeTxHash": {
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The hex encoded hash of the contract upgrade transaction."
      },
      "upgrader": {
-      "type": "keyword"
+      "type": "keyword",
+      "description": "The bech32 encoded address of the sender of the contract upgrade transaction."
      }
     },
     "type": "nested",
     "isObject": true,
-    "isArray": true
+    "isArray": true,
+    "description": "A list with details about the upgrades of the smart contract."
    }
   }
  },

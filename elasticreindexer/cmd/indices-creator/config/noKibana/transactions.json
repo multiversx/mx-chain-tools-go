@@ -5,115 +5,146 @@
  "mappings": {
   "properties": {
    "data": {
-    "type": "text"
+    "type": "text",
+    "description": "Additional information for a transaction. It can contain a simple message, a function call, an ESDT transfer payload, and so on."
    },
    "esdtValues": {
     "type": "keyword",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of ESDT values that are transferred based on the data field."
    },
    "fee": {
     "index": "false",
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of EGLD the sender paid for the transaction."
    },
    "feeNum": {
     "index": "false",
     "type": "double"
    },
    "function": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The name of the function that is called in case of a smart contract call."
    },
    "gasLimit": {
     "index": "false",
-    "type": "double"
+    "type": "double",
+    "description": "The maximum gas units the sender is willing to pay for."
    },
    "gasPrice": {
     "index": "false",
-    "type": "double"
+    "type": "double",
+    "description": "The amount to be paid for each gas unit."
    },
    "gasUsed": {
     "index": "false",
-    "type": "double"
+    "type": "double",
+    "description": "The amount of gas used by the transaction."
    },
    "hasOperations": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the transaction has smart contract results."
    },
    "hasLogs": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the transaction has logs."
    },
    "hasScResults": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the transaction has smart contract results."
    },
    "initialPaidFee": {
     "index": "false",
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The initial amount of EGLD the sender paid for the transaction, before the refund."
    },
    "isRelayed": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the transaction is a relayed transaction."
    },
    "isScCall": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the transaction is a smart contract call."
    },
    "miniBlockHash": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The hash of the miniblock in which the transaction was included."
    },
    "nonce": {
-    "type": "long"
+    "type": "long",
+    "description": "The transaction sequence number of the sender address."
    },
    "operation": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The operation of the transaction based on the data field."
    },
    "receiver": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The destination address of the transaction."
    },
    "receiverShard": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard ID of the receiver address."
    },
    "receivers": {
     "type": "keyword",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of receiver addresses in case of ESDTNFTTransfer or MultiESDTTransfer."
    },
    "receiversShardIDs": {
     "type": "long",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of receiver addresses shard IDs."
    },
    "receiverUserName": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The username of the receiver address."
    },
    "round": {
-    "type": "long"
+    "type": "long",
+    "description": "The round of the block when the transaction was executed."
    },
    "searchOrder": {
     "type": "long"
    },
    "sender": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address of the transaction sender."
    },
    "senderShard": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard ID of the sender address."
    },
    "senderUserName": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The username of the sender address."
    },
    "signature": {
     "index": "false",
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The signature of the transaction, hex-encoded."
    },
    "status": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The status of the transaction."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp of the block in which the transaction was executed."
    },
    "tokens": {
     "type": "text",
-    "isArray": true
+    "isArray": true,
+    "description": "A list of ESDT tokens that are transferred based on the data field. The indices from the `tokens` list are linked with the indices from `esdtValues` list."
    },
    "value": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of EGLD to be sent from the sender to the receiver."
    },
    "version": {
-    "type": "long"
+    "type": "long",
+    "description": "The version of the transaction."
    },
    "valueNum": {
     "type": "double"

@@ -5,32 +5,40 @@
  "mappings": {
   "properties": {
    "address": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The address in bech32 encoding."
    },
    "balance": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The amount of ESDT tokens the address possesses."
    },
    "identifier": {
-    "type": "text"
+    "type": "text",
+    "description": "The identifier field is composed of the `token` field and the `nonce` field, hex encoded."
    },
    "isSender": {
     "type": "boolean"
    },
    "isSmartContract": {
-    "type": "boolean"
+    "type": "boolean",
+    "description": "True if the address is a smart contract address."
    },
    "shardID": {
-    "type": "long"
+    "type": "long",
+    "description": "The shard of the account."
    },
    "timestamp": {
     "format": "epoch_second",
-    "type": "date"
+    "type": "date",
+    "description": "The timestamp when the address balance was changed."
    },
    "token": {
-    "type": "keyword"
+    "type": "keyword",
+    "description": "The token name of the token."
    },
    "tokenNonce": {
-    "type": "double"
+    "type": "double",
+    "description": "The sequence number of the token. This field can be empty in the case of `FungibleESDT`."
    }
   }
  },
