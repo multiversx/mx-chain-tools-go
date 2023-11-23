@@ -27,13 +27,6 @@ func TestNewPrometheusCollector(t *testing.T) {
 		require.Equal(t, jsonToPrometheus.ErrNilHTTPClientWrapper, err)
 		require.Nil(t, promCollector)
 	})
-	t.Run("empty list of keys should error", func(t *testing.T) {
-		t.Parallel()
-
-		promCollector, err := collector.NewPrometheusCollector(&mock.HTTPClientWrapperMock{}, "", []string{})
-		require.Equal(t, jsonToPrometheus.ErrNoKeyProvided, err)
-		require.Nil(t, promCollector)
-	})
 	t.Run("should work", func(t *testing.T) {
 		t.Parallel()
 
@@ -122,7 +115,7 @@ func TestPrometheusCollector_Collect(t *testing.T) {
 		metricsChan := make(chan prometheus.Metric)
 		promCollector.Collect(metricsChan)
 	})
-	t.Run("http client returns error should early exit", func(t *testing.T) {
+	t.Run("should work for one key", func(t *testing.T) {
 		t.Parallel()
 
 		providedChain := "chain"
@@ -146,6 +139,23 @@ func TestPrometheusCollector_Collect(t *testing.T) {
 						TotalNumValidatorSuccess:           11,
 						TotalNumValidatorFailure:           12,
 						TotalNumValidatorIgnoredSignatures: 13,
+						ShardId:                            0,
+						ValidatorStatus:                    providedStatus,
+					},
+					"key3": {
+						TempRating:                         14,
+						NumLeaderSuccess:                   15,
+						NumLeaderFailure:                   16,
+						NumValidatorSuccess:                17,
+						NumValidatorFailure:                18,
+						NumValidatorIgnoredSignatures:      19,
+						Rating:                             20,
+						RatingModifier:                     21,
+						TotalNumLeaderSuccess:              22,
+						TotalNumLeaderFailure:              23,
+						TotalNumValidatorSuccess:           24,
+						TotalNumValidatorFailure:           25,
+						TotalNumValidatorIgnoredSignatures: 26,
 						ShardId:                            0,
 						ValidatorStatus:                    providedStatus,
 					},
@@ -184,5 +194,83 @@ func TestPrometheusCollector_Collect(t *testing.T) {
 		time.Sleep(time.Second)
 
 		require.True(t, atomic.LoadUint32(&cnt) == 15)
+	})
+	t.Run("should work for all keys", func(t *testing.T) {
+		t.Parallel()
+
+		providedChain := "chain"
+		expectedValues := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 0, 0, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 0, 0}
+		providedStatus := "eligible"
+		httpClient := &mock.HTTPClientWrapperMock{
+			GetValidatorStatisticsCalled: func(ctx context.Context) (map[string]*httpClientWrapper.ValidatorStatistics, error) {
+				return map[string]*httpClientWrapper.ValidatorStatistics{
+					"key1": {
+						TempRating:                         1,
+						NumLeaderSuccess:                   2,
+						NumLeaderFailure:                   3,
+						NumValidatorSuccess:                4,
+						NumValidatorFailure:                5,
+						NumValidatorIgnoredSignatures:      6,
+						Rating:                             7,
+						RatingModifier:                     8,
+						TotalNumLeaderSuccess:              9,
+						TotalNumLeaderFailure:              10,
+						TotalNumValidatorSuccess:           11,
+						TotalNumValidatorFailure:           12,
+						TotalNumValidatorIgnoredSignatures: 13,
+						ShardId:                            0,
+						ValidatorStatus:                    providedStatus,
+					},
+					"key2": {
+						TempRating:                         14,
+						NumLeaderSuccess:                   15,
+						NumLeaderFailure:                   16,
+						NumValidatorSuccess:                17,
+						NumValidatorFailure:                18,
+						NumValidatorIgnoredSignatures:      19,
+						Rating:                             20,
+						RatingModifier:                     21,
+						TotalNumLeaderSuccess:              22,
+						TotalNumLeaderFailure:              23,
+						TotalNumValidatorSuccess:           24,
+						TotalNumValidatorFailure:           25,
+						TotalNumValidatorIgnoredSignatures: 26,
+						ShardId:                            0,
+						ValidatorStatus:                    providedStatus,
+					},
+				}, nil
+			},
+		}
+		promCollector, err := collector.NewPrometheusCollector(httpClient, providedChain, []string{})
+		require.NoError(t, err)
+
+		metricsChan := make(chan prometheus.Metric)
+		cnt := uint32(0)
+		go func() {
+			for {
+				select {
+				case metric := <-metricsChan:
+					dtoMetric := &io_prometheus_client.Metric{}
+					err = metric.Write(dtoMetric)
+					require.NoError(t, err)
+
+					require.Equal(t, providedChain, *dtoMetric.Label[1].Value)
+					if len(dtoMetric.Label) > 2 {
+						// validator status metric
+						require.Equal(t, providedStatus, *dtoMetric.Label[2].Value)
+					}
+					require.Equal(t, expectedValues[cnt], *dtoMetric.Gauge.Value)
+					atomic.AddUint32(&cnt, 1)
+				case <-time.After(time.Second):
+					return
+				}
+			}
+		}()
+
+		promCollector.Collect(metricsChan)
+
+		time.Sleep(time.Second)
+
+		require.True(t, atomic.LoadUint32(&cnt) == 30)
 	})
 }

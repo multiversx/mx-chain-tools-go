@@ -41,9 +41,6 @@ func NewPrometheusCollector(httpClient jsonToPrometheus.HttpClientWrapper, chain
 	if check.IfNil(httpClient) {
 		return nil, jsonToPrometheus.ErrNilHTTPClientWrapper
 	}
-	if len(blsKeys) == 0 {
-		return nil, jsonToPrometheus.ErrNoKeyProvided
-	}
 
 	constLabels := prometheus.Labels{"chain": chain}
 
@@ -107,6 +104,29 @@ func (collector *prometheusCollector) Collect(metricsChan chan<- prometheus.Metr
 		return
 	}
 
+	if len(collector.blsKeys) == 0 {
+		log.Info("no bls key provided, will serve metrics for all keys available")
+		collector.collectMetricsForAllKeys(metricsChan, validatorStatistics)
+		return
+	}
+
+	collector.collectMetricsForManagedKeys(metricsChan, validatorStatistics)
+
+}
+
+func (collector *prometheusCollector) collectMetricsForAllKeys(
+	metricsChan chan<- prometheus.Metric,
+	validatorStatistics map[string]*httpClientWrapper.ValidatorStatistics,
+) {
+	for blsKey, statistics := range validatorStatistics {
+		collector.collectMetricsForKey(metricsChan, statistics, blsKey)
+	}
+}
+
+func (collector *prometheusCollector) collectMetricsForManagedKeys(
+	metricsChan chan<- prometheus.Metric,
+	validatorStatistics map[string]*httpClientWrapper.ValidatorStatistics,
+) {
 	for _, blsKey := range collector.blsKeys {
 		statistics, found := validatorStatistics[blsKey]
 		if !found {
