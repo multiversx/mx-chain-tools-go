@@ -1,4 +1,4 @@
-package jsonToPrometheus
+package validatorStatsToPrometheus
 
 import "errors"
 

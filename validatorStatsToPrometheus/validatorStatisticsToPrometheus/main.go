@@ -47,16 +47,16 @@ VERSION:
 			"To bind to all available interfaces, set this flag to :8080",
 		Value: facade.DefaultRestInterface,
 	}
-	// proxyURL defines a flag for the proxy url that will be used to fetch validator statistics
-	proxyURL = cli.StringFlag{
-		Name:  "proxy-url",
-		Usage: "The proxy url that will be used to fetch validator statistics",
+	// apiURL defines a flag for the api url that will be used to fetch validator statistics
+	apiURL = cli.StringFlag{
+		Name:  "api-url",
+		Usage: "The api url that will be used to fetch validator statistics",
 		Value: "https://testnet-api.multiversx.com",
 	}
-	// chain defines a flag for the chain related to proxy url
+	// chain defines a flag for the chain related to API url
 	chain = cli.StringFlag{
 		Name:  "chain",
-		Usage: "The chain proxy runs on",
+		Usage: "The chain the API runs on",
 		Value: "public-testnet",
 	}
 	// configurationFile defines a flag for the path to the main toml configuration file
@@ -90,7 +90,7 @@ func main() {
 	app.Usage = "Use this tool to fetch validator statistics and serve them in prometheus format"
 	app.Flags = []cli.Flag{
 		restApiInterfaceFlag,
-		proxyURL,
+		apiURL,
 		chain,
 		configurationFile,
 		logLevel,
@@ -136,8 +136,8 @@ func execute(ctx *cli.Context) error {
 		}
 	}
 
-	proxyUrl := ctx.GlobalString(proxyURL.Name)
-	httpClient := http.NewHttpClientWrapper(nil, proxyUrl)
+	apiUrl := ctx.GlobalString(apiURL.Name)
+	httpClient := http.NewHttpClientWrapper(nil, apiUrl)
 	wrapper, err := httpClientWrapper.NewHttpClientWrapper(httpClient)
 	if err != nil {
 		return err

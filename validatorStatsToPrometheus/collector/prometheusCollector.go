@@ -12,6 +12,11 @@ import (
 
 var log = logger.GetOrCreate("collector")
 
+const (
+	blsKeyLabel = "blsKey"
+	statusLabel = "status"
+)
+
 type prometheusDescriptors struct {
 	tempRating                         *prometheus.Desc
 	numLeaderSuccess                   *prometheus.Desc
@@ -31,15 +36,15 @@ type prometheusDescriptors struct {
 }
 
 type prometheusCollector struct {
-	httpClient  jsonToPrometheus.HttpClientWrapper
+	httpClient  validatorStatsToPrometheus.HttpClientWrapper
 	descriptors prometheusDescriptors
 	blsKeys     []string
 }
 
 // NewPrometheusCollector returns a new instance of prometheus exporter
-func NewPrometheusCollector(httpClient jsonToPrometheus.HttpClientWrapper, chain string, blsKeys []string) (*prometheusCollector, error) {
+func NewPrometheusCollector(httpClient validatorStatsToPrometheus.HttpClientWrapper, chain string, blsKeys []string) (*prometheusCollector, error) {
 	if check.IfNil(httpClient) {
-		return nil, jsonToPrometheus.ErrNilHTTPClientWrapper
+		return nil, validatorStatsToPrometheus.ErrNilHTTPClientWrapper
 	}
 
 	constLabels := prometheus.Labels{"chain": chain}
@@ -48,21 +53,21 @@ func NewPrometheusCollector(httpClient jsonToPrometheus.HttpClientWrapper, chain
 		httpClient: httpClient,
 		blsKeys:    blsKeys,
 		descriptors: prometheusDescriptors{
-			tempRating:                         prometheus.NewDesc("tempRating_metric", "Temporary rating", []string{"blsKey"}, constLabels),
-			numLeaderSuccess:                   prometheus.NewDesc("numLeaderSuccess_metric", "Num leader success", []string{"blsKey"}, constLabels),
-			numLeaderFailure:                   prometheus.NewDesc("numLeaderFailure_metric", "Num leader failure", []string{"blsKey"}, constLabels),
-			numValidatorSuccess:                prometheus.NewDesc("numValidatorSuccess_metric", "Num validator success", []string{"blsKey"}, constLabels),
-			numValidatorFailure:                prometheus.NewDesc("numValidatorFailure_metric", "Num validator failure", []string{"blsKey"}, constLabels),
-			numValidatorIgnoredSignatures:      prometheus.NewDesc("numValidatorIgnoredSignatures_metric", "Num validator ignored signatures", []string{"blsKey"}, constLabels),
-			rating:                             prometheus.NewDesc("rating_metric", "Rating", []string{"blsKey"}, constLabels),
-			ratingModifier:                     prometheus.NewDesc("ratingModifier_metric", "Rating modifier", []string{"blsKey"}, constLabels),
-			totalNumLeaderSuccess:              prometheus.NewDesc("totalNumLeaderSuccess_metric", "Total num leader success", []string{"blsKey"}, constLabels),
-			totalNumLeaderFailure:              prometheus.NewDesc("totalNumLeaderFailure_metric", "Total num leader failure", []string{"blsKey"}, constLabels),
-			totalNumValidatorSuccess:           prometheus.NewDesc("totalNumValidatorSuccess_metric", "Total num validator success", []string{"blsKey"}, constLabels),
-			totalNumValidatorFailure:           prometheus.NewDesc("totalNumValidatorFailure_metric", "Total num validator failure", []string{"blsKey"}, constLabels),
-			totalNumValidatorIgnoredSignatures: prometheus.NewDesc("totalNumValidatorIgnoredSignatures_metric", "Total num validator ignored signatures", []string{"blsKey"}, constLabels),
-			shardId:                            prometheus.NewDesc("shardId_metric", "Shard ID", []string{"blsKey"}, constLabels),
-			validatorStatus:                    prometheus.NewDesc("validatorStatus_metric", "Validator status", []string{"blsKey", "status"}, constLabels),
+			tempRating:                         prometheus.NewDesc("tempRating_metric", "Temporary rating", []string{blsKeyLabel}, constLabels),
+			numLeaderSuccess:                   prometheus.NewDesc("numLeaderSuccess_metric", "Num leader success", []string{blsKeyLabel}, constLabels),
+			numLeaderFailure:                   prometheus.NewDesc("numLeaderFailure_metric", "Num leader failure", []string{blsKeyLabel}, constLabels),
+			numValidatorSuccess:                prometheus.NewDesc("numValidatorSuccess_metric", "Num validator success", []string{blsKeyLabel}, constLabels),
+			numValidatorFailure:                prometheus.NewDesc("numValidatorFailure_metric", "Num validator failure", []string{blsKeyLabel}, constLabels),
+			numValidatorIgnoredSignatures:      prometheus.NewDesc("numValidatorIgnoredSignatures_metric", "Num validator ignored signatures", []string{blsKeyLabel}, constLabels),
+			rating:                             prometheus.NewDesc("rating_metric", "Rating", []string{blsKeyLabel}, constLabels),
+			ratingModifier:                     prometheus.NewDesc("ratingModifier_metric", "Rating modifier", []string{blsKeyLabel}, constLabels),
+			totalNumLeaderSuccess:              prometheus.NewDesc("totalNumLeaderSuccess_metric", "Total num leader success", []string{blsKeyLabel}, constLabels),
+			totalNumLeaderFailure:              prometheus.NewDesc("totalNumLeaderFailure_metric", "Total num leader failure", []string{blsKeyLabel}, constLabels),
+			totalNumValidatorSuccess:           prometheus.NewDesc("totalNumValidatorSuccess_metric", "Total num validator success", []string{blsKeyLabel}, constLabels),
+			totalNumValidatorFailure:           prometheus.NewDesc("totalNumValidatorFailure_metric", "Total num validator failure", []string{blsKeyLabel}, constLabels),
+			totalNumValidatorIgnoredSignatures: prometheus.NewDesc("totalNumValidatorIgnoredSignatures_metric", "Total num validator ignored signatures", []string{blsKeyLabel}, constLabels),
+			shardId:                            prometheus.NewDesc("shardId_metric", "Shard ID", []string{blsKeyLabel}, constLabels),
+			validatorStatus:                    prometheus.NewDesc("validatorStatus_metric", "Validator status", []string{blsKeyLabel, statusLabel}, constLabels),
 		},
 	}, nil
 }
@@ -130,7 +135,6 @@ func (collector *prometheusCollector) collectMetricsForManagedKeys(
 	for _, blsKey := range collector.blsKeys {
 		statistics, found := validatorStatistics[blsKey]
 		if !found {
-			log.Error("no validator statistics found", "key", blsKey)
 			continue
 		}
 

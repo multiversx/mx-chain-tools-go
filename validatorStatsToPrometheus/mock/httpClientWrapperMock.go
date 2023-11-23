@@ -6,6 +6,7 @@ import (
 	"github.com/multiversx/mx-chain-tools-go/jsonToPrometheus/httpClientWrapper"
 )
 
+// HTTPClientWrapperMock -
 type HTTPClientWrapperMock struct {
 	GetValidatorStatisticsCalled func(ctx context.Context) (map[string]*httpClientWrapper.ValidatorStatistics, error)
 }

@@ -24,7 +24,7 @@ func TestNewPrometheusCollector(t *testing.T) {
 		t.Parallel()
 
 		promCollector, err := collector.NewPrometheusCollector(nil, "", nil)
-		require.Equal(t, jsonToPrometheus.ErrNilHTTPClientWrapper, err)
+		require.Equal(t, validatorStatsToPrometheus.ErrNilHTTPClientWrapper, err)
 		require.Nil(t, promCollector)
 	})
 	t.Run("should work", func(t *testing.T) {
