@@ -36,3 +36,4 @@ jobs:
           cd ${GITHUB_WORKSPACE}/trieTools/trieChecker && go build .
           cd ${GITHUB_WORKSPACE}/trieTools/trieStatsPrinter && go build .
           cd ${GITHUB_WORKSPACE}/trieTools/zeroBalanceSystemAccountChecker && go build .
+          cd ${GITHUB_WORKSPACE}/validatorStatsToPrometheus/validatorStatisticsToPrometheus && go build .
