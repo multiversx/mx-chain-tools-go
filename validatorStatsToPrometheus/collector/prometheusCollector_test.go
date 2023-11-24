@@ -167,6 +167,9 @@ func TestPrometheusCollector_Collect(t *testing.T) {
 
 		metricsChan := make(chan prometheus.Metric)
 		cnt := uint32(0)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		go func() {
 			for {
 				select {
@@ -183,7 +186,7 @@ func TestPrometheusCollector_Collect(t *testing.T) {
 					}
 					require.Equal(t, expectedValues[cnt], *dtoMetric.Gauge.Value)
 					atomic.AddUint32(&cnt, 1)
-				case <-time.After(time.Second):
+				case <-ctx.Done():
 					return
 				}
 			}
@@ -246,6 +249,9 @@ func TestPrometheusCollector_Collect(t *testing.T) {
 
 		metricsChan := make(chan prometheus.Metric)
 		cnt := uint32(0)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		go func() {
 			for {
 				select {
@@ -261,7 +267,7 @@ func TestPrometheusCollector_Collect(t *testing.T) {
 					}
 					require.Equal(t, expectedValues[cnt], *dtoMetric.Gauge.Value)
 					atomic.AddUint32(&cnt, 1)
-				case <-time.After(time.Second):
+				case <-ctx.Done():
 					return
 				}
 			}
