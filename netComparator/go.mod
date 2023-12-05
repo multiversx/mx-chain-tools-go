@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
