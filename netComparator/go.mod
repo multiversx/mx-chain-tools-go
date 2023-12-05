@@ -20,7 +20,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiversx/concurrent-map v0.1.4 // indirect
 	github.com/multiversx/mx-chain-communication-go v1.0.8 // indirect
-	github.com/multiversx/mx-chain-core-go v1.2.16 // indirect
+	github.com/multiversx/mx-chain-core-go v1.2.18 // indirect
 	github.com/multiversx/mx-chain-crypto-go v1.2.8 // indirect
 	github.com/multiversx/mx-chain-go v1.6.3 // indirect
 	github.com/multiversx/mx-chain-storage-go v1.0.13 // indirect

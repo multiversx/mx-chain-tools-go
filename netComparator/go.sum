@@ -98,6 +98,8 @@ github.com/multiversx/mx-chain-communication-go v1.0.8 h1:sTx4Vmx+QCpngUFq/LF/Ka
 github.com/multiversx/mx-chain-communication-go v1.0.8/go.mod h1:+oaUowpq+SqrEmAsMPGwhz44g7L81loWb6AiNQU9Ms4=
 github.com/multiversx/mx-chain-core-go v1.2.16 h1:m0hUNmZQjGJxKDLQOHoM9jSaeDfVTbyd+mqiS8+NckE=
 github.com/multiversx/mx-chain-core-go v1.2.16/go.mod h1:BILOGHUOIG5dNNX8cgkzCNfDaVtoYrJRYcPnpxRMH84=
+github.com/multiversx/mx-chain-core-go v1.2.18 h1:fnub2eFL7XYOLrKKVZAPPsaM1TWEnaK5qqY3FLUv168=
+github.com/multiversx/mx-chain-core-go v1.2.18/go.mod h1:BILOGHUOIG5dNNX8cgkzCNfDaVtoYrJRYcPnpxRMH84=
 github.com/multiversx/mx-chain-crypto-go v1.2.8 h1:wOgVlUaO5X4L8iEbFjcQcL8SZvv6WZ7LqH73BiRPhxU=
 github.com/multiversx/mx-chain-crypto-go v1.2.8/go.mod h1:fkaWKp1rbQN9wPKya5jeoRyC+c/SyN/NfggreyeBw+8=
 github.com/multiversx/mx-chain-go v1.6.3 h1:U5Z7oscke09d7BwZ/Va8ozovKVchr5oPHL9pZon5+hM=

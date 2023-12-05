@@ -6,10 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/avast/retry-go"
-	"github.com/multiversx/mx-sdk-go/blockchain"
-	"github.com/multiversx/mx-sdk-go/core"
-	"github.com/urfave/cli"
 	"html/template"
 	"net/http"
 	"os"
@@ -17,6 +13,12 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/avast/retry-go"
+	"github.com/multiversx/mx-sdk-go/blockchain"
+	"github.com/multiversx/mx-sdk-go/core"
+	"github.com/multiversx/mx-sdk-go/data"
+	"github.com/urfave/cli"
 )
 
 const (
@@ -24,116 +26,25 @@ const (
 	shfURL = "https://express-api-shadowfork-four.elrond.ro"
 )
 
-type transactions struct {
+type wrappedTxHashes struct {
 	TxHash string `json:"txHash"`
 }
 
-type Transaction struct {
-	TxHash         string `json:"txHash"`
-	GasLimit       int    `json:"gasLimit"`
-	GasPrice       int    `json:"gasPrice"`
-	GasUsed        int    `json:"gasUsed"`
-	MiniBlockHash  string `json:"miniBlockHash"`
-	Nonce          int    `json:"nonce"`
-	Receiver       string `json:"receiver"`
-	ReceiverAssets struct {
-		Name string   `json:"name"`
-		Tags []string `json:"tags"`
-	} `json:"receiverAssets"`
-	ReceiverShard int    `json:"receiverShard"`
-	Round         int    `json:"round"`
-	Sender        string `json:"sender"`
-	SenderShard   int    `json:"senderShard"`
-	Signature     string `json:"signature"`
-	Status        string `json:"status"`
-	Value         string `json:"value"`
-	Fee           string `json:"fee"`
-	Timestamp     int    `json:"timestamp"`
-	Data          string `json:"data"`
-	Function      string `json:"function"`
-	Action        struct {
-		Category string `json:"category"`
-		Name     string `json:"name"`
-	} `json:"action"`
-	Results []struct {
-		Hash         string `json:"hash"`
-		Timestamp    int    `json:"timestamp"`
-		Nonce        int    `json:"nonce"`
-		GasLimit     int    `json:"gasLimit"`
-		GasPrice     int    `json:"gasPrice"`
-		Value        string `json:"value"`
-		Sender       string `json:"sender"`
-		Receiver     string `json:"receiver"`
-		SenderAssets struct {
-			Name string   `json:"name"`
-			Tags []string `json:"tags"`
-		} `json:"senderAssets"`
-		Data           string `json:"data"`
-		PrevTxHash     string `json:"prevTxHash"`
-		OriginalTxHash string `json:"originalTxHash"`
-		CallType       string `json:"callType"`
-		MiniBlockHash  string `json:"miniBlockHash"`
-		Logs           struct {
-			Id      string `json:"id"`
-			Address string `json:"address"`
-			Events  []struct {
-				Identifier string   `json:"identifier"`
-				Address    string   `json:"address"`
-				Topics     []string `json:"topics"`
-				Order      int      `json:"order"`
-				Data       string   `json:"data,omitempty"`
-			} `json:"events"`
-		} `json:"logs"`
-	} `json:"results"`
-	Price float64 `json:"price"`
-	Logs  struct {
-		Id            string `json:"id"`
-		Address       string `json:"address"`
-		AddressAssets struct {
-			Name string   `json:"name"`
-			Tags []string `json:"tags"`
-		} `json:"addressAssets"`
-		Events []struct {
-			Identifier    string   `json:"identifier"`
-			Address       string   `json:"address"`
-			Topics        []string `json:"topics"`
-			Order         int      `json:"order"`
-			AddressAssets struct {
-				Name string   `json:"name"`
-				Tags []string `json:"tags"`
-			} `json:"addressAssets"`
-		} `json:"events"`
-	} `json:"logs"`
-	Operations []struct {
-		Id           string `json:"id"`
-		Action       string `json:"action"`
-		Type         string `json:"type"`
-		Sender       string `json:"sender"`
-		Receiver     string `json:"receiver"`
-		Data         string `json:"data,omitempty"`
-		EsdtType     string `json:"esdtType,omitempty"`
-		Identifier   string `json:"identifier,omitempty"`
-		Ticker       string `json:"ticker,omitempty"`
-		Name         string `json:"name,omitempty"`
-		Value        string `json:"value,omitempty"`
-		Decimals     int    `json:"decimals,omitempty"`
-		SvgUrl       string `json:"svgUrl,omitempty"`
-		SenderAssets struct {
-			Name string   `json:"name"`
-			Tags []string `json:"tags"`
-		} `json:"senderAssets,omitempty"`
-		ValueUSD float64 `json:"valueUSD,omitempty"`
-	} `json:"operations"`
-}
-
-type WrappedError struct {
+type WrappedDifferences struct {
 	TxHash      string           `json:"txHash"`
 	Differences map[string][]any `json:"differences"`
 	Error       string           `json:"error"`
 }
 
+type wrappedProxy interface {
+	GetHTTP(ctx context.Context, endpoint string) ([]byte, int, error)
+}
+
 //go:embed assets/template.html
 var fs embed.FS
+
+var mainProxy wrappedProxy
+var shfProxy wrappedProxy
 
 func main() {
 	app := cli.NewApp()
@@ -194,13 +105,14 @@ func action(c *cli.Context) error {
 	}
 
 	// Create a client for the mainnet.
-	ep, err := blockchain.NewProxy(api)
+	var err error
+	mainProxy, err = blockchain.NewProxy(api)
 	if err != nil {
 		return fmt.Errorf("failed to create proxy: %v", err)
 	}
 
 	// Create a client for the shadow-fork.
-	shf, err := blockchain.NewProxy(shfArgs)
+	shfProxy, err = blockchain.NewProxy(shfArgs)
 	if err != nil {
 		return fmt.Errorf("failed to create proxy: %v", err)
 	}
@@ -215,12 +127,12 @@ func action(c *cli.Context) error {
 
 	txEndpoint := "transactions/%s"
 	wg := sync.WaitGroup{}
-	txHashes := make([]transactions, 0)
+	txHashes := make([]wrappedTxHashes, 0)
 
 	// Retrieve n transactions after a specified timestamp and put them in a slice.
 	txsEndpoint := fmt.Sprintf("transactions?after=%s&size=%d&order=asc", config.Timestamp, config.Number)
 	var allTxsResp []byte
-	allTxsResp, _, err = ep.GetHTTP(context.Background(), txsEndpoint)
+	allTxsResp, _, err = mainProxy.GetHTTP(context.Background(), txsEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve transactions: %v", err)
 	}
@@ -240,123 +152,49 @@ func action(c *cli.Context) error {
 
 	// Iterate over the transactions hashes and fetch all the information contained in either mainnet or shadow-fork
 	// and compare each field respectively.
-	wrappedErrors := make([]WrappedError, len(txHashes))
+	wrappedDiffs := make([]WrappedDifferences, len(txHashes))
 	for i, t := range txHashes {
 		wg.Add(1)
 		go func(i int, t string) {
+			defer wg.Done()
 			var (
-				txM  Transaction
-				txS  Transaction
-				resp []byte
-				code int
+				txM *data.TransactionOnNetwork
+				txS *data.TransactionOnNetwork
 			)
 
 			// Get transaction from shadow-fork in a retry loop.
 			err = retry.Do(
 				func() error {
-					resp, code, err = shf.GetHTTP(context.Background(), fmt.Sprintf(txEndpoint, t))
+					var (
+						wd *WrappedDifferences
+					)
+					txM, wd, err = getTransaction(t, txEndpoint, "mainnet", mainProxy)
 					if err != nil {
-						wrappedErr := fmt.Errorf("failed to get tx %q from shadow fork: %v", t, err)
-						return wrappedErr
+						return err
 					}
 
-					// If the status is different from 200, most probably the transaction could not be found.
-					if code != http.StatusOK {
-						wrappedErr := struct {
-							Data  interface{} `json:"data"`
-							Error string      `json:"error"`
-							Code  string      `json:"code"`
-						}{}
+					txS, wd, err = getTransaction(t, txEndpoint, "shadow-fork", shfProxy)
+					if err != nil {
+						return err
+					}
 
-						err = json.Unmarshal(resp, &wrappedErr)
-						if err != nil {
-							wrappedErrors[i] = WrappedError{TxHash: t, Error: err.Error()}
-							return err
-						}
-						wrappedErrors[i] = WrappedError{TxHash: t, Error: wrappedErr.Error}
+					if wd != nil {
+						wrappedDiffs[i] = *wd
 						return nil
 					}
 
+					wrappedDiffs[i] = getDifference(t, *txM, *txS)
 					return nil
-				}, retryConfig...)
 
-			// If there was an error there is no need to perform any other actions. Close the go routine and return.
-			if err != nil {
-				wg.Done()
-				return
-			}
-
-			// Marshall the response from the shadow-fork into a variable.
-			err = json.Unmarshal(resp, &txS)
-			if err != nil {
-				wrappedErr := fmt.Errorf("failed to marshall tx %q from shadow fork: %v", t, err)
-				wrappedErrors[i] = WrappedError{TxHash: t, Error: wrappedErr.Error()}
-				wg.Done()
-				return
-			}
-
-			// Get transaction from mainnet in a retry loop.
-			err = retry.Do(func() error {
-				resp, code, err = ep.GetHTTP(context.Background(), fmt.Sprintf(txEndpoint, t))
-				if err != nil {
-					wrappedErr := fmt.Errorf("failed to get tx %q from mainnet fork: %v", t, err)
-					wrappedErrors[i] = WrappedError{TxHash: t, Error: wrappedErr.Error()}
-					return wrappedErr
-				}
-
-				// If the transaction could not be found add an error.
-				if code == http.StatusNotFound {
-					wrappedErr := struct {
-						Data  interface{} `json:"data"`
-						Error string      `json:"error"`
-						Code  string      `json:"code"`
-					}{}
-
-					err = json.Unmarshal(resp, &wrappedErr)
-					if err != nil {
-						panic(err)
-					}
-					wrappedErrors[i] = WrappedError{TxHash: t, Error: wrappedErr.Error}
-					return nil
-				}
-
-				// If the response code was 429 then try again later as the api cannot handle so many requests.
-				if code == http.StatusTooManyRequests {
-					tooManyReqErr := errors.New(fmt.Sprintf("too many requests: %q", t))
-					wrappedErrors[i] = WrappedError{TxHash: t, Error: tooManyReqErr.Error()}
-					return tooManyReqErr
-				}
-
-				return nil
-			}, retryConfig...)
-
-			// If there was an error there is no need to perform any other actions. Close the go routine and return.
-			if err != nil {
-				wg.Done()
-				return
-			}
-
-			// Marshall the response from the shadow-fork into a variable.
-			err = json.Unmarshal(resp, &txM)
-			if err != nil {
-				wrappedErr := fmt.Errorf("failed to get tx %q from mainnet fork: %v", t, err)
-				wrappedErrors[i] = WrappedError{TxHash: t, Error: wrappedErr.Error()}
-				wg.Done()
-				return
-			}
-
-			//  Compare differences between the full-transaction on mainnet and on shadowfork.
-			diff := getDifference(txM, txS)
-			wrappedErrors[i] = diff
-
-			wg.Done()
+				}, retryConfig...,
+			)
 		}(i, t.TxHash)
 	}
 
 	// Wait for all the go routines to finish.
 	wg.Wait()
 
-	jsonBytes, err := json.MarshalIndent(wrappedErrors, "", " ")
+	jsonBytes, err := json.MarshalIndent(wrappedDiffs, "", " ")
 	if err != nil {
 		return err
 	}
@@ -375,7 +213,7 @@ func action(c *cli.Context) error {
 	file, _ := os.Create("index.html")
 	defer file.Close()
 
-	err = tmpl.Execute(file, wrappedErrors)
+	err = tmpl.Execute(file, wrappedDiffs)
 	if err != nil {
 		return fmt.Errorf("failed to execute template: %v", err)
 	}
@@ -385,8 +223,8 @@ func action(c *cli.Context) error {
 	return nil
 }
 
-func getDifference(t1 Transaction, t2 Transaction) WrappedError {
-	diff := WrappedError{TxHash: t1.TxHash}
+func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) WrappedDifferences {
+	diff := WrappedDifferences{TxHash: txHash}
 	diffMap := make(map[string][]any)
 
 	structType := reflect.TypeOf(t1)
@@ -423,4 +261,51 @@ func calculateRetryAttempts(n int) (retriesNo uint) {
 	}
 
 	return 10
+}
+
+func getTransaction(txHash, txEndpoint, networkName string, p wrappedProxy) (*data.TransactionOnNetwork, *WrappedDifferences, error) {
+	//Retrieve transaction from network.
+	resp, code, err := p.GetHTTP(context.Background(), fmt.Sprintf(txEndpoint, txHash))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get tx %q from %q: %v", txHash, networkName, err)
+	}
+
+	wrappedErr := struct {
+		Data  interface{} `json:"data"`
+		Error string      `json:"error"`
+		Code  string      `json:"code"`
+	}{}
+
+	// If the status code is different from 200, further investigate.
+	if code != http.StatusOK {
+		switch code {
+
+		// If the status is 404, we don't want to retry looking for it. It is the only case where we
+		// also return a WrappedDifferences struct with the not found error.
+		case http.StatusNotFound:
+			err = json.Unmarshal(resp, &wrappedErr)
+			if err != nil {
+				wd := &WrappedDifferences{TxHash: txHash, Error: err.Error()}
+				return nil, wd, nil
+			}
+
+		// If the status is 429, that means we are sending way too many requests at the moment. We return an error
+		// in order to further retry looking for the transaction.
+		case http.StatusTooManyRequests:
+			tooManyReqErr := errors.New(fmt.Sprintf("too many requests: %q", txHash))
+			return nil, nil, tooManyReqErr
+
+		// If the code is something else, we keep looking for the transaction.
+		default:
+			return nil, nil, errors.New(fmt.Sprintf("got %d while trying to retrieve transaction %q", code, txHash))
+		}
+	}
+
+	var tx data.TransactionOnNetwork
+	err = json.Unmarshal(resp, &tx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshall tx %q from %q: %v", txHash, networkName, err)
+	}
+
+	return &tx, nil, nil
 }
