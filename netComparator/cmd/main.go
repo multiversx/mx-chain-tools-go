@@ -211,7 +211,7 @@ func action(c *cli.Context) error {
 		return fmt.Errorf("failed to parse timestamp: %v", err)
 	}
 	tm := time.Unix(timestampTime, 0)
-	log.Info(fmt.Sprintf("retreieving %d transactions starting from %v", config.Number, tm))
+	log.Info(fmt.Sprintf("retrieving %d transactions starting from %v", config.Number, tm))
 
 	txEndpoint := "transactions/%s"
 	wg := sync.WaitGroup{}
