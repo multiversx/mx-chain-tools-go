@@ -171,7 +171,8 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	log.Info("\tindexing", "index", index, "bulk size", len(resultsMap), "count", count)
 	buffSlice := newBufferSlice()
 	for id, source := range resultsMap {
-		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, id, "\n"))
+
+		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, jsonEscape(id), "\n"))
 
 		err = buffSlice.PutData(meta, []byte(jsonEscape(string(source))))
 		if err != nil {
