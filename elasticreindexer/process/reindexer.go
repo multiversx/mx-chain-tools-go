@@ -172,9 +172,9 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	buffSlice := newBufferSlice()
 	for id, source := range resultsMap {
 
-		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, jsonEscape(id), "\n"))
+		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, id, "\n"))
 
-		err = buffSlice.PutData(meta, []byte(jsonEscape(string(source))))
+		err = buffSlice.PutData(meta, source)
 		if err != nil {
 			return nil, err
 		}
@@ -232,18 +232,4 @@ func (r *reindexer) createScrollRequestHandlerFunction(count *uint64, index stri
 		}
 		return nil
 	}
-}
-
-func jsonEscape(i string) string {
-	b, err := json.Marshal(i)
-	if err != nil {
-		log.Warn("converters.JsonEscape something went wrong",
-			"input", i,
-			"error", err,
-		)
-		return defaultStr
-	}
-
-	// Trim the beginning and trailing " character
-	return string(b[1 : len(b)-1])
 }
