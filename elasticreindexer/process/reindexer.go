@@ -16,7 +16,10 @@ var (
 	log                  = logger.GetOrCreate("process")
 )
 
-const indexSuffix = "-000001"
+const (
+	defaultStr  = "default"
+	indexSuffix = "-000001"
+)
 
 type reindexer struct {
 	sourceElastic      ElasticClientHandler
@@ -170,7 +173,7 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	for id, source := range resultsMap {
 		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, id, "\n"))
 
-		err = buffSlice.PutData(meta, source)
+		err = buffSlice.PutData(meta, []byte(jsonEscape(string(source))))
 		if err != nil {
 			return nil, err
 		}
@@ -228,4 +231,18 @@ func (r *reindexer) createScrollRequestHandlerFunction(count *uint64, index stri
 		}
 		return nil
 	}
+}
+
+func jsonEscape(i string) string {
+	b, err := json.Marshal(i)
+	if err != nil {
+		log.Warn("converters.JsonEscape something went wrong",
+			"input", i,
+			"error", err,
+		)
+		return defaultStr
+	}
+
+	// Trim the beginning and trailing " character
+	return string(b[1 : len(b)-1])
 }
