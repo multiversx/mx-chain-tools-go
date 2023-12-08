@@ -24,6 +24,15 @@ import (
 const (
 	apiURL = "https://api.multiversx.com"
 	shfURL = "https://express-api-shadowfork-four.elrond.ro"
+
+	// Depending on how many transactions one wishes to retrieves. The number of tries needed will increase.
+	// See calculateRetryAttempts()
+	MINIMUM_NUMBER_OF_RETRIES = 10
+	MEDIUM_NUMBER_OF_RETRIES  = 15
+	MAXIMUM_NUMBER_OF_RETRIES = 15
+
+	TX_ENDPOINT  = "transactions/%s"
+	TXS_ENDPOINT = "transactions?after=%s&size=%d&order=asc"
 )
 
 type wrappedTxHashes struct {
@@ -40,11 +49,15 @@ type wrappedProxy interface {
 	GetHTTP(ctx context.Context, endpoint string) ([]byte, int, error)
 }
 
-//go:embed assets/template.html
-var fs embed.FS
+var (
+	//go:embed assets/template.html
+	fs embed.FS
 
-var mainProxy wrappedProxy
-var shfProxy wrappedProxy
+	mainProxy wrappedProxy
+	shfProxy  wrappedProxy
+
+	retryConfig []retry.Option
+)
 
 func main() {
 	app := cli.NewApp()
@@ -125,13 +138,11 @@ func action(c *cli.Context) error {
 	tm := time.Unix(timestampTime, 0)
 	log.Info(fmt.Sprintf("retrieving %d transactions starting from %v", config.Number, tm))
 
-	txEndpoint := "transactions/%s"
-	wg := sync.WaitGroup{}
 	txHashes := make([]wrappedTxHashes, 0)
 
 	// Retrieve n transactions after a specified timestamp and put them in a slice.
-	txsEndpoint := fmt.Sprintf("transactions?after=%s&size=%d&order=asc", config.Timestamp, config.Number)
 	var allTxsResp []byte
+	txsEndpoint := fmt.Sprintf(TXS_ENDPOINT, config.Timestamp, config.Number)
 	allTxsResp, _, err = mainProxy.GetHTTP(context.Background(), txsEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve transactions: %v", err)
@@ -142,7 +153,7 @@ func action(c *cli.Context) error {
 		return fmt.Errorf("failed to marshall transactions from mainnet: %v", err)
 	}
 
-	retryConfig := []retry.Option{
+	retryConfig = []retry.Option{
 		retry.OnRetry(func(n uint, err error) {
 			log.Info("Retry request", n+1, err)
 		}),
@@ -150,49 +161,7 @@ func action(c *cli.Context) error {
 		retry.Delay(5 * time.Second),
 	}
 
-	// Iterate over the transactions hashes and fetch all the information contained in either mainnet or shadow-fork
-	// and compare each field respectively.
-	wrappedDiffs := make([]WrappedDifferences, len(txHashes))
-	for i, t := range txHashes {
-		wg.Add(1)
-		go func(i int, t string) {
-			defer wg.Done()
-			var (
-				txM *data.TransactionOnNetwork
-				txS *data.TransactionOnNetwork
-			)
-
-			// Get transaction from shadow-fork in a retry loop.
-			err = retry.Do(
-				func() error {
-					var (
-						wd *WrappedDifferences
-					)
-					txM, wd, err = getTransaction(t, txEndpoint, "mainnet", mainProxy)
-					if err != nil {
-						return err
-					}
-
-					txS, wd, err = getTransaction(t, txEndpoint, "shadow-fork", shfProxy)
-					if err != nil {
-						return err
-					}
-
-					if wd != nil {
-						wrappedDiffs[i] = *wd
-						return nil
-					}
-
-					wrappedDiffs[i] = getDifference(t, *txM, *txS)
-					return nil
-
-				}, retryConfig...,
-			)
-		}(i, t.TxHash)
-	}
-
-	// Wait for all the go routines to finish.
-	wg.Wait()
+	wrappedDiffs := compareTransactions(txHashes)
 
 	jsonBytes, err := json.MarshalIndent(wrappedDiffs, "", " ")
 	if err != nil {
@@ -223,6 +192,71 @@ func action(c *cli.Context) error {
 	return nil
 }
 
+func calculateRetryAttempts(n int) (retriesNo uint) {
+	if n >= 1000 && n <= 5000 {
+		return MEDIUM_NUMBER_OF_RETRIES
+	}
+
+	if n >= 5000 && n <= 10000 {
+		return MAXIMUM_NUMBER_OF_RETRIES
+	}
+
+	return MINIMUM_NUMBER_OF_RETRIES
+}
+
+func compareTransactions(txHashes []wrappedTxHashes) []WrappedDifferences {
+	// Iterate over the transactions hashes and fetch all the information contained in either mainnet or shadow-fork
+	// and compare each field respectively.
+	wg := sync.WaitGroup{}
+	wrappedDiffs := make([]WrappedDifferences, len(txHashes))
+
+	for i, t := range txHashes {
+		wg.Add(1)
+		go func(i int, t string) {
+			defer wg.Done()
+			var (
+				txM *data.TransactionOnNetwork
+				txS *data.TransactionOnNetwork
+			)
+
+			// Get transaction from shadow-fork in a retry loop.
+			err := retry.Do(
+				func() error {
+					var (
+						err error
+						wd  *WrappedDifferences
+					)
+					txM, wd, err = getTransaction(t, "mainnet", mainProxy)
+					if err != nil {
+						return err
+					}
+
+					txS, wd, err = getTransaction(t, "shadow-fork", shfProxy)
+					if err != nil {
+						return err
+					}
+
+					if wd != nil {
+						wrappedDiffs[i] = *wd
+						return nil
+					}
+
+					wrappedDiffs[i] = getDifference(t, *txM, *txS)
+					return nil
+
+				}, retryConfig...,
+			)
+
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}(i, t.TxHash)
+	}
+
+	wg.Wait()
+	return wrappedDiffs
+}
+
 func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) WrappedDifferences {
 	diff := WrappedDifferences{TxHash: txHash}
 	diffMap := make(map[string][]any)
@@ -251,21 +285,9 @@ func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) WrappedDiffe
 	return diff
 }
 
-func calculateRetryAttempts(n int) (retriesNo uint) {
-	if n >= 1000 && n <= 5000 {
-		return 15
-	}
-
-	if n >= 5000 && n <= 10000 {
-		return 20
-	}
-
-	return 10
-}
-
-func getTransaction(txHash, txEndpoint, networkName string, p wrappedProxy) (*data.TransactionOnNetwork, *WrappedDifferences, error) {
+func getTransaction(txHash, networkName string, p wrappedProxy) (*data.TransactionOnNetwork, *WrappedDifferences, error) {
 	//Retrieve transaction from network.
-	resp, code, err := p.GetHTTP(context.Background(), fmt.Sprintf(txEndpoint, txHash))
+	resp, code, err := p.GetHTTP(context.Background(), fmt.Sprintf(TX_ENDPOINT, txHash))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get tx %q from %q: %v", txHash, networkName, err)
 	}
