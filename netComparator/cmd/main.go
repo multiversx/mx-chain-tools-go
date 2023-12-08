@@ -29,7 +29,7 @@ const (
 	// See calculateRetryAttempts()
 	MINIMUM_NUMBER_OF_RETRIES = 10
 	MEDIUM_NUMBER_OF_RETRIES  = 15
-	MAXIMUM_NUMBER_OF_RETRIES = 15
+	MAXIMUM_NUMBER_OF_RETRIES = 20
 
 	TX_ENDPOINT  = "transactions/%s"
 	TXS_ENDPOINT = "transactions?after=%s&size=%d&order=asc"
