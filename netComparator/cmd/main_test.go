@@ -12,7 +12,7 @@ func TestGetDifference(t *testing.T) {
 		txHash   string
 		t1       data.TransactionOnNetwork
 		t2       data.TransactionOnNetwork
-		expected WrappedDifferences
+		expected wrappedDifferences
 	}{
 		// Same transaction fields
 		{
@@ -34,7 +34,7 @@ func TestGetDifference(t *testing.T) {
 				GasPrice: 50000,
 				GasLimit: 60000,
 			},
-			WrappedDifferences{"1", nil, ""},
+			wrappedDifferences{"1", nil, ""},
 		},
 
 		{
@@ -56,7 +56,7 @@ func TestGetDifference(t *testing.T) {
 				GasPrice: 50001,
 				GasLimit: 60001,
 			},
-			WrappedDifferences{"2", map[string][]any{
+			wrappedDifferences{"2", map[string][]any{
 				"Nonce":    {uint64(1), uint64(13)},
 				"Value":    {"randomValue", "someRandomValue"},
 				"Sender":   {"randomSender", "someRandomSender"},

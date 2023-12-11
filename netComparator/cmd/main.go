@@ -25,21 +25,23 @@ const (
 	apiURL = "https://api.multiversx.com"
 	shfURL = "https://express-api-shadowfork-four.elrond.ro"
 
-	// Depending on how many transactions one wishes to retrieves. The number of tries needed will increase.
-	// See calculateRetryAttempts()
-	MINIMUM_NUMBER_OF_RETRIES = 10
-	MEDIUM_NUMBER_OF_RETRIES  = 15
-	MAXIMUM_NUMBER_OF_RETRIES = 20
+	maximumNumberOfTransactions = 10000
 
-	TX_ENDPOINT  = "transactions/%s"
-	TXS_ENDPOINT = "transactions?after=%s&size=%d&order=asc"
+	// Depending on how many transactions one wishes to retrieve. The number of tries needed will increase.
+	// See calculateRetryAttempts()
+	minimumNumberOfRetries = 10
+	mediumNumberOfRetries  = 15
+	maximumNumberOfRetries = 20
+
+	txEndpoint  = "transactions/%s"
+	txsEndpoint = "transactions?after=%s&size=%d&order=asc&fields=txHash"
 )
 
 type wrappedTxHashes struct {
 	TxHash string `json:"txHash"`
 }
 
-type WrappedDifferences struct {
+type wrappedDifferences struct {
 	TxHash      string           `json:"txHash"`
 	Differences map[string][]any `json:"differences"`
 	Error       string           `json:"error"`
@@ -53,16 +55,13 @@ var (
 	//go:embed assets/template.html
 	fs embed.FS
 
-	mainProxy wrappedProxy
-	shfProxy  wrappedProxy
-
-	retryConfig []retry.Option
+	primaryProxy, secondaryProxy wrappedProxy
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "Accounts Storage Exporter CLI app"
-	app.Usage = "This is the entry point for the tool that exports the storage of a given account"
+	app.Name = "Network Comparator CLI app"
+	app.Usage = "This is the entry point for the tool that compares transactions between 2 networks."
 	app.Flags = getFlags()
 	app.Authors = []cli.Author{
 		{
@@ -90,44 +89,17 @@ func action(c *cli.Context) error {
 		return fmt.Errorf("--number argument must be divisible by 100")
 	}
 
-	if config.Number > 10000 {
-		return fmt.Errorf("--number argument maxmimum value is 10000")
+	if config.Number > maximumNumberOfTransactions {
+		return fmt.Errorf(fmt.Sprintf("--number argument maxmimum value is %d", maximumNumberOfTransactions))
 	}
 
 	retries := calculateRetryAttempts(config.Number)
 
-	//TODO: there is no network provider in mx-sdk-go for api.multiversx.com
-	api := blockchain.ArgsProxy{
-		ProxyURL:            apiURL,
-		Client:              nil,
-		SameScState:         false,
-		ShouldBeSynced:      false,
-		FinalityCheck:       false,
-		CacheExpirationTime: time.Minute,
-		EntityType:          core.Proxy,
-	}
-
-	shfArgs := blockchain.ArgsProxy{
-		ProxyURL:            shfURL,
-		Client:              nil,
-		SameScState:         false,
-		ShouldBeSynced:      false,
-		FinalityCheck:       false,
-		CacheExpirationTime: time.Minute,
-		EntityType:          core.Proxy,
-	}
-
 	// Create a client for the mainnet.
 	var err error
-	mainProxy, err = blockchain.NewProxy(api)
+	primaryProxy, secondaryProxy, err = newProxies(config.PrimaryURL, config.SecondaryURL)
 	if err != nil {
-		return fmt.Errorf("failed to create proxy: %v", err)
-	}
-
-	// Create a client for the shadow-fork.
-	shfProxy, err = blockchain.NewProxy(shfArgs)
-	if err != nil {
-		return fmt.Errorf("failed to create proxy: %v", err)
+		return fmt.Errorf("failed to create proxies: %v", err)
 	}
 
 	// Convert epoch timestamp to actual date.
@@ -142,8 +114,8 @@ func action(c *cli.Context) error {
 
 	// Retrieve n transactions after a specified timestamp and put them in a slice.
 	var allTxsResp []byte
-	txsEndpoint := fmt.Sprintf(TXS_ENDPOINT, config.Timestamp, config.Number)
-	allTxsResp, _, err = mainProxy.GetHTTP(context.Background(), txsEndpoint)
+	allTxsEndpoint := fmt.Sprintf(txsEndpoint, config.Timestamp, config.Number)
+	allTxsResp, _, err = primaryProxy.GetHTTP(context.Background(), allTxsEndpoint)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve transactions: %v", err)
 	}
@@ -153,7 +125,7 @@ func action(c *cli.Context) error {
 		return fmt.Errorf("failed to marshall transactions from mainnet: %v", err)
 	}
 
-	retryConfig = []retry.Option{
+	retryConfig := []retry.Option{
 		retry.OnRetry(func(n uint, err error) {
 			log.Info("Retry request", n+1, err)
 		}),
@@ -161,54 +133,69 @@ func action(c *cli.Context) error {
 		retry.Delay(5 * time.Second),
 	}
 
-	wrappedDiffs := compareTransactions(txHashes)
+	wrappedDiffs := compareTransactions(txHashes, retryConfig)
 
-	jsonBytes, err := json.MarshalIndent(wrappedDiffs, "", " ")
+	err = generateOutputReport(wrappedDiffs, config.Outfile)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate HTML report: %v", err)
 	}
-
-	err = os.WriteFile(config.Outfile, jsonBytes, 0644)
-	if err != nil {
-		return err
-	}
-
-	// Execute the list in the go template.
-	tmpl, err := template.ParseFS(fs, "assets/template.html")
-	if err != nil {
-		panic(err)
-	}
-
-	file, _ := os.Create("index.html")
-	defer file.Close()
-
-	err = tmpl.Execute(file, wrappedDiffs)
-	if err != nil {
-		return fmt.Errorf("failed to execute template: %v", err)
-	}
-
-	log.Info("finished creating report")
 
 	return nil
 }
 
+func newProxies(primaryUrl, secondaryUrl string) (wrappedProxy, wrappedProxy, error) {
+	primary := blockchain.ArgsProxy{
+		ProxyURL:            primaryUrl,
+		Client:              nil,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       false,
+		CacheExpirationTime: time.Minute,
+		EntityType:          core.Proxy,
+	}
+
+	secondary := blockchain.ArgsProxy{
+		ProxyURL:            secondaryUrl,
+		Client:              nil,
+		SameScState:         false,
+		ShouldBeSynced:      false,
+		FinalityCheck:       false,
+		CacheExpirationTime: time.Minute,
+		EntityType:          core.Proxy,
+	}
+
+	// Create a client for the mainnet.
+	pp, err := blockchain.NewProxy(primary)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create primary proxy: %v", err)
+	}
+
+	// Create a client for the shadow-fork.
+	sp, err := blockchain.NewProxy(secondary)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create secondary proxy: %v", err)
+	}
+
+	return pp, sp, nil
+}
+
 func calculateRetryAttempts(n int) (retriesNo uint) {
 	if n >= 1000 && n <= 5000 {
-		return MEDIUM_NUMBER_OF_RETRIES
+		return mediumNumberOfRetries
 	}
 
 	if n >= 5000 && n <= 10000 {
-		return MAXIMUM_NUMBER_OF_RETRIES
+		return maximumNumberOfRetries
 	}
 
-	return MINIMUM_NUMBER_OF_RETRIES
+	return minimumNumberOfRetries
 }
 
-func compareTransactions(txHashes []wrappedTxHashes) []WrappedDifferences {
+func compareTransactions(txHashes []wrappedTxHashes, retryConfig []retry.Option) []wrappedDifferences {
 	// Iterate over the transactions hashes and fetch all the information contained in either mainnet or shadow-fork
 	// and compare each field respectively.
 	wg := sync.WaitGroup{}
-	wrappedDiffs := make([]WrappedDifferences, len(txHashes))
+	wrappedDiffs := make([]wrappedDifferences, len(txHashes))
 
 	for i, t := range txHashes {
 		wg.Add(1)
@@ -224,14 +211,14 @@ func compareTransactions(txHashes []wrappedTxHashes) []WrappedDifferences {
 				func() error {
 					var (
 						err error
-						wd  *WrappedDifferences
+						wd  *wrappedDifferences
 					)
-					txM, wd, err = getTransaction(t, "mainnet", mainProxy)
+					txM, wd, err = getTransaction(t, "mainnet", primaryProxy)
 					if err != nil {
 						return err
 					}
 
-					txS, wd, err = getTransaction(t, "shadow-fork", shfProxy)
+					txS, wd, err = getTransaction(t, "shadow-fork", secondaryProxy)
 					if err != nil {
 						return err
 					}
@@ -257,8 +244,8 @@ func compareTransactions(txHashes []wrappedTxHashes) []WrappedDifferences {
 	return wrappedDiffs
 }
 
-func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) WrappedDifferences {
-	diff := WrappedDifferences{TxHash: txHash}
+func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) wrappedDifferences {
+	diff := wrappedDifferences{TxHash: txHash}
 	diffMap := make(map[string][]any)
 
 	structType := reflect.TypeOf(t1)
@@ -285,9 +272,9 @@ func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) WrappedDiffe
 	return diff
 }
 
-func getTransaction(txHash, networkName string, p wrappedProxy) (*data.TransactionOnNetwork, *WrappedDifferences, error) {
+func getTransaction(txHash, networkName string, p wrappedProxy) (*data.TransactionOnNetwork, *wrappedDifferences, error) {
 	//Retrieve transaction from network.
-	resp, code, err := p.GetHTTP(context.Background(), fmt.Sprintf(TX_ENDPOINT, txHash))
+	resp, code, err := p.GetHTTP(context.Background(), fmt.Sprintf(txEndpoint, txHash))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get tx %q from %q: %v", txHash, networkName, err)
 	}
@@ -303,11 +290,11 @@ func getTransaction(txHash, networkName string, p wrappedProxy) (*data.Transacti
 		switch code {
 
 		// If the status is 404, we don't want to retry looking for it. It is the only case where we
-		// also return a WrappedDifferences struct with the not found error.
+		// also return a wrappedDifferences struct with the not found error.
 		case http.StatusNotFound:
 			err = json.Unmarshal(resp, &wrappedErr)
 			if err != nil {
-				wd := &WrappedDifferences{TxHash: txHash, Error: err.Error()}
+				wd := &wrappedDifferences{TxHash: txHash, Error: err.Error()}
 				return nil, wd, nil
 			}
 
@@ -330,4 +317,25 @@ func getTransaction(txHash, networkName string, p wrappedProxy) (*data.Transacti
 	}
 
 	return &tx, nil, nil
+}
+
+func generateOutputReport(wrappedDiffs []wrappedDifferences, outFilePath string) error {
+	// Execute the list in the go template.
+	tmpl, err := template.ParseFS(fs, "assets/template.html")
+	if err != nil {
+		panic(err)
+	}
+
+	file, err := os.Create(outFilePath)
+	defer file.Close()
+	if err != nil {
+		return fmt.Errorf("failed to create output file: %v", err)
+	}
+
+	err = tmpl.Execute(file, wrappedDiffs)
+	if err != nil {
+		return fmt.Errorf("failed to execute template: %v", err)
+	}
+
+	return nil
 }

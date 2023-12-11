@@ -6,6 +6,18 @@ import (
 )
 
 var (
+	primaryURL = cli.StringFlag{
+		Name:  "primary-url",
+		Usage: "This flag specifies the primary network's URL. (Defaults to api.multiversx.com)",
+		Value: apiURL,
+	}
+
+	secondaryURL = cli.StringFlag{
+		Name:  "secondary-url",
+		Usage: "This flag specifies the secondary network's URL. (Defaults to express-api-shadowfork-four.elrond.ro)",
+		Value: shfURL,
+	}
+
 	timestamp = cli.StringFlag{
 		Name:  "timestamp",
 		Usage: "This flag specifies the timestamp after the transactions should be fetched",
@@ -19,13 +31,15 @@ var (
 
 	outfile = cli.StringFlag{
 		Name:  "outfile",
-		Usage: "This flag specifies where the output will be stored. It consists of a map<tokens>",
-		Value: "output.json",
+		Usage: "This flag specifies where the output will be stored. It consists of an html report with the differences.",
+		Value: "index.html",
 	}
 )
 
 func getFlags() []cli.Flag {
 	return []cli.Flag{
+		primaryURL,
+		secondaryURL,
 		timestamp,
 		outfile,
 		number,
@@ -35,6 +49,8 @@ func getFlags() []cli.Flag {
 func getFlagsConfig(ctx *cli.Context) config.ContextFlagsNetComparator {
 	flagsConfig := config.ContextFlagsNetComparator{}
 
+	flagsConfig.PrimaryURL = ctx.GlobalString(primaryURL.Name)
+	flagsConfig.SecondaryURL = ctx.GlobalString(secondaryURL.Name)
 	flagsConfig.Timestamp = ctx.GlobalString(timestamp.Name)
 	flagsConfig.Outfile = ctx.GlobalString(outfile.Name)
 	flagsConfig.Number = ctx.GlobalInt(number.Name)
