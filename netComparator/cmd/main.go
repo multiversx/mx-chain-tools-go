@@ -22,9 +22,8 @@ import (
 )
 
 const (
-	apiURL = "https://api.multiversx.com"
-	shfURL = "https://express-api-shadowfork-four.elrond.ro"
-
+	lowNumberOfTransactions     = 1000
+	mediumNumberOfTransactions  = 5000
 	maximumNumberOfTransactions = 10000
 
 	// Depending on how many transactions one wishes to retrieve. The number of tries needed will increase.
@@ -84,15 +83,9 @@ func main() {
 
 func action(c *cli.Context) error {
 	config := getFlagsConfig(c)
-
-	if config.Number%100 != 0 {
-		return fmt.Errorf("--number argument must be divisible by 100")
-	}
-
 	if config.Number > maximumNumberOfTransactions {
 		return fmt.Errorf(fmt.Sprintf("--number argument maxmimum value is %d", maximumNumberOfTransactions))
 	}
-
 	retries := calculateRetryAttempts(config.Number)
 
 	// Create a client for the mainnet.
@@ -135,6 +128,7 @@ func action(c *cli.Context) error {
 
 	wrappedDiffs := compareTransactions(txHashes, retryConfig)
 
+	// Generate an HTML report based on the differences found.
 	err = generateOutputReport(wrappedDiffs, config.Outfile)
 	if err != nil {
 		return fmt.Errorf("failed to generate HTML report: %v", err)
@@ -164,13 +158,13 @@ func newProxies(primaryUrl, secondaryUrl string) (wrappedProxy, wrappedProxy, er
 		EntityType:          core.Proxy,
 	}
 
-	// Create a client for the mainnet.
+	// Create a client for the primary network.
 	pp, err := blockchain.NewProxy(primary)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create primary proxy: %v", err)
 	}
 
-	// Create a client for the shadow-fork.
+	// Create a client for the secondary network.
 	sp, err := blockchain.NewProxy(secondary)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create secondary proxy: %v", err)
@@ -180,15 +174,14 @@ func newProxies(primaryUrl, secondaryUrl string) (wrappedProxy, wrappedProxy, er
 }
 
 func calculateRetryAttempts(n int) (retriesNo uint) {
-	if n >= 1000 && n <= 5000 {
+	if n < lowNumberOfTransactions {
+		return minimumNumberOfRetries
+	}
+	if n < mediumNumberOfTransactions {
 		return mediumNumberOfRetries
 	}
 
-	if n >= 5000 && n <= 10000 {
-		return maximumNumberOfRetries
-	}
-
-	return minimumNumberOfRetries
+	return maximumNumberOfRetries
 }
 
 func compareTransactions(txHashes []wrappedTxHashes, retryConfig []retry.Option) []wrappedDifferences {
@@ -199,49 +192,43 @@ func compareTransactions(txHashes []wrappedTxHashes, retryConfig []retry.Option)
 
 	for i, t := range txHashes {
 		wg.Add(1)
-		go func(i int, t string) {
-			defer wg.Done()
-			var (
-				txM *data.TransactionOnNetwork
-				txS *data.TransactionOnNetwork
-			)
-
-			// Get transaction from shadow-fork in a retry loop.
-			err := retry.Do(
-				func() error {
-					var (
-						err error
-						wd  *wrappedDifferences
-					)
-					txM, wd, err = getTransaction(t, "mainnet", primaryProxy)
-					if err != nil {
-						return err
-					}
-
-					txS, wd, err = getTransaction(t, "shadow-fork", secondaryProxy)
-					if err != nil {
-						return err
-					}
-
-					if wd != nil {
-						wrappedDiffs[i] = *wd
-						return nil
-					}
-
-					wrappedDiffs[i] = getDifference(t, *txM, *txS)
-					return nil
-
-				}, retryConfig...,
-			)
-
-			if err != nil {
-				log.Error(err.Error())
-			}
-		}(i, t.TxHash)
+		compareTransaction(wrappedDiffs, i, t.TxHash, &wg, retryConfig)
 	}
 
 	wg.Wait()
 	return wrappedDiffs
+}
+
+func compareTransaction(wrappedDiffs []wrappedDifferences, i int, t string, wg *sync.WaitGroup, retryConfig []retry.Option) {
+	defer wg.Done()
+
+	// Get transaction from shadow-fork in a retry loop.
+	err := retry.Do(
+		func() error {
+			txM, wd, err := getTransaction(t, "primary", primaryProxy)
+			if err != nil {
+				return err
+			}
+
+			txS, wd, err := getTransaction(t, "secondary", secondaryProxy)
+			if err != nil {
+				return err
+			}
+
+			if wd != nil {
+				wrappedDiffs[i] = *wd
+				return nil
+			}
+
+			wrappedDiffs[i] = getDifference(t, *txM, *txS)
+			return nil
+
+		}, retryConfig...,
+	)
+
+	if err != nil {
+		log.Error(err.Error())
+	}
 }
 
 func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) wrappedDifferences {
@@ -254,15 +241,20 @@ func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) wrappedDiffe
 	structVal2 := reflect.ValueOf(t2)
 	fieldNum := structVal1.NumField()
 
+	// Iterate over all the fields.
 	for i := 0; i < fieldNum; i++ {
 		fieldName := structType.Field(i).Name
 		value1 := structVal1.Field(i).Interface()
 		value2 := structVal2.Field(i).Interface()
 
-		if !reflect.DeepEqual(value1, value2) {
-			slice := []any{value1, value2}
-			diffMap[fieldName] = slice
+		// If the structure are equal skip.
+		if reflect.DeepEqual(value1, value2) {
+			continue
 		}
+
+		// Store in the differences map, both values and their field.
+		slice := []any{value1, value2}
+		diffMap[fieldName] = slice
 	}
 
 	if len(diffMap) > 0 {
@@ -320,18 +312,20 @@ func getTransaction(txHash, networkName string, p wrappedProxy) (*data.Transacti
 }
 
 func generateOutputReport(wrappedDiffs []wrappedDifferences, outFilePath string) error {
-	// Execute the list in the go template.
+	// Retrieve the template.
 	tmpl, err := template.ParseFS(fs, "assets/template.html")
 	if err != nil {
 		panic(err)
 	}
 
+	// Create the output file.
 	file, err := os.Create(outFilePath)
 	defer file.Close()
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %v", err)
 	}
 
+	// Execute the template.
 	err = tmpl.Execute(file, wrappedDiffs)
 	if err != nil {
 		return fmt.Errorf("failed to execute template: %v", err)

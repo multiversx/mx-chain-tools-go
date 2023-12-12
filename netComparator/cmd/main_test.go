@@ -14,7 +14,6 @@ func TestGetDifference(t *testing.T) {
 		t2       data.TransactionOnNetwork
 		expected wrappedDifferences
 	}{
-		// Same transaction fields
 		{
 			"same transaction",
 			"1",
@@ -71,6 +70,57 @@ func TestGetDifference(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			difference := getDifference(tt.txHash, tt.t1, tt.t2)
 			require.Equal(t, difference, tt.expected)
+		})
+	}
+}
+
+func TestRetryCalculator(t *testing.T) {
+	testCases := []struct {
+		name     string
+		n        int
+		expected uint
+	}{
+		{
+			"100 transactions",
+			100,
+			minimumNumberOfRetries,
+		},
+		{
+			"500 transactions",
+			500,
+			minimumNumberOfRetries,
+		},
+		{
+			"1000 transactions",
+			1000,
+			mediumNumberOfRetries,
+		},
+		{
+			"2000 transactions",
+			2000,
+			mediumNumberOfRetries,
+		},
+		{
+			"5000 transactions",
+			5000,
+			maximumNumberOfRetries,
+		},
+		{
+			"10000 transactions",
+			10000,
+			maximumNumberOfRetries,
+		},
+		{
+			"10001 transactions",
+			10001,
+			maximumNumberOfRetries,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			got := calculateRetryAttempts(tt.n)
+			require.Equal(t, got, tt.expected)
 		})
 	}
 }

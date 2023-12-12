@@ -8,14 +8,12 @@ import (
 var (
 	primaryURL = cli.StringFlag{
 		Name:  "primary-url",
-		Usage: "This flag specifies the primary network's URL. (Defaults to api.multiversx.com)",
-		Value: apiURL,
+		Usage: "This flag specifies the primary network's URL.",
 	}
 
 	secondaryURL = cli.StringFlag{
 		Name:  "secondary-url",
-		Usage: "This flag specifies the secondary network's URL. (Defaults to express-api-shadowfork-four.elrond.ro)",
-		Value: shfURL,
+		Usage: "This flag specifies the secondary network's URL.",
 	}
 
 	timestamp = cli.StringFlag{
