@@ -185,7 +185,7 @@ func calculateRetryAttempts(n int) (retriesNo uint) {
 }
 
 func compareTransactions(txHashes []wrappedTxHashes, retryConfig []retry.Option) []wrappedDifferences {
-	// Iterate over the transactions hashes and fetch all the information contained in either mainnet or shadow-fork
+	// Iterate over the transactions hashes and fetch all the information contained in both networks
 	// and compare each field respectively.
 	wg := sync.WaitGroup{}
 	wrappedDiffs := make([]wrappedDifferences, len(txHashes))
@@ -202,7 +202,7 @@ func compareTransactions(txHashes []wrappedTxHashes, retryConfig []retry.Option)
 func compareTransaction(wrappedDiffs []wrappedDifferences, i int, t string, wg *sync.WaitGroup, retryConfig []retry.Option) {
 	defer wg.Done()
 
-	// Get transaction from shadow-fork in a retry loop.
+	// Get transactions from both networks and then compares all the fields contained within the struct in a retry loop.
 	err := retry.Do(
 		func() error {
 			txM, wd, err := getTransaction(t, "primary", primaryProxy)
