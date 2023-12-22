@@ -26,6 +26,9 @@ var (
 		Name:  "skip-mappings",
 		Usage: "If set, the reindexing tool will skip the copying of the mappings",
 	}
+	useLocalMappings = cli.BoolFlag{
+		Name: "use-local-mappings",
+	}
 )
 
 const helpTemplate = `NAME:
@@ -53,6 +56,7 @@ func main() {
 	app.Flags = []cli.Flag{
 		overwriteFlag,
 		skipMappingsFlag,
+		useLocalMappings,
 	}
 	app.Authors = []cli.Author{
 		{
@@ -90,7 +94,8 @@ func startReindexing(ctx *cli.Context) {
 	}
 
 	skipMappings := ctx.Bool(skipMappingsFlag.Name)
-	err = multiWriteReindexer.ProcessNoTimestamp(ctx.Bool(overwriteFlag.Name), skipMappings)
+	useLocalMapp := ctx.Bool(useLocalMappings.Name)
+	err = multiWriteReindexer.ProcessNoTimestamp(ctx.Bool(overwriteFlag.Name), skipMappings, useLocalMapp)
 	if err != nil {
 		log.Error(err.Error())
 		return

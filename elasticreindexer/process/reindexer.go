@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sync/atomic"
 
 	"github.com/multiversx/mx-chain-core-go/core/check"
@@ -41,7 +42,7 @@ func newReindexer(sourceElastic ElasticClientHandler, destinationElastic Elastic
 }
 
 // Process will handle the reindexing from source Elastic client to destination Elastic client
-func (r *reindexer) Process(overwrite bool, skipMappings bool, indices ...string) error {
+func (r *reindexer) Process(overwrite bool, skipMappings bool, useLocalMappings bool, indices ...string) error {
 	providedIndices := indices
 	if len(providedIndices) == 0 {
 		providedIndices = r.indices
@@ -52,7 +53,7 @@ func (r *reindexer) Process(overwrite bool, skipMappings bool, indices ...string
 			continue
 		}
 
-		err := r.processIndex(index, overwrite, skipMappings)
+		err := r.processIndex(index, overwrite, skipMappings, useLocalMappings)
 		if err != nil {
 			return err
 		}
@@ -61,13 +62,13 @@ func (r *reindexer) Process(overwrite bool, skipMappings bool, indices ...string
 	return nil
 }
 
-func (r *reindexer) processIndex(index string, overwrite bool, skipMappings bool) error {
+func (r *reindexer) processIndex(index string, overwrite bool, skipMappings bool, useLocalMappings bool) error {
 	originalSourceCount, err := r.sourceElastic.GetCount(index)
 	if err != nil {
 		return fmt.Errorf("%w while getting the source count for index %s", err, index)
 	}
 
-	err = r.copyMappingIfNecessary(index, overwrite, skipMappings)
+	err = r.copyMappingIfNecessary(index, overwrite, skipMappings, useLocalMappings)
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}
@@ -92,32 +93,41 @@ func (r *reindexer) processIndex(index string, overwrite bool, skipMappings bool
 	return nil
 }
 
-func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMappings bool) error {
+func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMappings bool, useLocalMappings bool) error {
 	if skipMappings {
 		return nil
 	}
-
-	indexWithSuffix := index + indexSuffix
-
 	aliasExists := r.destinationElastic.DoesAliasExist(index)
 	if aliasExists && !overwrite {
 		return fmt.Errorf("index with alias %s already exists. Please clean the destination indexer before"+
 			" retrying, or start the tool using --overwrite flag", index)
 	}
 
-	indexExists := r.destinationElastic.DoesIndexExist(indexWithSuffix)
-	if indexExists && !overwrite {
-		return fmt.Errorf("index %s already exists. Please clean the destination indexer before"+
-			" retrying, or start the tool using --overwrite flag", index)
+	indexExists := r.destinationElastic.DoesIndexExist(index)
+	//if indexExists && !overwrite {
+	//	return fmt.Errorf("index %s already exists. Please clean the destination indexer before"+
+	//		" retrying, or start the tool using --overwrite flag", index)
+	//}
+
+	if useLocalMappings {
+		mappingsBytes, err := os.ReadFile("localmappings/accounts.json")
+		if err != nil {
+			return err
+		}
+		err = r.destinationElastic.CreateIndexWithMapping(index, bytes.NewBuffer(mappingsBytes))
+		if err != nil {
+			return fmt.Errorf("error while creating index with mapping to destination: %w", err)
+		}
+
 	}
 
-	if !indexExists {
+	if !indexExists && !useLocalMappings {
 		sourceMapping, err := r.sourceElastic.GetMapping(index)
 		if err != nil {
 			return fmt.Errorf("error while getting mapping from source: %w", err)
 		}
 
-		err = r.destinationElastic.CreateIndexWithMapping(indexWithSuffix, sourceMapping)
+		err = r.destinationElastic.CreateIndexWithMapping(index, sourceMapping)
 		if err != nil {
 			return fmt.Errorf("error while creating index with mapping to destination: %w", err)
 		}
@@ -127,7 +137,8 @@ func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMap
 		return nil
 	}
 
-	return r.destinationElastic.PutAlias(indexWithSuffix, index)
+	return nil
+	//return r.destinationElastic.PutAlias(index, index)
 }
 
 func (r *reindexer) reindexData(index string) error {
@@ -182,7 +193,7 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 
 // ProcessIndexWithTimestamp will handle the reindexing from source Elastic client to destination Elastic client based on the provided interval
 func (r *reindexer) ProcessIndexWithTimestamp(index string, overwrite bool, skipMappings bool, start, stop int64, count *uint64) error {
-	err := r.copyMappingIfNecessary(index, overwrite, skipMappings)
+	err := r.copyMappingIfNecessary(index, overwrite, skipMappings, false)
 	if err != nil {
 		return fmt.Errorf("%w while copying the mapping for index %s", err, index)
 	}

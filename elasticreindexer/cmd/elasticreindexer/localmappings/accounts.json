@@ -1,0 +1,49 @@
+{
+  "mappings": {
+    "properties": {
+      "balanceNum": {
+        "type": "double"
+      },
+      "delegationLegacyActiveNum": {
+        "type": "double"
+      },
+      "delegationLegacyWaitingNum": {
+        "type": "double"
+      },
+      "delegationNum": {
+        "type": "double"
+      },
+      "totalBalanceWithStakeNum": {
+        "type": "double"
+      },
+      "totalStakeNum": {
+        "type": "double"
+      },
+      "validatorsActiveNum": {
+        "type": "double"
+      },
+      "unDelegateLegacyNum": {
+        "type": "double"
+      },
+      "unDelegateValidatorNum": {
+        "type": "double"
+      },
+      "unDelegateDelegationNum": {
+        "type": "double"
+      },
+      "totalUnDelegateNum": {
+        "type": "double"
+      },
+      "lkMexStakeNum": {
+        "type": "double"
+      },
+      "energyNum": {
+        "type": "double"
+      }
+    }
+  },
+  "settings": {
+    "number_of_replicas": 1,
+    "number_of_shards": 1
+  }
+}
