@@ -17,14 +17,16 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/multiversx/mx-sdk-go/blockchain"
 	"github.com/multiversx/mx-sdk-go/core"
-	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/urfave/cli"
+
+	"github.com/multiversx/mx-chain-tools-go/netComparator/core/domain"
 )
 
 const (
-	lowNumberOfTransactions     = 1000
-	mediumNumberOfTransactions  = 5000
-	maximumNumberOfTransactions = 10000
+	lowNumberOfTransactions             = 1000
+	mediumNumberOfTransactions          = 5000
+	maximumNumberOfTransactions         = 10000
+	maximumNumberOfTransactionsPerBatch = 50
 
 	// Depending on how many transactions one wishes to retrieve. The number of tries needed will increase.
 	// See calculateRetryAttempts()
@@ -33,7 +35,7 @@ const (
 	maximumNumberOfRetries = 20
 
 	txEndpoint  = "transactions/%s"
-	txsEndpoint = "transactions?after=%s&size=%d&order=asc&fields=txHash"
+	txsEndpoint = "transactions?after=%d&size=%d&order=asc&withScResults=true&withOperations=true&withLogs=true"
 )
 
 type wrappedTxHashes struct {
@@ -83,10 +85,20 @@ func main() {
 
 func action(c *cli.Context) error {
 	config := getFlagsConfig(c)
-	if config.Number > maximumNumberOfTransactions {
-		return fmt.Errorf(fmt.Sprintf("--number argument maxmimum value is %d", maximumNumberOfTransactions))
+
+	// The txsEndpoint has a certain limit of transactions it can provide given how complex the query is.
+	// 50 is the maximum it can do in a request with the requested complexity. That's why we will batch them
+	// in order to retrieve all of them.
+	batches := make([]uint, 0)
+	calculateBatches(uint(config.Number), &batches)
+
+	retryConfig := []retry.Option{
+		retry.OnRetry(func(n uint, err error) {
+			log.Info("Retry request", n+1, err)
+		}),
+		retry.Attempts(10),
+		retry.Delay(10 * time.Second),
 	}
-	retries := calculateRetryAttempts(config.Number)
 
 	// Create a client for the mainnet.
 	var err error
@@ -103,38 +115,59 @@ func action(c *cli.Context) error {
 	tm := time.Unix(timestampTime, 0)
 	log.Info(fmt.Sprintf("retrieving %d transactions starting from %v", config.Number, tm))
 
-	txHashes := make([]wrappedTxHashes, 0)
+	primaryTransactions := make([]*domain.Transaction, 0)
 
 	// Retrieve n transactions after a specified timestamp and put them in a slice.
-	var allTxsResp []byte
-	allTxsEndpoint := fmt.Sprintf(txsEndpoint, config.Timestamp, config.Number)
-	allTxsResp, _, err = primaryProxy.GetHTTP(context.Background(), allTxsEndpoint)
-	if err != nil {
-		return fmt.Errorf("failed to retrieve transactions: %v", err)
+	var transactionsResponse []byte
+	for _, size := range batches {
+		transactions := make([]*domain.Transaction, 0)
+		endpoint := fmt.Sprintf(txsEndpoint, timestampTime, size)
+
+		err = retry.Do(func() error {
+			transactionsResponse, _, err = primaryProxy.GetHTTP(context.Background(), endpoint)
+			if err != nil {
+				return fmt.Errorf("failed to retrieve transactions: %w", err)
+			}
+
+			err = json.Unmarshal(transactionsResponse, &transactions)
+			if err != nil {
+				return fmt.Errorf("failed to marshall transactions from primary-url: %w", err)
+			}
+
+			primaryTransactions = append(primaryTransactions, transactions...)
+			timestampTime = int64(primaryTransactions[len(primaryTransactions)-1].Timestamp)
+
+			return nil
+		}, retryConfig...)
+
+		if err != nil {
+			return fmt.Errorf("failed to retrieve %q transactions from primary-url: %w", config.Number, err)
+		}
 	}
 
-	err = json.Unmarshal(allTxsResp, &txHashes)
-	if err != nil {
-		return fmt.Errorf("failed to marshall transactions from mainnet: %v", err)
-	}
-
-	retryConfig := []retry.Option{
-		retry.OnRetry(func(n uint, err error) {
-			log.Info("Retry request", n+1, err)
-		}),
-		retry.Attempts(retries),
-		retry.Delay(5 * time.Second),
-	}
-
-	wrappedDiffs := compareTransactions(txHashes, retryConfig)
+	wrappedDiffs, secondaryTransactions := compareTransactionsV2(primaryTransactions, retryConfig)
 
 	// Generate an HTML report based on the differences found.
-	err = generateOutputReport(wrappedDiffs, config.Outfile)
+	err = generateOutputReport(primaryTransactions, secondaryTransactions, wrappedDiffs, config.OutDirectory)
 	if err != nil {
-		return fmt.Errorf("failed to generate HTML report: %v", err)
+		return fmt.Errorf("failed to generate output directory: %v", err)
 	}
 
 	return nil
+}
+
+func calculateBatches(number uint, batches *[]uint) {
+	if number == 0 {
+		return
+	}
+
+	if number <= maximumNumberOfTransactionsPerBatch {
+		*batches = append(*batches, number)
+		return
+	}
+
+	*batches = append(*batches, maximumNumberOfTransactionsPerBatch)
+	calculateBatches(number-maximumNumberOfTransactionsPerBatch, batches)
 }
 
 func newProxies(primaryUrl, secondaryUrl string) (wrappedProxy, wrappedProxy, error) {
@@ -231,7 +264,52 @@ func compareTransaction(wrappedDiffs []wrappedDifferences, i int, t string, wg *
 	}
 }
 
-func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) wrappedDifferences {
+func compareTransactionV2(wrappedDiffs []wrappedDifferences, txM *domain.Transaction, secondaryTransaction []*domain.Transaction, i int, wg *sync.WaitGroup, retryConfig []retry.Option) {
+	defer wg.Done()
+
+	// Get transactions from both networks and then compares all the fields contained within the struct in a retry loop.
+	err := retry.Do(
+		func() error {
+			txS, wd, err := getTransaction(txM.TxHash, "secondary", secondaryProxy)
+			if err != nil {
+				return err
+			}
+
+			if wd != nil {
+				wrappedDiffs[i] = *wd
+				return nil
+			}
+
+			secondaryTransaction[i] = txS
+
+			wrappedDiffs[i] = getDifference(txM.TxHash, *txM, *txS)
+			return nil
+
+		}, retryConfig...,
+	)
+
+	if err != nil {
+		log.Error(err.Error())
+	}
+}
+
+func compareTransactionsV2(allPrimaryTransactions []*domain.Transaction, retryConfig []retry.Option) ([]wrappedDifferences, []*domain.Transaction) {
+	// Iterate over the transactions hashes and fetch all the information contained in both networks
+	// and compare each field respectively.
+	wg := sync.WaitGroup{}
+	wrappedDiffs := make([]wrappedDifferences, len(allPrimaryTransactions))
+	secondaryTransactions := make([]*domain.Transaction, len(allPrimaryTransactions))
+
+	for i, t := range allPrimaryTransactions {
+		wg.Add(1)
+		compareTransactionV2(wrappedDiffs, t, secondaryTransactions, i, &wg, retryConfig)
+	}
+
+	wg.Wait()
+	return wrappedDiffs, secondaryTransactions
+}
+
+func getDifference(txHash string, t1, t2 domain.Transaction) wrappedDifferences {
 	diff := wrappedDifferences{TxHash: txHash}
 	diffMap := make(map[string][]any)
 
@@ -264,7 +342,7 @@ func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) wrappedDiffe
 	return diff
 }
 
-func getTransaction(txHash, networkName string, p wrappedProxy) (*data.TransactionOnNetwork, *wrappedDifferences, error) {
+func getTransaction(txHash, networkName string, p wrappedProxy) (*domain.Transaction, *wrappedDifferences, error) {
 	//Retrieve transaction from network.
 	resp, code, err := p.GetHTTP(context.Background(), fmt.Sprintf(txEndpoint, txHash))
 	if err != nil {
@@ -302,7 +380,7 @@ func getTransaction(txHash, networkName string, p wrappedProxy) (*data.Transacti
 		}
 	}
 
-	var tx data.TransactionOnNetwork
+	var tx domain.Transaction
 	err = json.Unmarshal(resp, &tx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshall tx %q from %q: %v", txHash, networkName, err)
@@ -311,7 +389,42 @@ func getTransaction(txHash, networkName string, p wrappedProxy) (*data.Transacti
 	return &tx, nil, nil
 }
 
-func generateOutputReport(wrappedDiffs []wrappedDifferences, outFilePath string) error {
+func generateOutputReport(
+	primaryTransactions []*domain.Transaction,
+	secondaryTransactions []*domain.Transaction,
+	wrappedDiffs []wrappedDifferences,
+	outDirectory string,
+) error {
+	var outPath = "./"
+
+	// If no output dir has been provided, write the files in the current directory.
+	if outDirectory != "" {
+		err := os.MkdirAll(outDirectory, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+		outPath = outPath + outDirectory + "/"
+	}
+
+	err := generateHTMLReport(wrappedDiffs, outPath+"index.html")
+	if err != nil {
+		return fmt.Errorf("failed to generate HTML report: %w", err)
+	}
+
+	err = generateJSONReport(primaryTransactions, outPath+"primaryTransactions.json")
+	if err != nil {
+		return fmt.Errorf("failed to generate JSON report: %w", err)
+	}
+
+	err = generateJSONReport(secondaryTransactions, outPath+"secondaryTransactions.json")
+	if err != nil {
+		return fmt.Errorf("failed to generate JSON report: %w", err)
+	}
+
+	return nil
+}
+
+func generateHTMLReport(wrappedDiffs []wrappedDifferences, outPath string) error {
 	// Retrieve the template.
 	tmpl, err := template.ParseFS(fs, "assets/template.html")
 	if err != nil {
@@ -319,7 +432,7 @@ func generateOutputReport(wrappedDiffs []wrappedDifferences, outFilePath string)
 	}
 
 	// Create the output file.
-	file, err := os.Create(outFilePath)
+	file, err := os.Create(outPath)
 	defer file.Close()
 	if err != nil {
 		return fmt.Errorf("failed to create output file: %v", err)
@@ -329,6 +442,15 @@ func generateOutputReport(wrappedDiffs []wrappedDifferences, outFilePath string)
 	err = tmpl.Execute(file, wrappedDiffs)
 	if err != nil {
 		return fmt.Errorf("failed to execute template: %v", err)
+	}
+	return nil
+}
+
+func generateJSONReport(transactions []*domain.Transaction, outPath string) error {
+	rankingsJson, _ := json.Marshal(transactions)
+	err := os.WriteFile(outPath, rankingsJson, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create json report %q: %w", outPath, err)
 	}
 
 	return nil

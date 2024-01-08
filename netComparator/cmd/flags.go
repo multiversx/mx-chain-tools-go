@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/multiversx/mx-chain-tools-go/netComparator/config"
 	"github.com/urfave/cli"
+
+	"github.com/multiversx/mx-chain-tools-go/netComparator/config"
 )
 
 var (
@@ -27,10 +28,11 @@ var (
 		Value: 100,
 	}
 
-	outfile = cli.StringFlag{
-		Name:  "outfile",
-		Usage: "This flag specifies where the output will be stored. It consists of an html report with the differences.",
-		Value: "index.html",
+	outDirectory = cli.StringFlag{
+		Name: "outDirectory",
+		Usage: "This flag specifies in which directory the output files will be stored. " +
+			"It consists of an html report with the differences and 2 json files with all the transactions that " +
+			"have been compared.",
 	}
 )
 
@@ -39,7 +41,7 @@ func getFlags() []cli.Flag {
 		primaryURL,
 		secondaryURL,
 		timestamp,
-		outfile,
+		outDirectory,
 		number,
 	}
 }
@@ -50,7 +52,7 @@ func getFlagsConfig(ctx *cli.Context) config.ContextFlagsNetComparator {
 	flagsConfig.PrimaryURL = ctx.GlobalString(primaryURL.Name)
 	flagsConfig.SecondaryURL = ctx.GlobalString(secondaryURL.Name)
 	flagsConfig.Timestamp = ctx.GlobalString(timestamp.Name)
-	flagsConfig.Outfile = ctx.GlobalString(outfile.Name)
+	flagsConfig.OutDirectory = ctx.GlobalString(outDirectory.Name)
 	flagsConfig.Number = ctx.GlobalInt(number.Name)
 
 	return flagsConfig
