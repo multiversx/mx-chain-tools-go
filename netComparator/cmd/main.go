@@ -145,7 +145,7 @@ func action(c *cli.Context) error {
 		}
 	}
 
-	wrappedDiffs, secondaryTransactions := compareTransactionsV2(primaryTransactions, retryConfig)
+	wrappedDiffs, secondaryTransactions := compareTransactions(primaryTransactions, retryConfig)
 
 	// Generate an HTML report based on the differences found.
 	err = generateOutputReport(primaryTransactions, secondaryTransactions, wrappedDiffs, config.OutDirectory)
@@ -217,54 +217,7 @@ func calculateRetryAttempts(n int) (retriesNo uint) {
 	return maximumNumberOfRetries
 }
 
-func compareTransactions(txHashes []wrappedTxHashes, retryConfig []retry.Option) []wrappedDifferences {
-	// Iterate over the transactions hashes and fetch all the information contained in both networks
-	// and compare each field respectively.
-	wg := sync.WaitGroup{}
-	wrappedDiffs := make([]wrappedDifferences, len(txHashes))
-
-	for i, t := range txHashes {
-		wg.Add(1)
-		compareTransaction(wrappedDiffs, i, t.TxHash, &wg, retryConfig)
-	}
-
-	wg.Wait()
-	return wrappedDiffs
-}
-
-func compareTransaction(wrappedDiffs []wrappedDifferences, i int, t string, wg *sync.WaitGroup, retryConfig []retry.Option) {
-	defer wg.Done()
-
-	// Get transactions from both networks and then compares all the fields contained within the struct in a retry loop.
-	err := retry.Do(
-		func() error {
-			txM, wd, err := getTransaction(t, "primary", primaryProxy)
-			if err != nil {
-				return err
-			}
-
-			txS, wd, err := getTransaction(t, "secondary", secondaryProxy)
-			if err != nil {
-				return err
-			}
-
-			if wd != nil {
-				wrappedDiffs[i] = *wd
-				return nil
-			}
-
-			wrappedDiffs[i] = getDifference(t, *txM, *txS)
-			return nil
-
-		}, retryConfig...,
-	)
-
-	if err != nil {
-		log.Error(err.Error())
-	}
-}
-
-func compareTransactionV2(wrappedDiffs []wrappedDifferences, txM *domain.Transaction, secondaryTransaction []*domain.Transaction, i int, wg *sync.WaitGroup, retryConfig []retry.Option) {
+func compareTransaction(wrappedDiffs []wrappedDifferences, txM *domain.Transaction, secondaryTransaction []*domain.Transaction, i int, wg *sync.WaitGroup, retryConfig []retry.Option) {
 	defer wg.Done()
 
 	// Get transactions from both networks and then compares all the fields contained within the struct in a retry loop.
@@ -293,7 +246,10 @@ func compareTransactionV2(wrappedDiffs []wrappedDifferences, txM *domain.Transac
 	}
 }
 
-func compareTransactionsV2(allPrimaryTransactions []*domain.Transaction, retryConfig []retry.Option) ([]wrappedDifferences, []*domain.Transaction) {
+func compareTransactions(
+	allPrimaryTransactions []*domain.Transaction,
+	retryConfig []retry.Option,
+) ([]wrappedDifferences, []*domain.Transaction) {
 	// Iterate over the transactions hashes and fetch all the information contained in both networks
 	// and compare each field respectively.
 	wg := sync.WaitGroup{}
@@ -302,7 +258,7 @@ func compareTransactionsV2(allPrimaryTransactions []*domain.Transaction, retryCo
 
 	for i, t := range allPrimaryTransactions {
 		wg.Add(1)
-		compareTransactionV2(wrappedDiffs, t, secondaryTransactions, i, &wg, retryConfig)
+		compareTransaction(wrappedDiffs, t, secondaryTransactions, i, &wg, retryConfig)
 	}
 
 	wg.Wait()
