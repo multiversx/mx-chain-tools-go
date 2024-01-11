@@ -9,15 +9,16 @@ import (
 	"html/template"
 	"net/http"
 	"os"
+	"os/signal"
 	"reflect"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/avast/retry-go"
 	"github.com/multiversx/mx-sdk-go/blockchain"
 	"github.com/multiversx/mx-sdk-go/core"
-	"github.com/multiversx/mx-sdk-go/data"
 	"github.com/urfave/cli"
 )
 
@@ -32,9 +33,13 @@ const (
 	mediumNumberOfRetries  = 15
 	maximumNumberOfRetries = 20
 
-	txEndpoint  = "transactions/%s"
-	txsEndpoint = "transactions?after=%s&size=%d&order=asc&fields=txHash"
+	gatewayTxEndpoint = "transaction/%s"
+	txEndpoint        = "transactions/%s"
+	txsEndpoint       = "transactions?after=%s&size=%d&order=asc&fields=txHash"
 )
+
+var wrappedDiffs []wrappedDifferences
+var outFile string
 
 type wrappedTxHashes struct {
 	TxHash string `json:"txHash"`
@@ -54,7 +59,7 @@ var (
 	//go:embed assets/template.html
 	fs embed.FS
 
-	primaryProxy, secondaryProxy wrappedProxy
+	primaryProxy, secondaryProxy, primaryGateway, secondaryGateway wrappedProxy
 )
 
 func main() {
@@ -68,6 +73,27 @@ func main() {
 			Email: "contact@multiversx.com",
 		},
 	}
+
+	signalChannel := make(chan os.Signal, 2)
+	signal.Notify(signalChannel, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		var err error
+		sig := <-signalChannel
+		switch sig {
+		case os.Interrupt:
+			//handle SIGINT
+			log.Info("SIGINT received")
+			err = generateOutputReport(wrappedDiffs, outFile)
+		case syscall.SIGTERM:
+			//handle SIGTERM
+			err = generateOutputReport(wrappedDiffs, outFile)
+			log.Info("SIGINT received")
+		}
+		if err != nil {
+			log.Error(err.Error())
+		}
+		os.Exit(0)
+	}()
 
 	app.Action = func(c *cli.Context) error {
 		return action(c)
@@ -88,9 +114,12 @@ func action(c *cli.Context) error {
 	}
 	retries := calculateRetryAttempts(config.Number)
 
+	outFile = config.Outfile
+
 	// Create a client for the mainnet.
 	var err error
 	primaryProxy, secondaryProxy, err = newProxies(config.PrimaryURL, config.SecondaryURL)
+	primaryGateway, secondaryGateway, err = newProxies(config.PrimaryGatewayURL, config.SecondaryGatewayURL)
 	if err != nil {
 		return fmt.Errorf("failed to create proxies: %v", err)
 	}
@@ -121,15 +150,17 @@ func action(c *cli.Context) error {
 	retryConfig := []retry.Option{
 		retry.OnRetry(func(n uint, err error) {
 			log.Info("Retry request", n+1, err)
+
 		}),
 		retry.Attempts(retries),
 		retry.Delay(5 * time.Second),
 	}
 
-	wrappedDiffs := compareTransactions(txHashes, retryConfig)
+	wrappedDiffs = compareTransactions(txHashes, retryConfig)
 
 	// Generate an HTML report based on the differences found.
-	err = generateOutputReport(wrappedDiffs, config.Outfile)
+	err = generateOutputReport(wrappedDiffs, fmt.Sprintf("index-%d.html", time.Now().Unix()))
+
 	if err != nil {
 		return fmt.Errorf("failed to generate HTML report: %v", err)
 	}
@@ -188,10 +219,14 @@ func compareTransactions(txHashes []wrappedTxHashes, retryConfig []retry.Option)
 	// Iterate over the transactions hashes and fetch all the information contained in both networks
 	// and compare each field respectively.
 	wg := sync.WaitGroup{}
-	wrappedDiffs := make([]wrappedDifferences, len(txHashes))
+	wrappedDiffs = make([]wrappedDifferences, len(txHashes))
 
 	for i, t := range txHashes {
+		if i%10 == 0 {
+			log.Info(fmt.Sprintf("comparing transaction %d/%d", i, len(txHashes)))
+		}
 		wg.Add(1)
+		log.Info("current tx", "txHash", t.TxHash)
 		compareTransaction(wrappedDiffs, i, t.TxHash, &wg, retryConfig)
 	}
 
@@ -199,20 +234,26 @@ func compareTransactions(txHashes []wrappedTxHashes, retryConfig []retry.Option)
 	return wrappedDiffs
 }
 
+var currentTxHash string
+
 func compareTransaction(wrappedDiffs []wrappedDifferences, i int, t string, wg *sync.WaitGroup, retryConfig []retry.Option) {
 	defer wg.Done()
 
 	// Get transactions from both networks and then compares all the fields contained within the struct in a retry loop.
 	err := retry.Do(
 		func() error {
-			txM, wd, err := getTransaction(t, "primary", primaryProxy)
+			txM, wd, err := getTransaction(t, "primary", primaryGateway)
 			if err != nil {
-				return err
+				return fmt.Errorf("%s, %w", "primary", err)
 			}
 
-			txS, wd, err := getTransaction(t, "secondary", secondaryProxy)
+			txS, wd, err := getTransaction(t, "secondary", secondaryGateway)
 			if err != nil {
-				return err
+				if currentTxHash != t {
+					currentTxHash = t
+					return fmt.Errorf("%s, %w", "secondary", err)
+				}
+				txS = &Tx{}
 			}
 
 			if wd != nil {
@@ -231,7 +272,7 @@ func compareTransaction(wrappedDiffs []wrappedDifferences, i int, t string, wg *
 	}
 }
 
-func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) wrappedDifferences {
+func getDifference(txHash string, t1, t2 Tx) wrappedDifferences {
 	diff := wrappedDifferences{TxHash: txHash}
 	diffMap := make(map[string][]any)
 
@@ -264,9 +305,9 @@ func getDifference(txHash string, t1, t2 data.TransactionOnNetwork) wrappedDiffe
 	return diff
 }
 
-func getTransaction(txHash, networkName string, p wrappedProxy) (*data.TransactionOnNetwork, *wrappedDifferences, error) {
+func getTransaction(txHash, networkName string, p wrappedProxy) (*Tx, *wrappedDifferences, error) {
 	//Retrieve transaction from network.
-	resp, code, err := p.GetHTTP(context.Background(), fmt.Sprintf(txEndpoint, txHash))
+	resp, code, err := p.GetHTTP(context.Background(), fmt.Sprintf(gatewayTxEndpoint, txHash))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get tx %q from %q: %v", txHash, networkName, err)
 	}
@@ -302,13 +343,13 @@ func getTransaction(txHash, networkName string, p wrappedProxy) (*data.Transacti
 		}
 	}
 
-	var tx data.TransactionOnNetwork
+	var tx NewTx
 	err = json.Unmarshal(resp, &tx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshall tx %q from %q: %v", txHash, networkName, err)
 	}
 
-	return &tx, nil, nil
+	return &tx.Data.Tx, nil, nil
 }
 
 func generateOutputReport(wrappedDiffs []wrappedDifferences, outFilePath string) error {
@@ -325,11 +366,59 @@ func generateOutputReport(wrappedDiffs []wrappedDifferences, outFilePath string)
 		return fmt.Errorf("failed to create output file: %v", err)
 	}
 
+	onlyActualDiffs := make([]wrappedDifferences, 0)
+	for _, wd := range wrappedDiffs {
+		if len(wd.Differences) > 0 {
+			onlyActualDiffs = append(onlyActualDiffs, wd)
+		}
+	}
+
 	// Execute the template.
-	err = tmpl.Execute(file, wrappedDiffs)
+	err = tmpl.Execute(file, onlyActualDiffs)
 	if err != nil {
 		return fmt.Errorf("failed to execute template: %v", err)
 	}
 
 	return nil
+}
+
+type NewTx struct {
+	Data struct {
+		Tx Tx `json:"transaction"`
+	} `json:"data"`
+	Error string `json:"error"`
+	Code  string `json:"code"`
+}
+
+type Tx struct {
+	Type                        string `json:"type"`
+	ProcessingTypeOnSource      string `json:"processingTypeOnSource"`
+	ProcessingTypeOnDestination string `json:"processingTypeOnDestination"`
+	Hash                        string `json:"hash"`
+	Nonce                       int    `json:"nonce"`
+	//Round                       int    `json:"round"`
+	//Epoch                       int    `json:"epoch"`
+	Value            string `json:"value"`
+	Receiver         string `json:"receiver"`
+	Sender           string `json:"sender"`
+	GasPrice         int    `json:"gasPrice"`
+	GasLimit         int    `json:"gasLimit"`
+	Data             string `json:"data"`
+	Signature        string `json:"signature"`
+	SourceShard      int    `json:"sourceShard"`
+	DestinationShard int    `json:"destinationShard"`
+	//BlockNonce                  int    `json:"blockNonce"`
+	//BlockHash                   string   `json:"blockHash"`
+	MiniblockType string `json:"miniblockType"`
+	//MiniblockHash               string   `json:"miniblockHash"`
+	//Timestamp        int      `json:"timestamp"`
+	Status           string   `json:"status"`
+	Tokens           []string `json:"tokens"`
+	EsdtValues       []string `json:"esdtValues"`
+	Operation        string   `json:"operation"`
+	Function         string   `json:"function"`
+	InitiallyPaidFee string   `json:"initiallyPaidFee"`
+	ChainID          string   `json:"chainID"`
+	Version          int      `json:"version"`
+	Options          int      `json:"options"`
 }

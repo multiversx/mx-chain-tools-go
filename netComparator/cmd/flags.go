@@ -16,6 +16,16 @@ var (
 		Usage: "This flag specifies the secondary network's URL.",
 	}
 
+	primaryGatewayURL = cli.StringFlag{
+		Name:  "primary-gateway-url",
+		Usage: "This flag specifies the primary network's URL.",
+	}
+
+	secondaryGatewayURL = cli.StringFlag{
+		Name:  "secondary-gateway-url",
+		Usage: "This flag specifies the secondary network's URL.",
+	}
+
 	timestamp = cli.StringFlag{
 		Name:  "timestamp",
 		Usage: "This flag specifies the timestamp after the transactions should be fetched",
@@ -38,6 +48,8 @@ func getFlags() []cli.Flag {
 	return []cli.Flag{
 		primaryURL,
 		secondaryURL,
+		primaryGatewayURL,
+		secondaryGatewayURL,
 		timestamp,
 		outfile,
 		number,
@@ -49,6 +61,8 @@ func getFlagsConfig(ctx *cli.Context) config.ContextFlagsNetComparator {
 
 	flagsConfig.PrimaryURL = ctx.GlobalString(primaryURL.Name)
 	flagsConfig.SecondaryURL = ctx.GlobalString(secondaryURL.Name)
+	flagsConfig.PrimaryGatewayURL = ctx.GlobalString(primaryGatewayURL.Name)
+	flagsConfig.SecondaryGatewayURL = ctx.GlobalString(secondaryGatewayURL.Name)
 	flagsConfig.Timestamp = ctx.GlobalString(timestamp.Name)
 	flagsConfig.Outfile = ctx.GlobalString(outfile.Name)
 	flagsConfig.Number = ctx.GlobalInt(number.Name)
