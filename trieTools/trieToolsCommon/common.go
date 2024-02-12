@@ -44,7 +44,8 @@ const (
 	addressLength        = 32
 )
 
-const Prefix = "erd"
+// WalletHRP represents the constant for the MultiversX wallets HRP prefix
+const WalletHRP = "erd"
 
 // AttachFileLogger will attach the file logger, using provided flags
 func AttachFileLogger(log logger.Logger, logFilePrefix string, flagsConfig ContextFlagsConfig) (nodeFactory.FileLoggingHandler, error) {
@@ -248,7 +249,7 @@ func NewAccountsAdapter(trie common.Trie, enableEpochsHandler common.EnableEpoch
 	}
 	storagePruningManager := disabled2.NewDisabledStoragePruningManager()
 
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, Prefix)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, WalletHRP)
 	if err != nil {
 		return nil, err
 	}

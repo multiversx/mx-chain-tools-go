@@ -17,7 +17,7 @@ const (
 
 var (
 	AllFormattersNames  = strings.Join([]string{FormatterNamePlainText, FormatterNamePlainText, FormatterNameRosettaJson}, ", ")
-	addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.Prefix)
+	addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.WalletHRP)
 )
 
 type formatterArgs struct {

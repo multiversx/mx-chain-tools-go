@@ -93,7 +93,7 @@ func startProcess(c *cli.Context) error {
 }
 
 func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, maxDBValue int) error {
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.Prefix)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.WalletHRP)
 	if err != nil {
 		return err
 	}

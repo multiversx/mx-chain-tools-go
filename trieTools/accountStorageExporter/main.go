@@ -86,7 +86,7 @@ func startProcess(c *cli.Context) error {
 }
 
 func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRootHash []byte, maxDBValue int) error {
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.Prefix)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.WalletHRP)
 	if err != nil {
 		return err
 	}
