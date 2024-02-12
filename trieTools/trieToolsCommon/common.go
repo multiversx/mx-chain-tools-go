@@ -13,6 +13,7 @@ import (
 	"github.com/multiversx/mx-chain-go/common"
 	commonDisabled "github.com/multiversx/mx-chain-go/common/disabled"
 	nodeConfig "github.com/multiversx/mx-chain-go/config"
+	"github.com/multiversx/mx-chain-go/dataRetriever"
 	"github.com/multiversx/mx-chain-go/epochStart/notifier"
 	"github.com/multiversx/mx-chain-go/state"
 	stateFactory "github.com/multiversx/mx-chain-go/state/factory"
@@ -42,6 +43,8 @@ const (
 	maxDirs              = 100
 	addressLength        = 32
 )
+
+const Prefix = "erd"
 
 // AttachFileLogger will attach the file logger, using provided flags
 func AttachFileLogger(log logger.Logger, logFilePrefix string, flagsConfig ContextFlagsConfig) (nodeFactory.FileLoggingHandler, error) {
@@ -140,6 +143,11 @@ func CreatePruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Stor
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
+	persisterFactory, err := factory.NewPersisterFactory(factory.NewDBConfigHandler(localDbConfig))
+	if err != nil {
+		return nil, err
+	}
+
 	epochsData := pruning.EpochArgs{
 		NumOfEpochsToKeep:     uint32(maxDBValue) + 1,
 		NumOfActivePersisters: uint32(maxDBValue) + 1,
@@ -153,7 +161,7 @@ func CreatePruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Stor
 		CacheConf:                 cacheConfig,
 		PathManager:               components.NewSimplePathManager(dbPath),
 		DbPath:                    "",
-		PersisterFactory:          factory.NewPersisterFactory(localDbConfig),
+		PersisterFactory:          persisterFactory,
 		Notifier:                  notifier.NewManualEpochStartNotifier(),
 		OldDataCleanerProvider:    &testscommon.OldDataCleanerProviderStub{},
 		CustomDatabaseRemover:     disabled.NewDisabledCustomDatabaseRemover(),
@@ -181,11 +189,16 @@ func CreateStorer(flags ContextFlagsConfig) (storage.Storer, error) {
 		MaxOpenFiles:      dbConfig.MaxOpenFiles,
 	}
 
-	return storageUnit.NewStorageUnitFromConf(cacheConfig, dbConf)
+	persisterFactory, err := factory.NewPersisterFactory(factory.NewDBConfigHandler(dbConfig))
+	if err != nil {
+		return nil, err
+	}
+
+	return storageUnit.NewStorageUnitFromConf(cacheConfig, dbConf, persisterFactory)
 }
 
 // CreateTrie will create and return a trie using the provided flags
-func CreateTrie(storer storage.Storer) (common.Trie, error) {
+func CreateTrie(storer storage.Storer, enableEpochsHandler common.EnableEpochsHandler) (common.Trie, error) {
 	if check.IfNil(storer) {
 		return nil, fmt.Errorf("nil storer provided")
 	}
@@ -194,7 +207,7 @@ func CreateTrie(storer storage.Storer) (common.Trie, error) {
 		return nil, err
 	}
 
-	return trie.NewTrie(tsm, Marshaller, Hasher, maxTrieLevelInMemory)
+	return trie.NewTrie(tsm, Marshaller, Hasher, enableEpochsHandler, maxTrieLevelInMemory)
 }
 
 // CreateStorageManager creates a new trie storage manager using the given storer
@@ -210,6 +223,7 @@ func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) 
 		},
 		CheckpointHashesHolder: hashesHolder.NewDisabledCheckpointHashesHolder(),
 		IdleProvider:           commonDisabled.NewProcessStatusHandler(),
+		Identifier:             dataRetriever.UserAccountsUnit.String(),
 	}
 
 	options := trie.StorageManagerOptions{
@@ -222,11 +236,19 @@ func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) 
 }
 
 // NewAccountsAdapter will create a new accounts adapter using provided trie
-func NewAccountsAdapter(trie common.Trie) (state.AccountsAdapter, error) {
-	accCreator := stateFactory.NewAccountCreator()
+func NewAccountsAdapter(trie common.Trie, enableEpochsHandler common.EnableEpochsHandler) (state.AccountsAdapter, error) {
+	accCreatorArgs := stateFactory.ArgsAccountCreator{
+		Hasher:              Hasher,
+		Marshaller:          Marshaller,
+		EnableEpochsHandler: enableEpochsHandler,
+	}
+	accCreator, err := stateFactory.NewAccountCreator(accCreatorArgs)
+	if err != nil {
+		return nil, err
+	}
 	storagePruningManager := disabled2.NewDisabledStoragePruningManager()
 
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, Prefix)
 	if err != nil {
 		return nil, err
 	}

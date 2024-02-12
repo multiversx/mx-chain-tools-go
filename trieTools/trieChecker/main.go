@@ -10,8 +10,11 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	"github.com/multiversx/mx-chain-go/common"
-	"github.com/multiversx/mx-chain-go/state"
+	"github.com/multiversx/mx-chain-go/common/errChan"
+	"github.com/multiversx/mx-chain-go/state/accounts"
+	"github.com/multiversx/mx-chain-go/state/parsers"
 	"github.com/multiversx/mx-chain-go/storage"
+	"github.com/multiversx/mx-chain-go/testscommon/enableEpochsHandlerMock"
 	"github.com/multiversx/mx-chain-go/trie/keyBuilder"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
@@ -79,7 +82,7 @@ func startProcess(c *cli.Context) error {
 }
 
 func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) error {
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.Prefix)
 	if err != nil {
 		return err
 	}
@@ -89,7 +92,11 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		return err
 	}
 
-	tr, err := trieToolsCommon.CreateTrie(storer)
+	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
+		IsAutoBalanceDataTriesEnabledField: true,
+	}
+
+	tr, err := trieToolsCommon.CreateTrie(storer, enableEpochsHandler)
 	if err != nil {
 		return err
 	}
@@ -101,9 +108,9 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 
 	iteratorChannels := &common.TrieIteratorChannels{
 		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
-		ErrChan:    make(chan error, 1),
+		ErrChan:    errChan.NewErrChanWrapper(),
 	}
-	err = tr.GetAllLeavesOnChannel(iteratorChannels, context.Background(), mainRootHash, keyBuilder.NewKeyBuilder())
+	err = tr.GetAllLeavesOnChannel(iteratorChannels, context.Background(), mainRootHash, keyBuilder.NewKeyBuilder(), parsers.NewMainTrieLeafParser())
 	if err != nil {
 		return err
 	}
@@ -115,7 +122,7 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 	for kv := range iteratorChannels.LeavesChan {
 		numAccountsOnMainTrie++
 
-		userAccount := &state.UserAccountData{}
+		userAccount := &accounts.UserAccountData{}
 		errUnmarshal := trieToolsCommon.Marshaller.Unmarshal(userAccount, kv.Value())
 		if errUnmarshal != nil {
 			// probably a code node
@@ -126,11 +133,14 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 			continue
 		}
 
-		address := addressConverter.Encode(kv.Key())
+		address, err := addressConverter.Encode(kv.Key())
+		if err != nil {
+			return err
+		}
 		dataTriesRootHashes[address] = userAccount.RootHash
 	}
 
-	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	err = iteratorChannels.ErrChan.ReadFromChanNonBlocking()
 	if err != nil {
 		return err
 	}
@@ -149,9 +159,13 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 
 		dataTrieIteratorChannels := &common.TrieIteratorChannels{
 			LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
-			ErrChan:    make(chan error, 1),
+			ErrChan:    errChan.NewErrChanWrapper(),
 		}
-		errGetAllLeaves := tr.GetAllLeavesOnChannel(dataTrieIteratorChannels, context.Background(), dataRootHash, keyBuilder.NewDisabledKeyBuilder())
+		leafParser, err := parsers.NewDataTrieLeafParser([]byte(address), trieToolsCommon.Marshaller, &enableEpochsHandlerMock.EnableEpochsHandlerStub{IsAutoBalanceDataTriesEnabledField: true})
+		if err != nil {
+			return err
+		}
+		errGetAllLeaves := tr.GetAllLeavesOnChannel(dataTrieIteratorChannels, context.Background(), dataRootHash, keyBuilder.NewDisabledKeyBuilder(), leafParser)
 		if errGetAllLeaves != nil {
 			return errGetAllLeaves
 		}
@@ -160,7 +174,7 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 			numDataTriesLeaves++
 		}
 
-		err = common.GetErrorFromChanNonBlocking(dataTrieIteratorChannels.ErrChan)
+		err = dataTrieIteratorChannels.ErrChan.ReadFromChanNonBlocking()
 		if err != nil {
 			return err
 		}

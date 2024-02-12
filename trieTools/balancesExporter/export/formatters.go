@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
+	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 )
 
 const (
@@ -16,7 +17,7 @@ const (
 
 var (
 	AllFormattersNames  = strings.Join([]string{FormatterNamePlainText, FormatterNamePlainText, FormatterNameRosettaJson}, ", ")
-	addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	addressConverter, _ = pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.Prefix)
 )
 
 type formatterArgs struct {

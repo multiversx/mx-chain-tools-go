@@ -73,7 +73,7 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.Prefix)
 	if err != nil {
 		return err
 	}

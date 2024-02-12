@@ -3,10 +3,7 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -14,8 +11,9 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	"github.com/multiversx/mx-chain-go/common"
+	"github.com/multiversx/mx-chain-go/common/errChan"
 	"github.com/multiversx/mx-chain-go/state"
-	"github.com/multiversx/mx-chain-go/trie/keyBuilder"
+	"github.com/multiversx/mx-chain-go/testscommon/enableEpochsHandlerMock"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/accountStorageExporter/config"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
@@ -88,7 +86,7 @@ func startProcess(c *cli.Context) error {
 }
 
 func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRootHash []byte, maxDBValue int) error {
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.Prefix)
 	if err != nil {
 		return err
 	}
@@ -98,7 +96,11 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		return err
 	}
 
-	tr, err := trieToolsCommon.CreateTrie(db)
+	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
+		IsAutoBalanceDataTriesEnabledField: true,
+	}
+
+	tr, err := trieToolsCommon.CreateTrie(db, enableEpochsHandler)
 	if err != nil {
 		return err
 	}
@@ -108,7 +110,7 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		log.LogIfError(errNotCritical)
 	}()
 
-	accDb, err := trieToolsCommon.NewAccountsAdapter(tr)
+	accDb, err := trieToolsCommon.NewAccountsAdapter(tr, enableEpochsHandler)
 	if err != nil {
 		return err
 	}
@@ -137,48 +139,19 @@ func exportStorage(address string, flags config.ContextFlagsConfigAddr, mainRoot
 		return fmt.Errorf("the provided address doesn't have a data trie")
 	}
 
-	rootHash, err := userAccount.DataTrie().RootHash()
-	if err != nil {
-		return err
-	}
-
 	iteratorChannels := &common.TrieIteratorChannels{
 		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
-		ErrChan:    make(chan error, 1),
+		ErrChan:    errChan.NewErrChanWrapper(),
 	}
-	err = userAccount.DataTrie().GetAllLeavesOnChannel(iteratorChannels, context.Background(), rootHash, keyBuilder.NewKeyBuilder())
+	err = userAccount.GetAllLeaves(iteratorChannels, context.Background())
 	if err != nil {
 		return err
 	}
 
-	keyValueMap := make(map[string]string)
+	log.Info("data trie for account", "address", address, "root hash", userAccount.GetRootHash())
 	for leaf := range iteratorChannels.LeavesChan {
-		suffix := append(leaf.Key(), userAccount.AddressBytes()...)
-		value, errVal := leaf.ValueWithoutSuffix(suffix)
-		if errVal != nil {
-			log.Warn("cannot get value without suffix", "error", errVal, "key", leaf.Key())
-			continue
-		}
-
-		keyValueMap[hex.EncodeToString(leaf.Key())] = hex.EncodeToString(value)
+		log.Info("key-value pair", "key", leaf.Key(), "value", leaf.Value())
 	}
 
-	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
-	if err != nil {
-		return err
-	}
-
-	jsonBytes, err := json.MarshalIndent(keyValueMap, "", " ")
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(outputFileName, jsonBytes, fs.FileMode(outputFilePerms))
-	if err != nil {
-		return err
-	}
-
-	log.Info("key-value map", "value", keyValueMap)
-
-	return nil
+	return iteratorChannels.ErrChan.ReadFromChanNonBlocking()
 }
