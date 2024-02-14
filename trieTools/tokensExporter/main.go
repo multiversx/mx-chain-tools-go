@@ -15,7 +15,11 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	"github.com/multiversx/mx-chain-go/common"
+	"github.com/multiversx/mx-chain-go/common/errChan"
 	"github.com/multiversx/mx-chain-go/state"
+	"github.com/multiversx/mx-chain-go/state/accounts"
+	"github.com/multiversx/mx-chain-go/state/parsers"
+	"github.com/multiversx/mx-chain-go/testscommon/enableEpochsHandlerMock"
 	"github.com/multiversx/mx-chain-go/trie/keyBuilder"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/tokensExporter/config"
@@ -89,7 +93,7 @@ func startProcess(c *cli.Context) error {
 }
 
 func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, maxDBValue int) error {
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.WalletHRP)
 	if err != nil {
 		return err
 	}
@@ -99,7 +103,11 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 		return err
 	}
 
-	tr, err := trieToolsCommon.CreateTrie(db)
+	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
+		IsAutoBalanceDataTriesEnabledField: true,
+	}
+
+	tr, err := trieToolsCommon.CreateTrie(db, enableEpochsHandler)
 	if err != nil {
 		return err
 	}
@@ -111,14 +119,14 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 
 	iteratorChannels := &common.TrieIteratorChannels{
 		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
-		ErrChan:    make(chan error, 1),
+		ErrChan:    errChan.NewErrChanWrapper(),
 	}
-	err = tr.GetAllLeavesOnChannel(iteratorChannels, context.Background(), mainRootHash, keyBuilder.NewKeyBuilder())
+	err = tr.GetAllLeavesOnChannel(iteratorChannels, context.Background(), mainRootHash, keyBuilder.NewKeyBuilder(), parsers.NewMainTrieLeafParser())
 	if err != nil {
 		return err
 	}
 
-	accDb, err := trieToolsCommon.NewAccountsAdapter(tr)
+	accDb, err := trieToolsCommon.NewAccountsAdapter(tr, enableEpochsHandler)
 	if err != nil {
 		return err
 	}
@@ -149,17 +157,17 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 		}
 
 		if len(esdtTokens) > 0 {
-			encodedAddress := addressConverter.Encode(address)
+			encodedAddress, _ := addressConverter.Encode(address)
 			addressTokensMap[encodedAddress] = esdtTokens
 		}
 	}
 
-	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	err = iteratorChannels.ErrChan.ReadFromChanNonBlocking()
 	if err != nil {
 		return err
 	}
 
-	encodedSysAccAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
+	encodedSysAccAddress, _ := addressConverter.Encode(vmcommon.SystemAccountAddress)
 	log.Info("parsed main trie",
 		"num accounts", numAccountsOnMainTrie,
 		"num accounts with tokens", len(addressTokensMap),
@@ -175,7 +183,7 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 }
 
 func getAddress(kv core.KeyValueHolder) ([]byte, bool) {
-	userAccount := &state.UserAccountData{}
+	userAccount := &accounts.UserAccountData{}
 	errUnmarshal := trieToolsCommon.Marshaller.Unmarshal(userAccount, kv.Value())
 	if errUnmarshal != nil {
 		// probably a code node
@@ -207,8 +215,8 @@ func saveResult(addressTokensMap map[string]map[string]struct{}, outfile string)
 func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.PubkeyConverter) (map[string]struct{}, error) {
 	userAccount, ok := account.(state.UserAccountHandler)
 	if !ok {
-		return nil, fmt.Errorf("could not convert account to user account, address = %s",
-			pubKeyConverter.Encode(account.AddressBytes()))
+		address, _ := pubKeyConverter.Encode(account.AddressBytes())
+		return nil, fmt.Errorf("could not convert account to user account, address = %s", address)
 	}
 
 	allESDTs := make(map[string]struct{})
@@ -216,16 +224,11 @@ func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.Pubk
 		return allESDTs, nil
 	}
 
-	rootHash, err := userAccount.DataTrie().RootHash()
-	if err != nil {
-		return nil, err
-	}
-
 	iteratorChannels := &common.TrieIteratorChannels{
 		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
-		ErrChan:    make(chan error, 1),
+		ErrChan:    errChan.NewErrChanWrapper(),
 	}
-	err = userAccount.DataTrie().GetAllLeavesOnChannel(iteratorChannels, context.Background(), rootHash, keyBuilder.NewKeyBuilder())
+	err := userAccount.GetAllLeaves(iteratorChannels, context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +247,7 @@ func getAllESDTTokens(account vmcommon.AccountHandler, pubKeyConverter core.Pubk
 		allESDTs[tokenName] = struct{}{}
 	}
 
-	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	err = iteratorChannels.ErrChan.ReadFromChanNonBlocking()
 	if err != nil {
 		return nil, err
 	}

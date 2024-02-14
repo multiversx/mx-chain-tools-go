@@ -2,8 +2,7 @@ package export
 
 import (
 	"encoding/json"
-
-	"github.com/multiversx/mx-chain-go/state"
+	"github.com/multiversx/mx-chain-go/state/accounts"
 )
 
 type rosettaBalance struct {
@@ -24,7 +23,7 @@ type rosettaCurrency struct {
 type formatterRosettaJson struct {
 }
 
-func (f *formatterRosettaJson) toText(accounts []*state.UserAccountData, args formatterArgs) (string, error) {
+func (f *formatterRosettaJson) toText(accounts []*accounts.UserAccountData, args formatterArgs) (string, error) {
 	records := make([]rosettaBalance, 0, len(accounts))
 
 	currency := &rosettaCurrency{
@@ -33,7 +32,7 @@ func (f *formatterRosettaJson) toText(accounts []*state.UserAccountData, args fo
 	}
 
 	for _, account := range accounts {
-		address := addressConverter.Encode(account.Address)
+		address, _ := addressConverter.Encode(account.Address)
 		balance := account.Balance.String()
 
 		records = append(records, rosettaBalance{

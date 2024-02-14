@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/multiversx/mx-chain-go/state"
+	"github.com/multiversx/mx-chain-go/state/accounts"
 )
 
 type plainBalance struct {
@@ -15,11 +15,11 @@ type plainBalance struct {
 type formatterPlainText struct {
 }
 
-func (f *formatterPlainText) toText(accounts []*state.UserAccountData, args formatterArgs) (string, error) {
+func (f *formatterPlainText) toText(accounts []*accounts.UserAccountData, args formatterArgs) (string, error) {
 	var builder strings.Builder
 
 	for _, account := range accounts {
-		address := addressConverter.Encode(account.Address)
+		address, _ := addressConverter.Encode(account.Address)
 		balance := account.Balance.String()
 		line := fmt.Sprintf("%s %s %s\n", address, balance, args.currency)
 		_, err := builder.WriteString(line)

@@ -5,7 +5,9 @@ import (
 
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-go/common"
-	"github.com/multiversx/mx-chain-go/state"
+	"github.com/multiversx/mx-chain-go/common/errChan"
+	"github.com/multiversx/mx-chain-go/state/accounts"
+	"github.com/multiversx/mx-chain-go/state/parsers"
 	"github.com/multiversx/mx-chain-go/trie/keyBuilder"
 )
 
@@ -28,20 +30,20 @@ func (tw *trieWrapper) IsRootHashAvailable(rootHash []byte) bool {
 	return true
 }
 
-func (tw *trieWrapper) GetUserAccounts(rootHash []byte, predicate func(*state.UserAccountData) bool) ([]*state.UserAccountData, error) {
+func (tw *trieWrapper) GetUserAccounts(rootHash []byte, predicate func(*accounts.UserAccountData) bool) ([]*accounts.UserAccountData, error) {
 	iteratorChannels := &common.TrieIteratorChannels{
 		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
-		ErrChan:    make(chan error, 1),
+		ErrChan:    errChan.NewErrChanWrapper(),
 	}
-	err := tw.trie.GetAllLeavesOnChannel(iteratorChannels, context.Background(), rootHash, keyBuilder.NewDisabledKeyBuilder())
+	err := tw.trie.GetAllLeavesOnChannel(iteratorChannels, context.Background(), rootHash, keyBuilder.NewDisabledKeyBuilder(), parsers.NewMainTrieLeafParser())
 	if err != nil {
 		return nil, err
 	}
 
-	users := make([]*state.UserAccountData, 0)
+	users := make([]*accounts.UserAccountData, 0)
 
 	for keyValue := range iteratorChannels.LeavesChan {
-		user := &state.UserAccountData{}
+		user := &accounts.UserAccountData{}
 		errUnmarshal := marshaller.Unmarshal(user, keyValue.Value())
 		if errUnmarshal != nil {
 			// Probably a code node
@@ -53,7 +55,7 @@ func (tw *trieWrapper) GetUserAccounts(rootHash []byte, predicate func(*state.Us
 		}
 	}
 
-	err = common.GetErrorFromChanNonBlocking(iteratorChannels.ErrChan)
+	err = iteratorChannels.ErrChan.ReadFromChanNonBlocking()
 	if err != nil {
 		return nil, err
 	}

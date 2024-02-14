@@ -10,10 +10,10 @@ import (
 )
 
 func TestExportSystemAccZeroTokensBalances(t *testing.T) {
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, log)
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.WalletHRP)
 	require.Nil(t, err)
 
-	systemSCAddress := addressConverter.Encode(vmcommon.SystemAccountAddress)
+	systemSCAddress, _ := addressConverter.Encode(vmcommon.SystemAccountAddress)
 	globalTokens := trieToolsCommon.NewAddressTokensMap()
 	globalTokens.Add("adr1", map[string]struct{}{
 		"token1-r-0": {},

@@ -27,7 +27,7 @@ func (ztb *zeroTokensBalancesExporter) getExtraTokens(
 	globalAddressTokensMap trieToolsCommon.AddressTokensMap,
 	shardAddressTokenMap map[uint32]trieToolsCommon.AddressTokensMap,
 ) (map[string]struct{}, map[uint32]map[string]struct{}, error) {
-	systemSCAddress := ztb.pubKeyConverter.Encode(vmcommon.SystemAccountAddress)
+	systemSCAddress, _ := ztb.pubKeyConverter.Encode(vmcommon.SystemAccountAddress)
 	globalExtraTokens, err := getGlobalExtraTokens(globalAddressTokensMap, systemSCAddress)
 	if err != nil {
 		return nil, nil, err

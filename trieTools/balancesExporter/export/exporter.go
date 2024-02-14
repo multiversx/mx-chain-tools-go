@@ -9,7 +9,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/data"
 	"github.com/multiversx/mx-chain-go/sharding"
-	"github.com/multiversx/mx-chain-go/state"
+	"github.com/multiversx/mx-chain-go/state/accounts"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/balancesExporter/common"
 )
 
@@ -83,7 +83,7 @@ func (e *exporter) ExportBalancesAtBlock(block data.HeaderHandler) error {
 	return nil
 }
 
-func (e *exporter) shouldExportAccount(account *state.UserAccountData) bool {
+func (e *exporter) shouldExportAccount(account *accounts.UserAccountData) bool {
 	isContract := core.IsSmartContractAddress(account.Address)
 	if !e.withContracts && isContract {
 		return false
@@ -102,7 +102,7 @@ func (e *exporter) shouldExportAccount(account *state.UserAccountData) bool {
 	return true
 }
 
-func (e *exporter) saveBalancesFile(block data.HeaderHandler, accounts []*state.UserAccountData) error {
+func (e *exporter) saveBalancesFile(block data.HeaderHandler, accounts []*accounts.UserAccountData) error {
 	formatter, err := e.getFormatter(block)
 	if err != nil {
 		return err

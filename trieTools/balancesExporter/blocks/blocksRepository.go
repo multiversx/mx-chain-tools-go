@@ -8,6 +8,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/data"
 	dataBlock "github.com/multiversx/mx-chain-core-go/data/block"
 	"github.com/multiversx/mx-chain-core-go/marshal"
+	"github.com/multiversx/mx-chain-go/storage/factory"
 	"github.com/multiversx/mx-chain-storage-go/storageUnit"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/balancesExporter/common"
 )
@@ -113,7 +114,12 @@ func (repository *blocksRepository) loadMarshalizedBlocksInEpoch() ([][]byte, er
 	unitPath := repository.getStorageUnitPath()
 	dbConfig := getDbConfig(unitPath)
 
-	unit, err := storageUnit.NewStorageUnitFromConf(cacheConfig, dbConfig)
+	persisterFactory, err := factory.NewPersisterFactory(factory.NewDBConfigHandler(dbConfig))
+	if err != nil {
+		return nil, err
+	}
+
+	unit, err := storageUnit.NewStorageUnitFromConf(cacheConfig, factory.GetDBFromConfig(dbConfig), persisterFactory)
 	if err != nil {
 		return nil, err
 	}
