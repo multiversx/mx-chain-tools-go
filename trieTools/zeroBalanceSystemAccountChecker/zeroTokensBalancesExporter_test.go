@@ -10,7 +10,7 @@ import (
 )
 
 func TestExportSystemAccZeroTokensBalances(t *testing.T) {
-	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, "erd")
+	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, trieToolsCommon.WalletHRP)
 	require.Nil(t, err)
 
 	systemSCAddress, _ := addressConverter.Encode(vmcommon.SystemAccountAddress)
