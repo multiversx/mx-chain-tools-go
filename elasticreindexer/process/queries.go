@@ -34,8 +34,8 @@ func getWithTimestamp(start, stop int64, withSource bool, withSortAsc bool) *byt
 		"query": object{
 			"range": object{
 				"timestamp": object{
-					"gte": start,
-					"lte": stop,
+					"gte": fmt.Sprintf("%d", start),
+					"lte": fmt.Sprintf("%d", stop),
 				},
 			},
 		},
