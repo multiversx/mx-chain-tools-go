@@ -15,15 +15,22 @@ import (
 	"github.com/urfave/cli"
 )
 
-const configFileName = "cluster.toml"
+const (
+	indicesFolder  = "indices"
+	policiesFolder = "policies"
+	configFileName = "cluster.toml"
+)
 
 type Cfg struct {
 	ClusterConfig struct {
 		URL            string   `toml:"url"`
 		Username       string   `toml:"username"`
 		Password       string   `toml:"password"`
-		UseKibana      bool     `toml:"use-kibana"`
 		EnabledIndices []string `toml:"enabled-indices"`
+		Policies       struct {
+			Enable            bool     `toml:"enable"`
+			IndicesWithPolicy []string `toml:"indices-with-policy"`
+		} `toml:"policies"`
 	} `toml:"config"`
 }
 
@@ -76,7 +83,7 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Error(err.Error())
+		log.Error("cannot run app", "error", err)
 		os.Exit(1)
 	}
 
@@ -86,31 +93,34 @@ func createIndexesAndMappings(ctx *cli.Context) {
 	cfgPath := ctx.String(configPath.Name)
 	cfg, err := loadConfigFile(cfgPath)
 	if err != nil {
-		log.Error("cannot load config file", "error", err.Error())
+		log.Error("cannot load config file", "error", err)
 		return
 	}
 
-	pathToMappings := path.Join(cfgPath, "noKibana")
-	if cfg.ClusterConfig.UseKibana {
-		pathToMappings = path.Join(cfgPath, "withKibana")
-	}
+	pathToMappings := path.Join(cfgPath, indicesFolder)
 
-	indexesMappings, _, err := reader.GetElasticTemplatesAndPolicies(pathToMappings, cfg.ClusterConfig.EnabledIndices)
+	indexTemplateMap, err := reader.GetElasticTemplates(pathToMappings, cfg.ClusterConfig.EnabledIndices)
 	if err != nil {
-		log.Error("cannot load templates", "error", err.Error())
+		log.Error("cannot load templates", "error", err)
 		return
 	}
 
-	err = createIndies(cfg, indexesMappings)
+	err = createIndies(cfg, indexTemplateMap)
 	if err != nil {
-		log.Error("cannot create templates", "error", err.Error())
+		log.Error("cannot create indices", "error", err)
 		return
+	}
+
+	pathToPolicies := path.Join(pathToMappings, policiesFolder)
+	err = createPoliciesIfEnabled(cfg, pathToPolicies)
+	if err != nil {
+		log.Error("cannot create indices policies", "error", err)
 	}
 
 	log.Info("all indices were created")
 }
 
-func createIndies(cfg *Cfg, indexesMappings map[string]*bytes.Buffer) error {
+func createIndies(cfg *Cfg, indexTemplateMap map[string]*bytes.Buffer) error {
 	databaseClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
 		URL:      cfg.ClusterConfig.URL,
 		Username: cfg.ClusterConfig.Username,
@@ -120,7 +130,7 @@ func createIndies(cfg *Cfg, indexesMappings map[string]*bytes.Buffer) error {
 		return err
 	}
 
-	for index, indexData := range indexesMappings {
+	for index, indexData := range indexTemplateMap {
 		doesTemplateExists := databaseClient.DoesTemplateExist(index)
 		if !doesTemplateExists {
 			errCheck := databaseClient.PutIndexTemplate(index, indexData)
@@ -151,7 +161,45 @@ func createIndies(cfg *Cfg, indexesMappings map[string]*bytes.Buffer) error {
 
 			log.Info("databaseClient.PutAlias", "index", index)
 		}
+	}
 
+	return nil
+}
+
+func createPoliciesIfEnabled(cfg *Cfg, pathToPolicies string) error {
+	if !cfg.ClusterConfig.Policies.Enable {
+		return nil
+	}
+
+	databaseClient, err := elastic.NewElasticClient(config.ElasticInstanceConfig{
+		URL:      cfg.ClusterConfig.URL,
+		Username: cfg.ClusterConfig.Username,
+		Password: cfg.ClusterConfig.Password,
+	})
+	if err != nil {
+		return err
+	}
+
+	indexPolicyMap, err := reader.GetElasticTemplates(pathToPolicies, cfg.ClusterConfig.Policies.IndicesWithPolicy)
+	if err != nil {
+		return err
+	}
+
+	for index, policy := range indexPolicyMap {
+		indexWithSuffix := fmt.Sprintf("%s-%s", index, "000001")
+		err = databaseClient.SetWriteIndexTrue(index, indexWithSuffix)
+		if err != nil {
+			return fmt.Errorf("databaseClient.SetWriteIndexTrue index: %s, error: %w", index, err)
+		}
+		log.Info("databaseClient.SetWriteIndexTrue", "index", index)
+
+		policyName := fmt.Sprintf("%s-%s", index, "policy")
+		err = databaseClient.PutPolicy(policyName, policy)
+		if err != nil {
+			return fmt.Errorf("databaseClient.PutPolicy index: %s, error: %w", index, err)
+		}
+
+		log.Info("databaseClient.PutPolicy", "index", index)
 	}
 
 	return nil

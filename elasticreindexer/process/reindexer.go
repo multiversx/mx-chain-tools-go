@@ -16,7 +16,10 @@ var (
 	log                  = logger.GetOrCreate("process")
 )
 
-const indexSuffix = "-000001"
+const (
+	defaultStr  = "default"
+	indexSuffix = "-000001"
+)
 
 type reindexer struct {
 	sourceElastic      ElasticClientHandler
@@ -168,6 +171,7 @@ func prepareDataForIndexing(responseBytes []byte, index string, count int) ([]*b
 	log.Info("\tindexing", "index", index, "bulk size", len(resultsMap), "count", count)
 	buffSlice := newBufferSlice()
 	for id, source := range resultsMap {
+
 		meta := []byte(fmt.Sprintf(`{ "index" : { "_id" : "%s" } }%s`, id, "\n"))
 
 		err = buffSlice.PutData(meta, source)

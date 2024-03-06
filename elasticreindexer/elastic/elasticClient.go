@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/elastic/go-elasticsearch/v7"
@@ -25,6 +26,8 @@ var (
 const (
 	stepDelayBetweenRequests = 500 * time.Millisecond
 	numRetriesBackOff        = 10
+
+	errPolicyAlreadyExists = "document already exists"
 )
 
 type esClient struct {
@@ -156,7 +159,14 @@ func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buff
 
 // PutIndexTemplate creates an elasticsearch index template
 func (esc *esClient) PutIndexTemplate(templateName string, body *bytes.Buffer) error {
-	res, err := esc.client.Indices.PutTemplate(templateName, body)
+	var res *esapi.Response
+	var err error
+	if templateName == "logs" {
+		res, err = esc.client.Indices.PutTemplate(templateName, body)
+	} else {
+		res, err = esc.client.Indices.PutIndexTemplate(templateName, body)
+	}
+
 	if err != nil {
 		return err
 	}
@@ -168,6 +178,25 @@ func (esc *esClient) PutIndexTemplate(templateName string, body *bytes.Buffer) e
 	}
 
 	return nil
+}
+
+func (esc *esClient) SetWriteIndexTrue(alias string, index string) error {
+	body := fmt.Sprintf(`{"actions" : [ { "add" : { "index" : "%s", "alias" : "%s",  "is_write_index" : true } }]}`, index, alias)
+	res, err := esc.client.Indices.UpdateAliases(
+		bytes.NewBuffer([]byte(body)),
+	)
+	if err != nil {
+		return err
+	}
+
+	defer closeBody(res)
+
+	if res.IsError() {
+		return fmt.Errorf("%s", res.String())
+	}
+
+	return nil
+
 }
 
 // DoesIndexExist returns true if an index exists
@@ -362,6 +391,41 @@ func (esc *esClient) PutAlias(index string, alias string) error {
 
 	if res.IsError() {
 		return fmt.Errorf("%s", res.String())
+	}
+
+	return nil
+}
+
+// Response is a structure that holds response from Kibana
+type responseCreatePolicy struct {
+	Error  interface{} `json:"error,omitempty"`
+	Status int         `json:"status"`
+}
+
+// PutPolicy will put in Elasticsearch cluster the provided policy with the given name
+func (esc *esClient) PutPolicy(policyName string, policy *bytes.Buffer) error {
+	res, err := esc.client.ILM.PutLifecycle(
+		policyName,
+		esc.client.ILM.PutLifecycle.WithBody(policy),
+	)
+	if err != nil {
+		return err
+	}
+
+	bodyBytes, errGet := getBytesFromResponse(res)
+	if errGet != nil {
+		return errGet
+	}
+
+	response := &responseCreatePolicy{}
+	err = json.Unmarshal(bodyBytes, response)
+	if err != nil {
+		return err
+	}
+
+	errStr := fmt.Sprintf("%v", response.Error)
+	if response.Status == http.StatusConflict && !strings.Contains(errStr, errPolicyAlreadyExists) {
+		return fmt.Errorf("error esClient.PutPolicy: %s", errStr)
 	}
 
 	return nil
