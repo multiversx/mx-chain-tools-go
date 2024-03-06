@@ -8,6 +8,7 @@ import (
 	storageFactory "github.com/multiversx/mx-chain-go/storage/factory"
 	"github.com/multiversx/mx-chain-go/storage/pruning"
 	"github.com/multiversx/mx-chain-go/testscommon"
+	"github.com/multiversx/mx-chain-go/testscommon/enableEpochsHandlerMock"
 	"github.com/multiversx/mx-chain-go/trie"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/balancesExporter/common"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
@@ -52,13 +53,18 @@ func (factory *trieFactory) CreateTrie() (*trieWrapper, error) {
 	dbConfig := getDbConfig(factory.dbPath)
 	pathManager := common.NewSimplePathManager(factory.dbPath)
 
+	persisterFactory, err := storageFactory.NewPersisterFactory(storageFactory.NewDBConfigHandler(dbConfig))
+	if err != nil {
+		return nil, err
+	}
+
 	args := pruning.StorerArgs{
 		Identifier:             storageUnitIdentifier,
 		ShardCoordinator:       factory.shardCoordinator,
 		CacheConf:              cacheConfig,
 		PathManager:            pathManager,
 		DbPath:                 "",
-		PersisterFactory:       storageFactory.NewPersisterFactory(dbConfig),
+		PersisterFactory:       persisterFactory,
 		Notifier:               notifier.NewManualEpochStartNotifier(),
 		OldDataCleanerProvider: &testscommon.OldDataCleanerProviderStub{},
 		CustomDatabaseRemover:  &testscommon.CustomDatabaseRemoverStub{},
@@ -82,7 +88,11 @@ func (factory *trieFactory) CreateTrie() (*trieWrapper, error) {
 		return nil, err
 	}
 
-	t, err := trie.NewTrie(storageManager, marshaller, hasher, maxTrieLevelInMemory)
+	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
+		IsAutoBalanceDataTriesEnabledField: true,
+	}
+
+	t, err := trie.NewTrie(storageManager, marshaller, hasher, enableEpochsHandler, maxTrieLevelInMemory)
 	if err != nil {
 		return nil, err
 	}

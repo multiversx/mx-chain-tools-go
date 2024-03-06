@@ -1,0 +1,7 @@
+# Keys defines the bls keys that will be monitored
+Keys = [
+]
+
+[Logs]
+    LogFileLifeSpanInMB = 1024 # 1GB
+    LogFileLifeSpanInSec = 86400 # 1 day

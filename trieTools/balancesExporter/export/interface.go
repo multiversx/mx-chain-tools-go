@@ -1,14 +1,14 @@
 package export
 
 import (
-	"github.com/multiversx/mx-chain-go/state"
+	"github.com/multiversx/mx-chain-go/state/accounts"
 )
 
 type trieWrapper interface {
-	GetUserAccounts(rootHash []byte, predicate func(*state.UserAccountData) bool) ([]*state.UserAccountData, error)
+	GetUserAccounts(rootHash []byte, predicate func(data *accounts.UserAccountData) bool) ([]*accounts.UserAccountData, error)
 }
 
 type formatter interface {
-	toText(accounts []*state.UserAccountData, args formatterArgs) (string, error)
+	toText(accounts []*accounts.UserAccountData, args formatterArgs) (string, error)
 	getFileExtension() string
 }
