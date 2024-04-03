@@ -4,7 +4,7 @@
   ],
   "settings": {
     "number_of_replicas": 0,
-    "number_of_shards": 3,
+    "number_of_shards": 5,
     "index.lifecycle.name": "events-policy",
     "index.lifecycle.rollover_alias": "events"
   },
@@ -35,6 +35,9 @@
         "type": "text"
       },
       "order": {
+        "type": "long"
+      },
+      "txOrder": {
         "type": "long"
       },
       "shardID": {
