@@ -6,7 +6,7 @@
     "settings": {
       "index.lifecycle.name": "accountshistory-policy",
       "index.lifecycle.rollover_alias": "accountshistory",
-      "number_of_replicas": 0,
+      "number_of_replicas": 1,
       "number_of_shards": 5
     },
     "mappings": {
