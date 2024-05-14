@@ -12,8 +12,8 @@
       "index.sort.order": [
         "desc"
       ],
-      "number_of_replicas": 0,
-      "number_of_shards": 3
+      "number_of_replicas": 1,
+      "number_of_shards": 5
     },
     "mappings": {
       "properties": {

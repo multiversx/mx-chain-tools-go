@@ -6,8 +6,8 @@
     "settings": {
       "index.lifecycle.name": "delegators-policy",
       "index.lifecycle.rollover_alias": "delegators",
-      "number_of_replicas": 0,
-      "number_of_shards": 3
+      "number_of_replicas": 1,
+      "number_of_shards": 5
     },
     "mappings": {
       "properties": {
