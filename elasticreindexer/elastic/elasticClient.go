@@ -128,9 +128,19 @@ func (esc *esClient) GetMapping(index string) (*bytes.Buffer, error) {
 		return nil, err
 	}
 
-	propertiesRes := gjson.Get(string(respBytes), fmt.Sprintf("%s-000001", index))
+	propertiesRes := gjson.Get(string(respBytes), fmt.Sprintf("%s", index))
 
-	return bytes.NewBufferString(propertiesRes.Raw), nil
+	myMap := map[string]json.RawMessage{}
+	err = json.Unmarshal([]byte(propertiesRes.String()), &myMap)
+	if err != nil {
+		return nil, err
+	}
+
+	myMap["settings"] = []byte(`{ "number_of_shards": "1"}`)
+
+	myMapBytes, err := json.Marshal(myMap)
+
+	return bytes.NewBufferString(string(myMapBytes)), nil
 }
 
 // CreateIndexWithMapping will create an index with the provided

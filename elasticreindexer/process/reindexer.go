@@ -100,7 +100,7 @@ func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMap
 		return nil
 	}
 
-	indexWithSuffix := index + indexSuffix
+	indexWithSuffix := index
 
 	aliasExists := r.destinationElastic.DoesAliasExist(index)
 	if aliasExists && !overwrite {
@@ -130,7 +130,9 @@ func (r *reindexer) copyMappingIfNecessary(index string, overwrite bool, skipMap
 		return nil
 	}
 
-	return r.destinationElastic.PutAlias(indexWithSuffix, index)
+	return nil
+
+	//return r.destinationElastic.PutAlias(indexWithSuffix, index)
 }
 
 func (r *reindexer) reindexData(index string) error {
