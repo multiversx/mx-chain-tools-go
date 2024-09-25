@@ -10,9 +10,9 @@
         password = ""
 
     [config.indices]
-        indices-no-timestamp = ["accounts","rating", "validators", "epochinfo", "tags", "delegators"]
+        indices-no-timestamp = ["logs"]
         [config.indices.with-timestamp]
-            enabled = true
+            enabled = false
             num-parallel-writes = 20
             blockchain-start-time = 1596117600 # mainnet start time ( for testnet will be a different start time)
             indices-with-timestamp = ["accountsesdt", "tokens", "blocks", "receipts", "transactions","miniblocks", "rounds",  "accountshistory", "scresults", "accountsesdthistory", "scdeploys", "logs", "operations"]

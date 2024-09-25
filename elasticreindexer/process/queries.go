@@ -24,6 +24,14 @@ func getAll() *bytes.Buffer {
 		},
 	}
 
+	obj["sort"] = []interface{}{
+		object{
+			"timestamp": object{
+				"order": "asc",
+			},
+		},
+	}
+
 	encoded, _ := encodeQuery(obj)
 
 	return &encoded

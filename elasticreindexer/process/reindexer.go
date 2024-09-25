@@ -25,6 +25,7 @@ type reindexer struct {
 	sourceElastic      ElasticClientHandler
 	destinationElastic ElasticClientHandler
 	indices            []string
+	logsProc           *logsToEvensProcessor
 }
 
 // newReindexer returns a new instance of reindexer if the provided params aren't nil, or error otherwise
@@ -36,10 +37,16 @@ func newReindexer(sourceElastic ElasticClientHandler, destinationElastic Elastic
 		return nil, fmt.Errorf("%w for destination", errNilElasticHandler)
 	}
 
+	logsProc, err := NewLogsToEvensProcessor()
+	if err != nil {
+		return nil, err
+	}
+
 	return &reindexer{
 		sourceElastic:      sourceElastic,
 		destinationElastic: destinationElastic,
 		indices:            indices,
+		logsProc:           logsProc,
 	}, nil
 }
 
@@ -137,13 +144,27 @@ func (r *reindexer) reindexData(index string) error {
 	count := 0
 	handlerFunc := func(responseBytes []byte) error {
 		count++
-		dataBuffers, err := prepareDataForIndexing(responseBytes, index, count)
+		var dataBuffers []*bytes.Buffer
+		var err error
+		var numDocs uint64
+		if index == "logs" {
+			dataBuffers, numDocs, err = r.logsProc.Process(responseBytes)
+			log.Info("\tindexing", "index", "events", "bulk size", numDocs, "num buffer", len(dataBuffers), "count", count)
+		} else {
+			//dataBuffers, err = prepareDataForIndexing(responseBytes, index, count)
+
+		}
 		if err != nil {
 			return fmt.Errorf("%w while preparing data for indexing", err)
 		}
 
 		for i := 0; i < len(dataBuffers); i++ {
-			err = r.destinationElastic.DoBulkRequest(dataBuffers[i], index)
+			var localIndex = index
+			if index == "logs" {
+				localIndex = "events"
+			}
+
+			err = r.destinationElastic.DoBulkRequest(dataBuffers[i], localIndex)
 			if err != nil {
 				return fmt.Errorf("%w while r.destinationElastic.DoBulkRequest", err)
 			}
