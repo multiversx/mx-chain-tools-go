@@ -162,8 +162,7 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 
 		enableEpochHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
 			IsFlagEnabledCalled: func(flag core.EnableEpochFlag) bool {
-				return flag == common.AutoBalanceDataTriesFlag ||
-					flag == common.DynamicESDTFlag
+				return true
 			},
 		}
 		leafParser, err := parsers.NewDataTrieLeafParser([]byte(address), trieToolsCommon.Marshaller, enableEpochHandler)
