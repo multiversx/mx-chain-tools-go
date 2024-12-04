@@ -8,6 +8,14 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
     <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
+    <script>
+        function copyText(current) {
+            // Get the text field
+            let copyText = current.parentElement.previousElementSibling.innerHTML;
+            // Copy the text inside the text field
+            navigator.clipboard.writeText(copyText);
+        }
+    </script>
     <style>
         .borderedRow{
             display: flex;
@@ -28,6 +36,7 @@
     {{range $index, $element := .}}
     <li>
             <button data-toggle="collapse" data-target="#{{$element.TxHash}}"  {{ if ne $element.Error ""}} class="redButton" {{ end }} >{{$element.TxHash}}</button>
+            <a href="#"><span class="glyphicon glyphicon-copy" onClick=copyText(this)></span></a>
             <div id="{{$element.TxHash}}" class="collapse">
                 {{range $k, $v := $element.Differences}}
                 <div class="row row-no-gutters borderedRow">
