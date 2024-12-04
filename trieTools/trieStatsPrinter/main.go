@@ -6,7 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-go/common"
+	"github.com/multiversx/mx-chain-go/common/holders"
 	"github.com/multiversx/mx-chain-go/storage"
 	"github.com/multiversx/mx-chain-go/testscommon/enableEpochsHandlerMock"
 	logger "github.com/multiversx/mx-chain-logger-go"
@@ -86,7 +88,9 @@ func printTrieStats(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byt
 	}
 
 	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
-		IsAutoBalanceDataTriesEnabledField: true,
+		IsFlagEnabledCalled: func(flag core.EnableEpochFlag) bool {
+			return true
+		},
 	}
 
 	tr, err := trieToolsCommon.CreateTrie(storer, enableEpochsHandler)
@@ -104,7 +108,8 @@ func printTrieStats(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byt
 		return err
 	}
 
-	err = accDb.RecreateTrie(mainRootHash)
+	rootHashHolder := holders.NewDefaultRootHashesHolder(mainRootHash)
+	err = accDb.RecreateTrie(rootHashHolder)
 	if err != nil {
 		return err
 	}
@@ -119,8 +124,8 @@ func printTrieStats(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byt
 	if err != nil {
 		return err
 	}
-
 	stats.Print()
+
 	return nil
 }
 

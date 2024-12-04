@@ -4,7 +4,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/hashing/blake2b"
 	"github.com/multiversx/mx-chain-core-go/marshal"
 	nodeConfig "github.com/multiversx/mx-chain-go/config"
-	"github.com/multiversx/mx-chain-storage-go/storageUnit"
+	"github.com/multiversx/mx-chain-go/storage/storageunit"
 )
 
 var (
@@ -13,7 +13,7 @@ var (
 	// Marshaller represents the internal marshaller used by the node
 	Marshaller = &marshal.GogoProtoMarshalizer{}
 
-	cacheConfig = storageUnit.CacheConfig{
+	cacheConfig = storageunit.CacheConfig{
 		Type:        "SizeLRU",
 		Capacity:    500000,
 		SizeInBytes: 314572800, // 300MB

@@ -2,11 +2,11 @@ package blocks
 
 import (
 	nodeConfig "github.com/multiversx/mx-chain-go/config"
-	"github.com/multiversx/mx-chain-storage-go/storageUnit"
+	"github.com/multiversx/mx-chain-go/storage/storageunit"
 )
 
-func getCacheConfig() storageUnit.CacheConfig {
-	return storageUnit.CacheConfig{
+func getCacheConfig() storageunit.CacheConfig {
+	return storageunit.CacheConfig{
 		Type:        "SizeLRU",
 		Capacity:    500000,
 		SizeInBytes: 314572800, // 300MB
