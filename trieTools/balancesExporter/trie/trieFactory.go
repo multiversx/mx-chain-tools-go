@@ -1,8 +1,10 @@
 package trie
 
 import (
+	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-core-go/hashing/blake2b"
 	"github.com/multiversx/mx-chain-core-go/marshal"
+	nodeCommon "github.com/multiversx/mx-chain-go/common"
 	"github.com/multiversx/mx-chain-go/epochStart/notifier"
 	"github.com/multiversx/mx-chain-go/sharding"
 	storageFactory "github.com/multiversx/mx-chain-go/storage/factory"
@@ -53,7 +55,7 @@ func (factory *trieFactory) CreateTrie() (*trieWrapper, error) {
 	dbConfig := getDbConfig(factory.dbPath)
 	pathManager := common.NewSimplePathManager(factory.dbPath)
 
-	persisterFactory, err := storageFactory.NewPersisterFactory(storageFactory.NewDBConfigHandler(dbConfig))
+	persisterFactory, err := storageFactory.NewPersisterFactory(dbConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +91,10 @@ func (factory *trieFactory) CreateTrie() (*trieWrapper, error) {
 	}
 
 	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
-		IsAutoBalanceDataTriesEnabledField: true,
+		IsFlagEnabledCalled: func(flag core.EnableEpochFlag) bool {
+			return flag == nodeCommon.AutoBalanceDataTriesFlag ||
+				flag == nodeCommon.DynamicESDTFlag
+		},
 	}
 
 	t, err := trie.NewTrie(storageManager, marshaller, hasher, enableEpochsHandler, maxTrieLevelInMemory)

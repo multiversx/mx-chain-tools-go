@@ -12,23 +12,23 @@ import (
 	nodeFactory "github.com/multiversx/mx-chain-go/cmd/node/factory"
 	"github.com/multiversx/mx-chain-go/common"
 	commonDisabled "github.com/multiversx/mx-chain-go/common/disabled"
+	statisticsDisabled "github.com/multiversx/mx-chain-go/common/statistics/disabled"
 	nodeConfig "github.com/multiversx/mx-chain-go/config"
 	"github.com/multiversx/mx-chain-go/dataRetriever"
 	"github.com/multiversx/mx-chain-go/epochStart/notifier"
 	"github.com/multiversx/mx-chain-go/state"
+	stateDisabled "github.com/multiversx/mx-chain-go/state/disabled"
 	stateFactory "github.com/multiversx/mx-chain-go/state/factory"
-	disabled2 "github.com/multiversx/mx-chain-go/state/storagePruningManager/disabled"
+	pruningManagerDisabled "github.com/multiversx/mx-chain-go/state/storagePruningManager/disabled"
 	"github.com/multiversx/mx-chain-go/storage"
 	"github.com/multiversx/mx-chain-go/storage/databaseremover/disabled"
 	"github.com/multiversx/mx-chain-go/storage/factory"
 	"github.com/multiversx/mx-chain-go/storage/pruning"
+	"github.com/multiversx/mx-chain-go/storage/storageunit"
 	"github.com/multiversx/mx-chain-go/testscommon"
 	"github.com/multiversx/mx-chain-go/trie"
-	hashesHolder "github.com/multiversx/mx-chain-go/trie/hashesHolder/disabled"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-logger-go/file"
-	"github.com/multiversx/mx-chain-storage-go/memorydb"
-	"github.com/multiversx/mx-chain-storage-go/storageUnit"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon/components"
 	"github.com/urfave/cli"
 )
@@ -144,7 +144,7 @@ func CreatePruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Stor
 	localDbConfig := dbConfig // copy
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 
-	persisterFactory, err := factory.NewPersisterFactory(factory.NewDBConfigHandler(localDbConfig))
+	persisterFactory, err := factory.NewPersisterFactory(localDbConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -182,20 +182,20 @@ func CreateStorer(flags ContextFlagsConfig) (storage.Storer, error) {
 	localDbConfig.FilePath = path.Join(flags.WorkingDir, flags.DbDir)
 	dbPath := path.Join(flags.WorkingDir, flags.DbDir)
 
-	dbConf := storageUnit.DBConfig{
+	dbConf := storageunit.DBConfig{
 		FilePath:          dbPath,
-		Type:              storageUnit.DBType(dbConfig.Type),
+		Type:              storageunit.DBType(dbConfig.Type),
 		BatchDelaySeconds: dbConfig.BatchDelaySeconds,
 		MaxBatchSize:      dbConfig.MaxBatchSize,
 		MaxOpenFiles:      dbConfig.MaxOpenFiles,
 	}
 
-	persisterFactory, err := factory.NewPersisterFactory(factory.NewDBConfigHandler(dbConfig))
+	persisterFactory, err := factory.NewPersisterFactory(dbConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return storageUnit.NewStorageUnitFromConf(cacheConfig, dbConf, persisterFactory)
+	return storageunit.NewStorageUnitFromConf(cacheConfig, dbConf, persisterFactory)
 }
 
 // CreateTrie will create and return a trie using the provided flags
@@ -214,23 +214,21 @@ func CreateTrie(storer storage.Storer, enableEpochsHandler common.EnableEpochsHa
 // CreateStorageManager creates a new trie storage manager using the given storer
 func CreateStorageManager(storer storage.Storer) (common.StorageManager, error) {
 	tsmArgs := trie.NewTrieStorageManagerArgs{
-		MainStorer:        storer,
-		CheckpointsStorer: memorydb.New(),
-		Marshalizer:       Marshaller,
-		Hasher:            Hasher,
+		MainStorer:  storer,
+		Marshalizer: Marshaller,
+		Hasher:      Hasher,
 		GeneralConfig: nodeConfig.TrieStorageManagerConfig{
 			SnapshotsBufferLen:    10,
 			SnapshotsGoroutineNum: 100,
 		},
-		CheckpointHashesHolder: hashesHolder.NewDisabledCheckpointHashesHolder(),
-		IdleProvider:           commonDisabled.NewProcessStatusHandler(),
-		Identifier:             dataRetriever.UserAccountsUnit.String(),
+		IdleProvider:   commonDisabled.NewProcessStatusHandler(),
+		Identifier:     dataRetriever.UserAccountsUnit.String(),
+		StatsCollector: statisticsDisabled.NewStateStatistics(),
 	}
 
 	options := trie.StorageManagerOptions{
-		PruningEnabled:     false,
-		SnapshotsEnabled:   false,
-		CheckpointsEnabled: false,
+		PruningEnabled:   false,
+		SnapshotsEnabled: false,
 	}
 
 	return trie.CreateTrieStorageManager(tsmArgs, options)
@@ -247,7 +245,7 @@ func NewAccountsAdapter(trie common.Trie, enableEpochsHandler common.EnableEpoch
 	if err != nil {
 		return nil, err
 	}
-	storagePruningManager := disabled2.NewDisabledStoragePruningManager()
+	storagePruningManager := pruningManagerDisabled.NewDisabledStoragePruningManager()
 
 	addressConverter, err := pubkeyConverter.NewBech32PubkeyConverter(addressLength, WalletHRP)
 	if err != nil {
@@ -260,10 +258,8 @@ func NewAccountsAdapter(trie common.Trie, enableEpochsHandler common.EnableEpoch
 		Marshaller:            Marshaller,
 		AccountFactory:        accCreator,
 		StoragePruningManager: storagePruningManager,
-		ProcessingMode:        common.Normal,
-		ProcessStatusHandler:  commonDisabled.NewProcessStatusHandler(),
-		AppStatusHandler:      commonDisabled.NewAppStatusHandler(),
 		AddressConverter:      addressConverter,
+		SnapshotsManager:      stateDisabled.NewDisabledSnapshotsManager(),
 	})
 
 	return accountsAdapter, err

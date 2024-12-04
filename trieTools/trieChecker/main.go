@@ -92,9 +92,7 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 		return err
 	}
 
-	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
-		IsAutoBalanceDataTriesEnabledField: true,
-	}
+	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{}
 
 	tr, err := trieToolsCommon.CreateTrie(storer, enableEpochsHandler)
 	if err != nil {
@@ -161,7 +159,14 @@ func checkTrie(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byte) er
 			LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
 			ErrChan:    errChan.NewErrChanWrapper(),
 		}
-		leafParser, err := parsers.NewDataTrieLeafParser([]byte(address), trieToolsCommon.Marshaller, &enableEpochsHandlerMock.EnableEpochsHandlerStub{IsAutoBalanceDataTriesEnabledField: true})
+
+		enableEpochHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
+			IsFlagEnabledCalled: func(flag core.EnableEpochFlag) bool {
+				return flag == common.AutoBalanceDataTriesFlag ||
+					flag == common.DynamicESDTFlag
+			},
+		}
+		leafParser, err := parsers.NewDataTrieLeafParser([]byte(address), trieToolsCommon.Marshaller, enableEpochHandler)
 		if err != nil {
 			return err
 		}

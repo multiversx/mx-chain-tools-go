@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-go/common"
+	"github.com/multiversx/mx-chain-go/common/errChan"
+	"github.com/multiversx/mx-chain-go/state/parsers"
 	"github.com/multiversx/mx-chain-go/storage"
 	"github.com/multiversx/mx-chain-go/testscommon/enableEpochsHandlerMock"
+	"github.com/multiversx/mx-chain-go/trie/keyBuilder"
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
@@ -66,7 +71,7 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	rootHash, err := hex.DecodeString(flagsConfig.HexRootHash)
+	rootHash, err := hex.DecodeString("66bb8f5603f95558fd96079d2316964f169ea5dad7aca5ce3ae7371b38c443ba")
 	if err != nil {
 		return fmt.Errorf("%w when decoding the provided hex root hash", err)
 	}
@@ -86,7 +91,10 @@ func printTrieStats(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byt
 	}
 
 	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
-		IsAutoBalanceDataTriesEnabledField: true,
+		IsFlagEnabledCalled: func(flag core.EnableEpochFlag) bool {
+			return flag == common.AutoBalanceDataTriesFlag ||
+				flag == common.DynamicESDTFlag
+		},
 	}
 
 	tr, err := trieToolsCommon.CreateTrie(storer, enableEpochsHandler)
@@ -99,28 +107,30 @@ func printTrieStats(flags trieToolsCommon.ContextFlagsConfig, mainRootHash []byt
 		log.LogIfError(errNotCritical)
 	}()
 
-	accDb, err := trieToolsCommon.NewAccountsAdapter(tr, enableEpochsHandler)
+	iteratorChannels := &common.TrieIteratorChannels{
+		LeavesChan: make(chan core.KeyValueHolder, 100),
+		ErrChan:    errChan.NewErrChanWrapper(),
+	}
+	err = tr.GetAllLeavesOnChannel(
+		iteratorChannels,
+		context.Background(),
+		mainRootHash,
+		keyBuilder.NewKeyBuilder(),
+		parsers.NewMainTrieLeafParser(),
+	)
 	if err != nil {
 		return err
 	}
 
-	err = accDb.RecreateTrie(mainRootHash)
+	for leaf := range iteratorChannels.LeavesChan {
+		log.Info("leaf", "key", leaf.Key(), "value", leaf.Value())
+	}
+
+	err = iteratorChannels.ErrChan.ReadFromChanNonBlocking()
 	if err != nil {
 		return err
 	}
 
-	stateStatsCollector, ok := accDb.(StateStatsCollector)
-	if !ok {
-		return fmt.Errorf("invalid type assertion")
-	}
-
-	log.Info("get stats for rootHash", "root hash", mainRootHash)
-	stats, err := stateStatsCollector.GetStatsForRootHash(mainRootHash)
-	if err != nil {
-		return err
-	}
-
-	stats.Print()
 	return nil
 }
 

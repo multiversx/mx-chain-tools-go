@@ -16,6 +16,7 @@ import (
 	"github.com/multiversx/mx-chain-core-go/core/pubkeyConverter"
 	"github.com/multiversx/mx-chain-go/common"
 	"github.com/multiversx/mx-chain-go/common/errChan"
+	"github.com/multiversx/mx-chain-go/common/holders"
 	"github.com/multiversx/mx-chain-go/state"
 	"github.com/multiversx/mx-chain-go/state/accounts"
 	"github.com/multiversx/mx-chain-go/state/parsers"
@@ -104,7 +105,10 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 	}
 
 	enableEpochsHandler := &enableEpochsHandlerMock.EnableEpochsHandlerStub{
-		IsAutoBalanceDataTriesEnabledField: true,
+		IsFlagEnabledCalled: func(flag core.EnableEpochFlag) bool {
+			return flag == common.AutoBalanceDataTriesFlag ||
+				flag == common.DynamicESDTFlag
+		},
 	}
 
 	tr, err := trieToolsCommon.CreateTrie(db, enableEpochsHandler)
@@ -131,7 +135,8 @@ func exportTokens(flags config.ContextFlagsTokensExporter, mainRootHash []byte, 
 		return err
 	}
 
-	err = accDb.RecreateTrie(mainRootHash)
+	rootHashHolder := holders.NewDefaultRootHashesHolder(mainRootHash)
+	err = accDb.RecreateTrie(rootHashHolder)
 	if err != nil {
 		return err
 	}
