@@ -11,6 +11,7 @@ import (
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
+	"math"
 	"os"
 )
 
@@ -84,6 +85,16 @@ func startProcess(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	globalSettingsShard1Account, err := GetAccountFromBech32String(globalSettingsShard0Address, shardsState[Shard1])
+	if err != nil {
+		return err
+	}
+	globalSettingsShard2Account, err := GetAccountFromBech32String(globalSettingsShard0Address, shardsState[Shard2])
+	if err != nil {
+		return err
+	}
+
+	systemAccounts := []state.UserAccountHandler{globalSettingsShard0Account, globalSettingsShard1Account, globalSettingsShard2Account}
 
 	nonMigratedTokensMap := make(map[string][][]byte)
 
@@ -96,35 +107,13 @@ func startProcess(c *cli.Context) error {
 		tokenTypeAsInt, err := core.ConvertESDTTypeToUint32(tokenType)
 		if err != nil {
 			log.Error("can not convert token type to int", "tokenType", tokenType, "error", err)
-			return err
+			continue
 		}
 
 		for _, tokenId := range tokenIds {
 			key := append(ESDTPrefix, tokenId...)
-			log.Info("checking token", "tokenId", tokenId, "tokenType", tokenType, "key", key)
-			value, _, err := globalSettingsShard0Account.RetrieveValue(key)
-			if err != nil {
-				log.Error("can not get token data", "tokenId", tokenId, "error", err)
-				return err
-			}
 
-			if len(value) != 2 {
-				nonMigratedTokensMap[tokenType] = append(nonMigratedTokensMap[tokenType], tokenId)
-				log.Warn("token data has wrong length", "tokenId", tokenId, "value", value)
-				continue
-			}
-
-			retrievedTokenType := value[1]
-			if uint32(retrievedTokenType) == 0 {
-				nonMigratedTokensMap[tokenType] = append(nonMigratedTokensMap[tokenType], tokenId)
-				log.Warn("token type is 0", "tokenId", tokenId)
-				continue
-			}
-
-			if uint32(retrievedTokenType)-1 != tokenTypeAsInt {
-				nonMigratedTokensMap[tokenType] = append(nonMigratedTokensMap[tokenType], tokenId)
-				log.Warn("token type is not the same", "tokenId", tokenId, "retrievedTokenType", retrievedTokenType, "tokenType", tokenType)
-			}
+			checkTokenInAllShards(key, tokenTypeAsInt, systemAccounts)
 		}
 		log.Info("tokens", "tokenType", tokenType, "tokenIds", tokenIds)
 	}
@@ -135,6 +124,34 @@ func startProcess(c *cli.Context) error {
 	}
 
 	return nil
+}
+
+func checkTokenInAllShards(tokenKey []byte, tokenType uint32, systemAccounts []state.UserAccountHandler) {
+	log.Info("checking token", "tokenId", tokenKey, "tokenType", tokenType)
+
+	for _, systemAccount := range systemAccounts {
+		value, _, err := systemAccount.RetrieveValue(tokenKey)
+		if err != nil {
+			log.Error("can not get token data", "tokenId", tokenKey, "error", err)
+			continue
+		}
+
+		if len(value) != 2 {
+			log.Warn("token data has wrong length", "tokenId", tokenKey, "value", value)
+			continue
+		}
+
+		retrievedTokenType := value[1]
+		esdtTokenType, err := convertToESDTTokenType(uint32(retrievedTokenType))
+		if err != nil {
+			log.Error("can not convert token type to int", "tokenType", tokenType, "error", err)
+			continue
+		}
+
+		if esdtTokenType != tokenType {
+			log.Warn("token type is not the same", "tokenId", tokenKey, "retrievedTokenType", retrievedTokenType, "tokenType", tokenType)
+		}
+	}
 }
 
 func getAllESDTsFromSystemEsdtAccount(systemEsdtAccount state.UserAccountHandler) (map[string][][]byte, error) {
@@ -168,4 +185,29 @@ func getAllESDTsFromSystemEsdtAccount(systemEsdtAccount state.UserAccountHandler
 	}
 
 	return tokens, nil
+}
+
+func convertToESDTTokenType(esdtType uint32) (uint32, error) {
+	switch esdtType {
+	case 0:
+		return 0, fmt.Errorf("token type not set inside global settings handler")
+	case 1:
+		return uint32(core.Fungible), nil
+	case 2:
+		return uint32(core.NonFungible), nil
+	case 3:
+		return uint32(core.NonFungibleV2), nil
+	case 4:
+		return uint32(core.MetaFungible), nil
+	case 5:
+		return uint32(core.SemiFungible), nil
+	case 6:
+		return uint32(core.DynamicNFT), nil
+	case 7:
+		return uint32(core.DynamicSFT), nil
+	case 8:
+		return uint32(core.DynamicMeta), nil
+	default:
+		return math.MaxUint32, fmt.Errorf("invalid esdt type: %d", esdtType)
+	}
 }
