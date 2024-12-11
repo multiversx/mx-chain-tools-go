@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"math"
+	"os"
+
 	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-go/common"
 	"github.com/multiversx/mx-chain-go/common/errChan"
@@ -11,8 +14,6 @@ import (
 	logger "github.com/multiversx/mx-chain-logger-go"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
-	"math"
-	"os"
 )
 
 var log = logger.GetOrCreate("trie")
@@ -80,24 +81,16 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	globalSettingsShard0Address := "erd1lllllllllllllllllllllllllllllllllllllllllllllllllllsckry7t"
-	globalSettingsShard0Account, err := GetAccountFromBech32String(globalSettingsShard0Address, shardsState[Shard0])
-	if err != nil {
-		return err
-	}
-	globalSettingsShard1Account, err := GetAccountFromBech32String(globalSettingsShard0Address, shardsState[Shard1])
-	if err != nil {
-		return err
-	}
-	globalSettingsShard2Account, err := GetAccountFromBech32String(globalSettingsShard0Address, shardsState[Shard2])
+	systemAccounts, err := getSystemAccountsForShards(shardsState)
 	if err != nil {
 		return err
 	}
 
-	systemAccounts := []state.UserAccountHandler{globalSettingsShard0Account, globalSettingsShard1Account, globalSettingsShard2Account}
+	checkUpdateTokenTypeCalled(systemAccounts, tokensMap)
+	return nil
+}
 
-	nonMigratedTokensMap := make(map[string][][]byte)
-
+func checkUpdateTokenTypeCalled(systemAccounts map[ShardID]state.UserAccountHandler, tokensMap map[string][][]byte) {
 	ESDTPrefix := []byte("ELRONDesdt")
 	for tokenType, tokenIds := range tokensMap {
 		if tokenType == core.FungibleESDT {
@@ -115,21 +108,14 @@ func startProcess(c *cli.Context) error {
 
 			checkTokenInAllShards(key, tokenTypeAsInt, systemAccounts)
 		}
-		log.Info("tokens", "tokenType", tokenType, "tokenIds", tokenIds)
+		log.Info("tokens", "tokenType", tokenType, "numTokens", len(tokenIds))
 	}
-	for _, tokenIds := range nonMigratedTokensMap {
-		for _, tokenId := range tokenIds {
-			fmt.Println(string(tokenId))
-		}
-	}
-
-	return nil
 }
 
-func checkTokenInAllShards(tokenKey []byte, tokenType uint32, systemAccounts []state.UserAccountHandler) {
-	log.Info("checking token", "tokenId", tokenKey, "tokenType", tokenType)
+func checkTokenInAllShards(tokenKey []byte, tokenType uint32, systemAccounts map[ShardID]state.UserAccountHandler) {
+	log.Info("checking token", "tokenId", string(tokenKey), "tokenType", tokenType)
 
-	for _, systemAccount := range systemAccounts {
+	for shardId, systemAccount := range systemAccounts {
 		value, _, err := systemAccount.RetrieveValue(tokenKey)
 		if err != nil {
 			log.Error("can not get token data", "tokenId", tokenKey, "error", err)
@@ -137,7 +123,7 @@ func checkTokenInAllShards(tokenKey []byte, tokenType uint32, systemAccounts []s
 		}
 
 		if len(value) != 2 {
-			log.Warn("token data has wrong length", "tokenId", tokenKey, "value", value)
+			log.Error("token data has wrong length", "tokenId", tokenKey, "value", value)
 			continue
 		}
 
@@ -149,7 +135,7 @@ func checkTokenInAllShards(tokenKey []byte, tokenType uint32, systemAccounts []s
 		}
 
 		if esdtTokenType != tokenType {
-			log.Warn("token type is not the same", "tokenId", tokenKey, "retrievedTokenType", retrievedTokenType, "tokenType", tokenType)
+			log.Warn("token type is not the same", "tokenId", tokenKey, "retrievedTokenType", retrievedTokenType, "tokenType", tokenType, "shard", shardId)
 		}
 	}
 }
@@ -185,6 +171,28 @@ func getAllESDTsFromSystemEsdtAccount(systemEsdtAccount state.UserAccountHandler
 	}
 
 	return tokens, nil
+}
+
+func getSystemAccountsForShards(shardsState map[ShardID]state.AccountsAdapter) (map[ShardID]state.UserAccountHandler, error) {
+	globalSettingsShard0Address := "erd1lllllllllllllllllllllllllllllllllllllllllllllllllllsckry7t"
+	globalSettingsShard0Account, err := GetAccountFromBech32String(globalSettingsShard0Address, shardsState[Shard0])
+	if err != nil {
+		return nil, err
+	}
+	globalSettingsShard1Account, err := GetAccountFromBech32String(globalSettingsShard0Address, shardsState[Shard1])
+	if err != nil {
+		return nil, err
+	}
+	globalSettingsShard2Account, err := GetAccountFromBech32String(globalSettingsShard0Address, shardsState[Shard2])
+	if err != nil {
+		return nil, err
+	}
+
+	systemAccounts := make(map[ShardID]state.UserAccountHandler)
+	systemAccounts[Shard0] = globalSettingsShard0Account
+	systemAccounts[Shard1] = globalSettingsShard1Account
+	systemAccounts[Shard2] = globalSettingsShard2Account
+	return systemAccounts, nil
 }
 
 func convertToESDTTokenType(esdtType uint32) (uint32, error) {

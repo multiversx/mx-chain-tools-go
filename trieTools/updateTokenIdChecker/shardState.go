@@ -120,3 +120,15 @@ func GetAccountFromBech32String(address string, accDb state.AccountsAdapter) (st
 	}
 	return userAcc, nil
 }
+
+func GetAccountFromBytes(accBytes []byte, accDb state.AccountsAdapter) (state.UserAccountHandler, error) {
+	acc, err := accDb.GetExistingAccount(accBytes)
+	if err != nil {
+		return nil, err
+	}
+	userAcc, ok := acc.(state.UserAccountHandler)
+	if !ok {
+		return nil, fmt.Errorf("account is not a user account")
+	}
+	return userAcc, nil
+}
