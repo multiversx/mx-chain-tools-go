@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/multiversx/mx-chain-core-go/core"
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 	"github.com/urfave/cli"
 )
@@ -15,21 +14,6 @@ const (
 	Shard2 ShardID = "shard2"
 	Meta   ShardID = "meta"
 )
-
-func convertIntToShardId(shardID int) ShardID {
-	switch shardID {
-	case 0:
-		return Shard0
-	case 1:
-		return Shard1
-	case 2:
-		return Shard2
-	case int(core.MetachainShardId):
-		return Meta
-	default:
-		return ""
-	}
-}
 
 func getFlags() []cli.Flag {
 	flags := trieToolsCommon.GetFlags()
