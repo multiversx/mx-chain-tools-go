@@ -171,6 +171,7 @@ func CreatePruningStorer(flags ContextFlagsConfig, maxDBValue int) (storage.Stor
 		PruningEnabled:            true,
 		EnabledDbLookupExtensions: false,
 		PersistersTracker:         pruning.NewPersistersTracker(epochsData),
+		StateStatsHandler:         statisticsDisabled.NewStateStatistics(),
 	}
 
 	return pruning.NewTriePruningStorer(args)
