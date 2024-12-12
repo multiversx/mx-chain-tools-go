@@ -14,6 +14,7 @@ import (
 	"github.com/multiversx/mx-chain-tools-go/trieTools/trieToolsCommon"
 )
 
+// NewShardState recreates the state for a shard with the given root hash
 func NewShardState(rootHash []byte, workingDir, dbDir string) (state.AccountsAdapter, error) {
 	createStorerFlags := trieToolsCommon.ContextFlagsConfig{
 		WorkingDir: workingDir,
@@ -54,19 +55,16 @@ func NewShardState(rootHash []byte, workingDir, dbDir string) (state.AccountsAda
 	return accDb, nil
 }
 
+// LoadStateForAllShards loads the state for all shards from the provided root hashes
 func LoadStateForAllShards(flagsConfig contextFlagsConfig) (map[ShardID]state.AccountsAdapter, error) {
 	log.Info("starting loading the state for each shard", "pid", os.Getpid())
 
-	shardsIds := make([]ShardID, 4)
-	shardsIds[0] = Shard0
-	shardsIds[1] = Shard1
-	shardsIds[2] = Shard2
-	shardsIds[3] = Meta
+	shardsIds := []ShardID{Shard0, Shard1, Shard2, Meta}
 
 	shardsState := make(map[ShardID]state.AccountsAdapter, len(shardsIds))
 	workingDir := filepath.Join(flagsConfig.WorkingDir, flagsConfig.DbDir)
-	for _, shardId := range shardsIds {
-		rootHash, err := getRootHashForShard(flagsConfig, shardId)
+	for _, shardID := range shardsIds {
+		rootHash, err := getRootHashForShard(flagsConfig, shardID)
 		if err != nil {
 			return nil, fmt.Errorf("%w when decoding the provided hex root hash", err)
 		}
@@ -74,12 +72,12 @@ func LoadStateForAllShards(flagsConfig contextFlagsConfig) (map[ShardID]state.Ac
 			return nil, fmt.Errorf("wrong root hash length: expected %d, got %d", rootHashLength, len(rootHash))
 		}
 
-		ss, err := NewShardState(rootHash, workingDir, string(shardId))
+		ss, err := NewShardState(rootHash, workingDir, string(shardID))
 		if err != nil {
 			return nil, err
 		}
 
-		shardsState[shardId] = ss
+		shardsState[shardID] = ss
 	}
 
 	log.Info("loading state successful")

@@ -91,7 +91,7 @@ func startProcess(c *cli.Context) error {
 }
 
 func checkUpdateTokenTypeCalled(systemAccounts map[ShardID]state.UserAccountHandler, tokensMap map[string][][]byte) {
-	ESDTPrefix := []byte("ELRONDesdt")
+	esdtPrefix := []byte("ELRONDesdt")
 	for tokenType, tokenIds := range tokensMap {
 		if tokenType == core.FungibleESDT {
 			continue
@@ -104,7 +104,7 @@ func checkUpdateTokenTypeCalled(systemAccounts map[ShardID]state.UserAccountHand
 		}
 
 		for _, tokenId := range tokenIds {
-			key := append(ESDTPrefix, tokenId...)
+			key := append(esdtPrefix, tokenId...)
 
 			checkTokenInAllShards(key, tokenTypeAsInt, systemAccounts)
 		}
