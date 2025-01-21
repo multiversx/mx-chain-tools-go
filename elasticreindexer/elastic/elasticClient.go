@@ -161,12 +161,7 @@ func (esc *esClient) CreateIndexWithMapping(targetIndex string, body *bytes.Buff
 func (esc *esClient) PutIndexTemplate(templateName string, body *bytes.Buffer) error {
 	var res *esapi.Response
 	var err error
-	if templateName == "logs" {
-		res, err = esc.client.Indices.PutTemplate(templateName, body)
-	} else {
-		res, err = esc.client.Indices.PutIndexTemplate(templateName, body)
-	}
-
+	res, err = esc.client.Indices.PutIndexTemplate(templateName, body)
 	if err != nil {
 		return err
 	}
