@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -19,6 +18,9 @@ const (
 	indicesFolder  = "indices"
 	policiesFolder = "policies"
 	configFileName = "cluster.toml"
+
+	logsNewName   = "llogs"
+	logsAliasName = "logs"
 )
 
 type Cfg struct {
@@ -131,6 +133,11 @@ func createIndies(cfg *Cfg, indexTemplateMap map[string]*bytes.Buffer) error {
 	}
 
 	for index, indexData := range indexTemplateMap {
+		indexName := index
+		if index == logsAliasName {
+			index = logsNewName
+		}
+
 		doesTemplateExists := databaseClient.DoesTemplateExist(index)
 		if !doesTemplateExists {
 			errCheck := databaseClient.PutIndexTemplate(index, indexData)
@@ -152,14 +159,14 @@ func createIndies(cfg *Cfg, indexTemplateMap map[string]*bytes.Buffer) error {
 			log.Info("databaseClient.CreateIndexWithMapping", "index", index)
 		}
 
-		aliasExists := databaseClient.DoesAliasExist(index)
+		aliasExists := databaseClient.DoesAliasExist(indexName)
 		if !aliasExists {
-			errAlias := databaseClient.PutAlias(indexWithSuffix, index)
+			errAlias := databaseClient.PutAlias(indexWithSuffix, indexName)
 			if err != nil {
-				return fmt.Errorf("databaseClient.PutAlias index: %s, error: %w", index, errAlias)
+				return fmt.Errorf("databaseClient.PutAlias index: %s, error: %w", indexName, errAlias)
 			}
 
-			log.Info("databaseClient.PutAlias", "index", index)
+			log.Info("databaseClient.PutAlias", "index", indexName)
 		}
 	}
 
@@ -186,6 +193,10 @@ func createPoliciesIfEnabled(cfg *Cfg, pathToPolicies string) error {
 	}
 
 	for index, policy := range indexPolicyMap {
+		if index == logsAliasName {
+			index = logsNewName
+		}
+
 		indexWithSuffix := fmt.Sprintf("%s-%s", index, "000001")
 		err = databaseClient.SetWriteIndexTrue(index, indexWithSuffix)
 		if err != nil {
@@ -221,5 +232,5 @@ func loadConfigFile(pathStr string) (*Cfg, error) {
 }
 
 func loadBytesFromFile(file string) ([]byte, error) {
-	return ioutil.ReadFile(file)
+	return os.ReadFile(file)
 }
