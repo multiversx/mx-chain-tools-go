@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/data/esdt"
 	"github.com/multiversx/mx-chain-go/common"
 	"github.com/multiversx/mx-chain-go/common/errChan"
 	"github.com/multiversx/mx-chain-go/state"
@@ -87,7 +88,44 @@ func startProcess(c *cli.Context) error {
 	}
 
 	checkUpdateTokenTypeCalled(systemAccounts, tokensMap)
+	for shardId, systemAccount := range systemAccounts {
+		log.Info("shard", "shardId", shardId, "rootHash", systemAccount.GetRootHash())
+		getNumTokensFromSystemAccount(systemAccount)
+	}
+
 	return nil
+}
+
+func getNumTokensFromSystemAccount(account state.UserAccountHandler) {
+	iteratorChannels := &common.TrieIteratorChannels{
+		LeavesChan: make(chan core.KeyValueHolder, common.TrieLeavesChannelDefaultCapacity),
+		ErrChan:    errChan.NewErrChanWrapper(),
+	}
+	err := account.GetAllLeaves(iteratorChannels, context.Background())
+	if err != nil {
+		log.Error("can not get all leaves", "error", err)
+		return
+	}
+	numNonMetaData := 0
+	tokenTypes := make(map[string]uint64)
+	for leaf := range iteratorChannels.LeavesChan {
+		metaData := &esdt.ESDigitalToken{}
+		errUnmarshal := trieToolsCommon.Marshaller.Unmarshal(metaData, leaf.Value())
+		if errUnmarshal != nil {
+			numNonMetaData++
+			continue
+		}
+		tokenTypes[core.ESDTType(metaData.Type).String()]++
+	}
+	err = iteratorChannels.ErrChan.ReadFromChanNonBlocking()
+	if err != nil {
+		log.Error("can not read from error channel", "error", err)
+	}
+
+	log.Info("non metaData keys", "num", numNonMetaData)
+	for tokenType, numTokens := range tokenTypes {
+		log.Info("tokenType", "type", tokenType, "numTokens", numTokens)
+	}
 }
 
 func checkUpdateTokenTypeCalled(systemAccounts map[ShardID]state.UserAccountHandler, tokensMap map[string][][]byte) {
@@ -113,8 +151,6 @@ func checkUpdateTokenTypeCalled(systemAccounts map[ShardID]state.UserAccountHand
 }
 
 func checkTokenInAllShards(tokenKey []byte, tokenType uint32, systemAccounts map[ShardID]state.UserAccountHandler) {
-	log.Info("checking token", "tokenId", string(tokenKey), "tokenType", tokenType)
-
 	for shardId, systemAccount := range systemAccounts {
 		value, _, err := systemAccount.RetrieveValue(tokenKey)
 		if err != nil {
