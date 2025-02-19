@@ -3,7 +3,7 @@ module github.com/ElrondNetwork/elrond-tools-go/trieTools/applyStateChanges
 go 1.20
 
 require (
-	github.com/multiversx/mx-chain-core-go v1.2.25-0.20250206084405-a19e65762bf4
+	github.com/multiversx/mx-chain-core-go v1.2.25-0.20250218140156-ae1c6ad7aca1
 	github.com/multiversx/mx-chain-go v1.8.10-0.20250217122948-53ce841e097d
 	github.com/multiversx/mx-chain-logger-go v1.0.15
 	github.com/multiversx/mx-chain-tools-go/trieTools v0.0.0-20250206085301-7ebb88aed704

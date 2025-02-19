@@ -28,11 +28,11 @@ import (
 var log = logger.GetOrCreate("trie")
 
 const (
-	logFilePrefix       = "trie"
-	rootHashLength      = 32
-	fileHeader          = "----------------------------------------------------------"
-	rootHashId          = "rootHash"
-	scheduledRootHashId = "scheduledRootHash"
+	logFilePrefix        = "trie"
+	fileHeader           = "----------------------------------------------------------"
+	rootHashId           = "rootHash"
+	scheduledRootHashId  = "scheduledRootHash"
+	headerHashesFileName = "headerHashes"
 )
 
 func main() {
@@ -76,24 +76,12 @@ func startProcess(c *cli.Context) error {
 		return err
 	}
 
-	rootHash, err := hex.DecodeString(flagsConfig.HexRootHash)
-	if err != nil {
-		return fmt.Errorf("%w when decoding the provided hex root hash", err)
-	}
-	if len(rootHash) != rootHashLength {
-		return fmt.Errorf("wrong root hash length: expected %d, got %d", rootHashLength, len(rootHash))
-	}
-
 	log.Info("starting processing trie", "pid", os.Getpid())
 
-	return applyStateChanges(flagsConfig, rootHash)
+	return applyStateChanges(flagsConfig)
 }
 
-func applyStateChanges(flags contextFlagsConfig, mainRootHash []byte) error {
-	tr, err := getStateComponents(flags, mainRootHash)
-	if err != nil {
-		return err
-	}
+func applyStateChanges(flags contextFlagsConfig) error {
 	stateChangesDb, err := openStateChangesDB(flags.StateChangesDBPath)
 	if err != nil {
 		return err
@@ -110,6 +98,19 @@ func applyStateChanges(flags contextFlagsConfig, mainRootHash []byte) error {
 	if err != nil {
 		return err
 	}
+	if len(headerHashes) == 0 {
+		return fmt.Errorf("no header hashes found")
+	}
+	mainRootHash, err := getStartingRootHash(headerHashes[0], stateChangesDb)
+	if err != nil {
+		return err
+	}
+	log.Debug("starting applying state changes from rootHash", "mainRootHash", mainRootHash)
+	tr, err := getStateComponents(flags, mainRootHash)
+	if err != nil {
+		return err
+	}
+
 	for headerIndex := 0; headerIndex < len(headerHashes)-1; headerIndex++ {
 		headerHash := headerHashes[headerIndex]
 		log.Debug("started applying state changes for header hash", "headerHash", headerHash)
@@ -146,6 +147,19 @@ func applyStateChanges(flags contextFlagsConfig, mainRootHash []byte) error {
 	log.Debug("state changes applied successfully")
 
 	return nil
+}
+
+func getStartingRootHash(headerHash []byte, db storage.Persister) ([]byte, error) {
+	rootHash, err := getScheduledRootHash(db, headerHash)
+	if err != nil {
+		return nil, err
+	}
+	if len(rootHash) != 0 {
+		return rootHash, nil
+	}
+
+	expectedRootHashKey := append([]byte(rootHashId), headerHash...)
+	return db.Get(expectedRootHashKey)
 }
 
 func checkStateChangesAppliedSuccessfully(
@@ -271,7 +285,7 @@ func printTouchedAccounts(touchedAccounts map[string]string, expectedRootHash []
 }
 
 func getHeaderHashes() ([][]byte, error) {
-	file, err := os.Open("headerHashes")
+	file, err := os.Open(headerHashesFileName)
 	if err != nil {
 		return nil, err
 	}
@@ -405,8 +419,7 @@ func applyDataTrieChanges(mainTrie common.Trie, sc *stateChange.StateChange, dat
 			continue
 		}
 
-		// TODO - also export the trie node version, and use it here instead of core.AutoBalanceEnabled
-		err = dt.UpdateWithVersion(dataTrieChange.Key, dataTrieChange.Val, core.AutoBalanceEnabled)
+		err = dt.UpdateWithVersion(dataTrieChange.Key, dataTrieChange.Val, core.TrieNodeVersion(dataTrieChange.Version))
 		if err != nil {
 			return err
 		}
