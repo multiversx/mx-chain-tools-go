@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/multiversx/mx-chain-go/state"
 	"os"
 	"path/filepath"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/multiversx/mx-chain-go/common"
 	"github.com/multiversx/mx-chain-go/common/holders"
 	"github.com/multiversx/mx-chain-go/config"
+	"github.com/multiversx/mx-chain-go/state"
 	"github.com/multiversx/mx-chain-go/state/accounts"
 	"github.com/multiversx/mx-chain-go/storage"
 	storageFactory "github.com/multiversx/mx-chain-go/storage/factory"
