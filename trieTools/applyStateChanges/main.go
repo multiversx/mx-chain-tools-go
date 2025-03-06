@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/multiversx/mx-chain-core-go/core"
+	"github.com/multiversx/mx-chain-core-go/core/check"
 	"github.com/multiversx/mx-chain-core-go/data/stateChange"
 	"github.com/multiversx/mx-chain-core-go/marshal"
 	marshalFactory "github.com/multiversx/mx-chain-core-go/marshal/factory"
@@ -113,31 +115,39 @@ func applyStateChanges(flags contextFlagsConfig) error {
 
 	for headerIndex := 0; headerIndex < len(headerHashes)-1; headerIndex++ {
 		headerHash := headerHashes[headerIndex]
+		nextHeaderHash := headerHashes[headerIndex+1]
+		if bytes.Equal(headerHash, nextHeaderHash) {
+			log.Debug("duplicated header hash, skipping", "headerHash", headerHash)
+			continue
+		}
 		log.Debug("started applying state changes for header hash", "headerHash", headerHash)
 
-		txHashes, err := getOrderedTxHashes(headerHash, stateChangesDb, jsonMarshaller)
+		txHashesWithIndex, err := getOrderedTxHashes(headerHash, stateChangesDb, jsonMarshaller)
 		if err != nil {
 			return err
 		}
 		touchedAccounts := make(map[string]string)
 		dataTries := make(map[string]common.Trie)
 
-		for _, txHash := range txHashes {
-			stateChanges, err := getStateChangesForTx(txHash, gogoProtoMarshaller, stateChangesDb)
+		for _, txHashWithIndex := range txHashesWithIndex {
+			stateChanges, err := getStateChangesForTx([]byte(txHashWithIndex.hash), gogoProtoMarshaller, stateChangesDb)
 			if err != nil {
-				log.Error("error when getting state changes for tx", "txHash", txHash, "err", err.Error())
+				log.Error("error when getting state changes for tx", "txHash", txHashWithIndex.hash, "err", err.Error())
 				return err
 			}
-			log.Debug("applying state changes for tx", "txHash", txHash, "numStateChanges", len(stateChanges.StateChanges))
+			if len(stateChanges.StateChanges) == 0 {
+				log.Debug("no state changes in tx", "txHash", txHashWithIndex.hash, "index", txHashWithIndex.index)
+				continue
+			}
+			log.Debug("applying state changes for tx", "txHash", txHashWithIndex.hash, "index", txHashWithIndex.index, "numStateChanges", len(stateChanges.StateChanges))
 
 			err = applyStateChange(tr, dataTries, stateChanges, touchedAccounts)
 			if err != nil {
-				log.Error("error when applying state changes for tx", "txHash", txHash, "err", err.Error())
+				log.Error("error when applying state changes for tx", "txHash", txHashWithIndex.hash, "err", err.Error())
 				return err
 			}
 		}
 
-		nextHeaderHash := headerHashes[headerIndex+1]
 		err = checkStateChangesAppliedSuccessfully(tr, dataTries, touchedAccounts, gogoProtoMarshaller, headerHash, nextHeaderHash, stateChangesDb)
 		if err != nil {
 			return err
@@ -261,27 +271,33 @@ func printTouchedAccounts(touchedAccounts map[string]string, expectedRootHash []
 	expectedTrie, err := tr.Recreate(expectedRootHashHolder)
 	if err != nil {
 		log.Error("error when recreating trie", "err", err.Error())
-		return
 	}
 	for accountKey, accountVal := range touchedAccounts {
 		printAccountData("touched account", accountVal, marshaller)
 
-		accountKeyBytes, err := hex.DecodeString(accountKey)
-		if err != nil {
-			log.Error("error when decoding account key", "account key", accountKey, "err", err.Error())
-			continue
+		printAccountFromTrie("inserted account", tr, accountKey, marshaller)
+		if !check.IfNil(expectedTrie) {
+			printAccountFromTrie("expected account", expectedTrie, accountKey, marshaller)
 		}
-		accountBytes, _, err := expectedTrie.Get(accountKeyBytes)
-		if err != nil {
-			log.Error("error when getting account from expected trie", "account key", accountKey, "err", err.Error())
-			continue
-		}
-		if len(accountBytes) == 0 {
-			log.Error("account not found in expected trie", "account key", accountKey)
-			continue
-		}
-		printAccountData("expected account", hex.EncodeToString(accountBytes), marshaller)
 	}
+}
+
+func printAccountFromTrie(message string, tr common.Trie, accountKey string, marshaller marshal.Marshalizer) {
+	accountKeyBytes, err := hex.DecodeString(accountKey)
+	if err != nil {
+		log.Error("error when decoding account key", "account key", accountKey, "err", err.Error())
+		return
+	}
+	accountBytes, _, err := tr.Get(accountKeyBytes)
+	if err != nil {
+		log.Error("error when getting account from expected trie", "account key", accountKey, "err", err.Error())
+		return
+	}
+	if len(accountBytes) == 0 {
+		log.Error("account not found in expected trie", "account key", accountKey)
+		return
+	}
+	printAccountData(message, hex.EncodeToString(accountBytes), marshaller)
 }
 
 func getHeaderHashes() ([][]byte, error) {
@@ -308,24 +324,38 @@ func getHeaderHashes() ([][]byte, error) {
 	return headerHashes, nil
 }
 
-func getOrderedTxHashes(headerHash []byte, db storage.Persister, marshaller marshal.Marshalizer) ([][]byte, error) {
+type pair struct {
+	hash  string
+	index uint32
+}
+
+func getOrderedTxHashes(headerHash []byte, db storage.Persister, marshaller marshal.Marshalizer) ([]pair, error) {
 	marshalledTxsWithOrder, err := db.Get(headerHash)
 	if err != nil {
 		return nil, err
 	}
+
 	txsWithOrder := make(map[string]uint32)
 	err = marshaller.Unmarshal(&txsWithOrder, marshalledTxsWithOrder)
 	if err != nil {
 		return nil, err
 	}
-	txHashes := make([][]byte, len(txsWithOrder))
+
+	txHashes := make([]pair, 0)
 	for txHash, index := range txsWithOrder {
 		txHashBytes, err := hex.DecodeString(txHash)
 		if err != nil {
 			return nil, err
 		}
-		txHashes[index] = txHashBytes
+		txHashes = append(txHashes, pair{
+			hash:  string(txHashBytes),
+			index: index,
+		})
 	}
+
+	sort.Slice(txHashes, func(i, j int) bool {
+		return txHashes[i].index < txHashes[j].index
+	})
 
 	return txHashes, nil
 }
@@ -335,7 +365,7 @@ func getStateChangesForTx(txHash []byte, marshaller marshal.Marshalizer, db stor
 
 	val, err := db.Get(txHash)
 	if err != nil {
-		return nil, err
+		return stateChangesForTxs, nil
 	}
 
 	err = marshaller.Unmarshal(stateChangesForTxs, val)
@@ -435,9 +465,11 @@ func getDataTrie(
 ) (common.Trie, error) {
 	dataTrie, ok := dataTries[hex.EncodeToString(address)]
 	if ok {
+		log.Debug("data trie found in cache", "address", address)
 		return dataTrie, nil
 	}
 
+	log.Debug("recreate data trie", "address", address)
 	accountBytes, _, err := mainTrie.Get(address)
 	if err != nil {
 		return nil, err
