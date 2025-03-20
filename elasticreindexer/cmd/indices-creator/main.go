@@ -155,7 +155,7 @@ func createIndies(cfg *Cfg, indexTemplateMap map[string]*bytes.Buffer) error {
 		aliasExists := databaseClient.DoesAliasExist(index)
 		if !aliasExists {
 			errAlias := databaseClient.PutAlias(indexWithSuffix, index)
-			if err != nil {
+			if errAlias != nil {
 				return fmt.Errorf("databaseClient.PutAlias index: %s, error: %w", index, errAlias)
 			}
 
