@@ -166,7 +166,7 @@
           "type": "keyword"
         },
         "nonce": {
-          "type": "long"
+          "type": "double"
         },
         "notarizedBlocksHashes": {
           "type": "keyword"
