@@ -135,11 +135,11 @@ func applyStateChanges(flags contextFlagsConfig) error {
 				log.Error("error when getting state changes for tx", "txHash", txHashWithIndex.hash, "err", err.Error())
 				return err
 			}
-			if len(stateChanges.StateChanges) == 0 {
+			if len(stateChanges.StateAccess) == 0 {
 				log.Debug("no state changes in tx", "txHash", txHashWithIndex.hash, "index", txHashWithIndex.index)
 				continue
 			}
-			log.Debug("applying state changes for tx", "txHash", txHashWithIndex.hash, "index", txHashWithIndex.index, "numStateChanges", len(stateChanges.StateChanges))
+			log.Debug("applying state changes for tx", "txHash", txHashWithIndex.hash, "index", txHashWithIndex.index, "numStateChanges", len(stateChanges.StateAccess))
 
 			err = applyStateChange(tr, dataTries, stateChanges, touchedAccounts)
 			if err != nil {
@@ -360,8 +360,8 @@ func getOrderedTxHashes(headerHash []byte, db storage.Persister, marshaller mars
 	return txHashes, nil
 }
 
-func getStateChangesForTx(txHash []byte, marshaller marshal.Marshalizer, db storage.Persister) (*stateChange.StateChanges, error) {
-	stateChangesForTxs := &stateChange.StateChanges{}
+func getStateChangesForTx(txHash []byte, marshaller marshal.Marshalizer, db storage.Persister) (*stateChange.StateAccesses, error) {
+	stateChangesForTxs := &stateChange.StateAccesses{}
 
 	val, err := db.Get(txHash)
 	if err != nil {
@@ -379,10 +379,10 @@ func getStateChangesForTx(txHash []byte, marshaller marshal.Marshalizer, db stor
 func applyStateChange(
 	mainTrie common.Trie,
 	dataTries map[string]common.Trie,
-	collectedChanges *stateChange.StateChanges,
+	collectedChanges *stateChange.StateAccesses,
 	touchedAccounts map[string]string,
 ) error {
-	for _, sc := range collectedChanges.StateChanges {
+	for _, sc := range collectedChanges.StateAccess {
 		if sc.Type == stateChange.Read {
 			continue
 		}
@@ -412,7 +412,7 @@ func applyStateChange(
 func applySaveAccountChanges(
 	mainTrie common.Trie,
 	dataTries map[string]common.Trie,
-	sc *stateChange.StateChange,
+	sc *stateChange.StateAccess,
 	touchedAccounts map[string]string,
 ) error {
 	err := applyDataTrieChanges(mainTrie, sc, dataTries)
@@ -429,7 +429,7 @@ func applySaveAccountChanges(
 	return nil
 }
 
-func applyDataTrieChanges(mainTrie common.Trie, sc *stateChange.StateChange, dataTries map[string]common.Trie) error {
+func applyDataTrieChanges(mainTrie common.Trie, sc *stateChange.StateAccess, dataTries map[string]common.Trie) error {
 	if len(sc.DataTrieChanges) == 0 {
 		return nil
 	}
