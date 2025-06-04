@@ -6,8 +6,8 @@
     "settings": {
       "index.lifecycle.name": "miniblocks-policy",
       "index.lifecycle.rollover_alias": "miniblocks",
-      "number_of_replicas": 1,
-      "number_of_shards": 5
+      "number_of_replicas": 0,
+      "number_of_shards": 3
     },
     "mappings": {
       "properties": {

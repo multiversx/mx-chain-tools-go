@@ -4,8 +4,8 @@
   ],
   "template": {
     "settings": {
-      "number_of_replicas": 1,
-      "number_of_shards": 5,
+      "number_of_replicas": 0,
+      "number_of_shards": 3,
       "index.lifecycle.name": "logs-policy",
       "index.lifecycle.rollover_alias": "logs"
     },

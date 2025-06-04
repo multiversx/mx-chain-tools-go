@@ -12,8 +12,8 @@
       ],
       "index.lifecycle.name": "rounds-policy",
       "index.lifecycle.rollover_alias": "rounds",
-      "number_of_replicas": 1,
-      "number_of_shards": 5
+      "number_of_replicas": 0,
+      "number_of_shards": 3
     },
     "mappings": {
       "properties": {
