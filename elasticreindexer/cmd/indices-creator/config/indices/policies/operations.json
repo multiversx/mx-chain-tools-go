@@ -6,7 +6,7 @@
         "actions": {
           "rollover": {
             "max_size": "50GB",
-            "max_docs": 100000000
+            "max_docs": 50000000
           }
         }
       }
