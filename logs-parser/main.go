@@ -13,10 +13,10 @@ func main() {
 	pathToLogsDir := "logs"
 	regex := regexp.MustCompile(`elapsed time to commit block             time \[s\] = ([\d\.]+[a-zµ]+)`)
 	operation := "commit"
-	collectTime(pathToLogsDir, regex, operation)
+	computeAverageTime(pathToLogsDir, regex, operation)
 }
 
-func collectTime(logsDir string, re *regexp.Regexp, operation string) {
+func computeAverageTime(logsDir string, re *regexp.Regexp, operation string) {
 	files, err := os.ReadDir(logsDir)
 	if err != nil {
 		fmt.Printf("Failed to read directory %s: %v\n", logsDir, err)
