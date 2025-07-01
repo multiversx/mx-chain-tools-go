@@ -33,6 +33,11 @@
               "type": "date",
               "index": false,
               "format": "epoch_second"
+            },
+            "timestampMs": {
+              "type":   "date",
+              "index": false,
+              "format": "epoch_millis"
             }
           }
         },
@@ -115,6 +120,10 @@
         "timestamp": {
           "type": "date",
           "format": "epoch_second"
+        },
+        "timestampMs": {
+          "type":   "date",
+          "format": "epoch_millis"
         },
         "token": {
           "type": "keyword"

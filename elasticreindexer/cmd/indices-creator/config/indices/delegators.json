@@ -32,6 +32,10 @@
               "format": "epoch_second",
               "type": "date"
             },
+            "timestampMs": {
+              "type":   "date",
+              "format": "epoch_millis"
+            },
             "value": {
               "type": "keyword"
             },
