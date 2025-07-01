@@ -21,11 +21,19 @@
           "format": "epoch_second",
           "type": "date"
         },
+        "timestampMs": {
+          "type":   "date",
+          "format": "epoch_millis"
+        },
         "upgrades": {
           "properties": {
             "timestamp": {
               "format": "epoch_second",
               "type": "date"
+            },
+            "timestampMs": {
+              "type":   "date",
+              "format": "epoch_millis"
             },
             "upgradeTxHash": {
               "type": "keyword"
