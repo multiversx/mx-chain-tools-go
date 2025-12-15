@@ -110,6 +110,10 @@
                   "index": "false",
                   "type": "date"
                 },
+                "timestampMs": {
+                  "type":   "date",
+                  "format": "epoch_millis"
+                },
                 "type": {
                   "index": "false",
                   "type": "keyword"
@@ -166,7 +170,7 @@
           "type": "keyword"
         },
         "nonce": {
-          "type": "long"
+          "type": "double"
         },
         "notarizedBlocksHashes": {
           "type": "keyword"
@@ -236,6 +240,10 @@
         "timestamp": {
           "format": "epoch_second",
           "type": "date"
+        },
+        "timestampMs": {
+          "type":   "date",
+          "format": "epoch_millis"
         },
         "txCount": {
           "index": "false",
