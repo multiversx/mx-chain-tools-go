@@ -5,6 +5,6 @@ type ContextFlagsNetComparator struct {
 	PrimaryURL   string
 	SecondaryURL string
 	Timestamp    string
-	Outfile      string
+	OutDirectory string
 	Number       int
 }

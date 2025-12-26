@@ -1,23 +1,25 @@
 package main
 
 import (
-	"github.com/multiversx/mx-sdk-go/data"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/multiversx/mx-chain-tools-go/netComparator/core/domain"
 )
 
 func TestGetDifference(t *testing.T) {
 	testCases := []struct {
 		name     string
 		txHash   string
-		t1       data.TransactionOnNetwork
-		t2       data.TransactionOnNetwork
+		t1       domain.Transaction
+		t2       domain.Transaction
 		expected wrappedDifferences
 	}{
 		{
 			"same transaction",
 			"1",
-			data.TransactionOnNetwork{
+			domain.Transaction{
 				Nonce:    1,
 				Value:    "randomValue",
 				Sender:   "randomSender",
@@ -25,7 +27,7 @@ func TestGetDifference(t *testing.T) {
 				GasPrice: 50000,
 				GasLimit: 60000,
 			},
-			data.TransactionOnNetwork{
+			domain.Transaction{
 				Nonce:    1,
 				Value:    "randomValue",
 				Sender:   "randomSender",
@@ -39,7 +41,7 @@ func TestGetDifference(t *testing.T) {
 		{
 			"different transaction fields",
 			"2",
-			data.TransactionOnNetwork{
+			domain.Transaction{
 				Nonce:    1,
 				Value:    "randomValue",
 				Sender:   "randomSender",
@@ -47,7 +49,7 @@ func TestGetDifference(t *testing.T) {
 				GasPrice: 50000,
 				GasLimit: 60000,
 			},
-			data.TransactionOnNetwork{
+			domain.Transaction{
 				Nonce:    13,
 				Value:    "someRandomValue",
 				Sender:   "someRandomSender",
@@ -123,4 +125,65 @@ func TestRetryCalculator(t *testing.T) {
 			require.Equal(t, got, tt.expected)
 		})
 	}
+}
+
+func TestCalculateBatches(t *testing.T) {
+	testCases := []struct {
+		name     string
+		n        uint
+		expected []uint
+	}{
+		{
+			"100 transactions",
+			100,
+			[]uint{50, 50},
+		},
+		{
+			"125 transactions",
+			125,
+			[]uint{50, 50, 25},
+		},
+		{
+			"150 transactions",
+			150,
+			[]uint{50, 50, 50},
+		},
+		{
+			"1.013 transactions",
+			1_013,
+			append(append(make([]uint, 0), mockExpectedBatchResult(20)...), uint(13)),
+		},
+		{
+			"20.000 transactions",
+			20_000,
+			mockExpectedBatchResult(400),
+		},
+		{
+			"100.000 transactions",
+			100_000,
+			mockExpectedBatchResult(2000),
+		},
+		{
+			"100.125 transactions",
+			100_125,
+			append(append(make([]uint, 0), mockExpectedBatchResult(2002)...), uint(25)),
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			batches := make([]uint, 0)
+			calculateBatches(tt.n, &batches)
+			require.Equal(t, tt.expected, batches)
+		})
+	}
+}
+
+func mockExpectedBatchResult(n int) []uint {
+	mockBatch := make([]uint, 0)
+	for i := 0; i < n; i++ {
+		mockBatch = append(mockBatch, maximumNumberOfTransactionsPerBatch)
+	}
+
+	return mockBatch
 }
